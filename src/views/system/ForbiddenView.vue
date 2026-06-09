@@ -30,8 +30,8 @@ function goDefault() {
   router.push('/login')
 }
 
-function goLogin() {
-  authStore.logout()
+async function goLogin() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>

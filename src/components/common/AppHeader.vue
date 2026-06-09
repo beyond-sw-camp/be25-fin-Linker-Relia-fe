@@ -16,7 +16,7 @@
           <v-icon icon="mdi-account-outline" size="18" />
         </div>
         <div class="app-header__profile-text">
-          <strong>{{ authStore.user?.userName }}</strong>
+          <strong>{{ authStore.userName || '사용자' }}</strong>
           <span>{{ roleLabel }}</span>
         </div>
         <button class="app-header__logout" type="button" @click="logout">
@@ -41,8 +41,8 @@ const router = useRouter()
 const pageTitle = computed(() => route.meta.title ?? '대시보드')
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>

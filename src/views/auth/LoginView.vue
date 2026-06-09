@@ -90,10 +90,10 @@ async function submitLogin() {
   submitting.value = true
 
   try {
-    const user = authStore.login(form)
-    await router.push(getDefaultRouteByRole(user.userRole))
+    const result = await authStore.login(form)
+    await router.push(getDefaultRouteByRole(result.role))
   } catch (error) {
-    errorMessage.value = error.message
+    errorMessage.value = error.response?.data?.message || error.message || '로그인에 실패했습니다.'
   } finally {
     submitting.value = false
   }
@@ -133,22 +133,11 @@ function goToSignup() {
   background: #f97316;
 }
 
-.login-page__brand strong {
-  font-size: 14px;
-  color: #111827;
-}
-
 .login-page h1 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 19px;
   font-weight: 700;
   color: #111827;
-}
-
-.login-page > div > p {
-  margin: 0 0 26px;
-  font-size: 13px;
-  color: #6b7280;
 }
 
 .login-card {
