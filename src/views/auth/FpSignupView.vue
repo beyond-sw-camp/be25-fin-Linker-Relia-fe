@@ -11,6 +11,10 @@
       {{ errorMessage }}
     </v-alert>
 
+    <v-alert v-if="branchErrorMessage" type="warning" variant="tonal" class="signup-page__alert">
+      {{ branchErrorMessage }}
+    </v-alert>
+
     <v-form class="signup-form" @submit.prevent="submitSignup">
       <v-card class="signup-section" elevation="0">
         <div class="signup-grid">
@@ -67,13 +71,19 @@
           </div>
 
           <div class="signup-field signup-field--wide">
-            <label>소속 조직 코드 <em>*</em></label>
-            <v-text-field
+            <label>소속 지점 <em>*</em></label>
+            <v-select
               v-model="form.organizationCode"
-              placeholder="organizationCode를 입력하세요"
+              :items="branchOptions"
+              item-title="label"
+              item-value="value"
+              placeholder="소속 지점을 선택하세요"
               variant="outlined"
               density="comfortable"
               hide-details
+              :loading="isLoadingBranches"
+              :disabled="isLoadingBranches || branchOptions.length === 0"
+              no-data-text="선택 가능한 지점이 없습니다."
             />
           </div>
         </div>
@@ -83,17 +93,25 @@
         <v-btn variant="outlined" class="signup-actions__back" @click="goToLogin">
           로그인으로 돌아가기
         </v-btn>
-        <v-btn type="submit" class="signup-actions__submit" :loading="submitting">회원가입</v-btn>
+        <v-btn
+          type="submit"
+          class="signup-actions__submit"
+          :loading="submitting"
+          :disabled="isLoadingBranches || branchOptions.length === 0"
+        >
+          회원가입
+        </v-btn>
       </div>
     </v-form>
   </section>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { signupFp } from '../../api/auth'
+import { getBranchOrganizations } from '../../api/organizations'
 
 const router = useRouter()
 
@@ -106,8 +124,42 @@ const form = reactive({
   organizationCode: '',
 })
 
+const branchOrganizations = ref([])
 const errorMessage = ref('')
+const branchErrorMessage = ref('')
 const submitting = ref(false)
+const isLoadingBranches = ref(false)
+
+const branchOptions = computed(() =>
+  branchOrganizations.value.map((branch) => ({
+    label: `${branch.organizationName} (${branch.organizationCode})`,
+    value: branch.organizationCode,
+  })),
+)
+
+onMounted(() => {
+  loadBranchOrganizations()
+})
+
+async function loadBranchOrganizations() {
+  branchErrorMessage.value = ''
+  isLoadingBranches.value = true
+
+  try {
+    const response = await getBranchOrganizations()
+    branchOrganizations.value = Array.isArray(response?.result) ? response.result : []
+    form.organizationCode = branchOrganizations.value[0]?.organizationCode ?? ''
+  } catch (error) {
+    branchOrganizations.value = []
+    form.organizationCode = ''
+    branchErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'
+  } finally {
+    isLoadingBranches.value = false
+  }
+}
 
 async function submitSignup() {
   errorMessage.value = ''
@@ -117,7 +169,8 @@ async function submitSignup() {
     await signupFp(form)
     await router.push({ path: '/login', query: { signedUp: '1' } })
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || error.message || '회원가입에 실패했습니다.'
+    errorMessage.value =
+      error.response?.data?.message || error.message || '회원가입에 실패했습니다.'
   } finally {
     submitting.value = false
   }
