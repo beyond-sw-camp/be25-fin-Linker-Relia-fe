@@ -1,9 +1,8 @@
 <template>
   <section class="customer-page">
     <div class="customer-page__toolbar">
-      <div class="customer-page__filters">
+      <div v-if="showBranchFilter" class="customer-page__filters">
         <v-select
-          v-if="showBranchFilter"
           v-model="filters.organizationCode"
           :items="branches"
           item-title="title"
@@ -15,8 +14,29 @@
           :loading="isLoadingBranches"
           class="customer-page__organization-filter"
         />
+      </div>
 
-        <div v-else />
+      <div class="customer-page__filter-row">
+        <div class="status-tabs" role="tablist" aria-label="고객 상태">
+          <button
+            type="button"
+            class="status-tabs__button"
+            :class="{ 'status-tabs__button--active': filters.customerStatus === '' }"
+            @click="filters.customerStatus = ''"
+          >
+            전체
+          </button>
+          <button
+            v-for="option in statusOptions"
+            :key="option.value"
+            type="button"
+            class="status-tabs__button"
+            :class="{ 'status-tabs__button--active': filters.customerStatus === option.value }"
+            @click="filters.customerStatus = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
 
         <div class="customer-page__search-group">
           <v-text-field
@@ -35,27 +55,6 @@
             초기화
           </v-btn>
         </div>
-      </div>
-
-      <div class="status-tabs" role="tablist" aria-label="고객 상태">
-        <button
-          type="button"
-          class="status-tabs__button"
-          :class="{ 'status-tabs__button--active': filters.customerStatus === '' }"
-          @click="filters.customerStatus = ''"
-        >
-          전체
-        </button>
-        <button
-          v-for="option in statusOptions"
-          :key="option.value"
-          type="button"
-          class="status-tabs__button"
-          :class="{ 'status-tabs__button--active': filters.customerStatus === option.value }"
-          @click="filters.customerStatus = option.value"
-        >
-          {{ option.label }}
-        </button>
       </div>
     </div>
 
@@ -245,8 +244,14 @@ function goToCustomerDetail(customerId) {
 
 .customer-page__filters {
   display: flex;
-  gap: 12px;
+  align-items: flex-start;
+}
+
+.customer-page__filter-row {
+  display: flex;
   align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .customer-page__organization-filter {
@@ -258,7 +263,6 @@ function goToCustomerDetail(customerId) {
 .customer-page__search-group {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 12px;
   margin-left: auto;
   flex: 0 0 auto;
@@ -423,7 +427,7 @@ function goToCustomerDetail(customerId) {
 }
 
 @media (max-width: 1024px) {
-  .customer-page__filters {
+  .customer-page__filter-row {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -431,6 +435,7 @@ function goToCustomerDetail(customerId) {
 
 @media (max-width: 768px) {
   .customer-page__filters,
+  .customer-page__filter-row,
   .customer-page__pagination {
     display: grid;
     grid-template-columns: 1fr;
