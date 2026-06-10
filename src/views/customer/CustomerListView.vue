@@ -1,45 +1,61 @@
 <template>
   <section class="customer-page">
     <div class="customer-page__toolbar">
-      <div v-if="showBranchFilter" class="customer-page__branch-row">
+      <div class="customer-page__filters">
         <v-select
+          v-if="showBranchFilter"
           v-model="filters.organizationCode"
           :items="branches"
           item-title="title"
           item-value="value"
+          label="지점 선택"
           variant="outlined"
           density="comfortable"
           hide-details
           :loading="isLoadingBranches"
-          class="customer-page__branch-filter"
+          class="customer-page__organization-filter"
         />
-      </div>
 
-      <div class="customer-page__filters">
-        <div class="status-tabs" role="tablist" aria-label="고객 유형">
-          <button
-            v-for="option in CUSTOMER_FILTER_OPTIONS"
-            :key="option.value"
-            type="button"
-            class="status-tabs__button"
-            :class="{ 'status-tabs__button--active': filters.customerType === option.value }"
-            @click="filters.customerType = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
+        <div v-else />
 
-        <div class="customer-page__search">
+        <div class="customer-page__search-group">
           <v-text-field
-            v-model="filters.keyword"
+            v-model="filters.customerName"
+            label="고객명"
             placeholder="고객명을 입력하세요"
             variant="outlined"
             density="comfortable"
             hide-details
+            class="customer-page__name-filter"
             @keyup.enter="searchCustomers"
           />
+
           <v-btn class="customer-page__search-button" @click="searchCustomers">검색</v-btn>
+          <v-btn variant="outlined" class="customer-page__reset-button" @click="resetFilters">
+            초기화
+          </v-btn>
         </div>
+      </div>
+
+      <div class="status-tabs" role="tablist" aria-label="고객 상태">
+        <button
+          type="button"
+          class="status-tabs__button"
+          :class="{ 'status-tabs__button--active': filters.customerStatus === '' }"
+          @click="filters.customerStatus = ''"
+        >
+          전체
+        </button>
+        <button
+          v-for="option in statusOptions"
+          :key="option.value"
+          type="button"
+          class="status-tabs__button"
+          :class="{ 'status-tabs__button--active': filters.customerStatus === option.value }"
+          @click="filters.customerStatus = option.value"
+        >
+          {{ option.label }}
+        </button>
       </div>
     </div>
 
@@ -78,14 +94,13 @@
                 <th>고객명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
-                <th v-if="showBranchFilter">소속 지점</th>
                 <th>보유 계약 수</th>
-                <th>월 보험료</th>
-                <th>최근 상담일</th>
-                <th>다음 상담 예정일</th>
+                <th>월 납입 보험료</th>
+                <th>최근 상담일시</th>
+                <th>다음 상담일시</th>
                 <th>고객 등급</th>
                 <th>고객 상태</th>
-                <th v-if="filters.customerType === CUSTOMER_FILTERS.INTEREST">관심 사유</th>
+                <th>조직명</th>
               </tr>
             </thead>
             <tbody>
@@ -97,25 +112,13 @@
                 </td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
-                <td v-if="showBranchFilter">{{ customer.organizationName || '-' }}</td>
                 <td>{{ customer.contractCount ?? 0 }}</td>
                 <td>{{ formatCurrency(customer.monthlyPremium) }}</td>
-                <td>{{ formatDate(customer.lastConsultedAt) }}</td>
-                <td>{{ formatDate(customer.nextConsultedAt) }}</td>
+                <td>{{ formatDateTime(customer.lastConsultedAt) }}</td>
+                <td>{{ formatDateTime(customer.nextConsultedAt) }}</td>
                 <td>{{ getCustomerGradeLabel(customer.customerGrade) }}</td>
-                <td>
-                  <span
-                    class="customer-status"
-                    :class="{
-                      'customer-status--interest': customer.interestYn,
-                    }"
-                  >
-                    {{ customer.interestYn ? '관심 고객' : getCustomerStatusLabel(customer.customerStatus) }}
-                  </span>
-                </td>
-                <td v-if="filters.customerType === CUSTOMER_FILTERS.INTEREST">
-                  {{ getInterestReasonLabel(customer.interestReason) }}
-                </td>
+                <td>{{ getCustomerStatusLabel(customer.customerStatus) }}</td>
+                <td>{{ customer.organizationName || '-' }}</td>
               </tr>
             </tbody>
           </table>
@@ -145,15 +148,13 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
-  CUSTOMER_FILTERS,
-  CUSTOMER_FILTER_OPTIONS,
+  CUSTOMER_STATUS_OPTIONS,
   getCustomerGradeLabel,
   getCustomerStatusLabel,
-  getInterestReasonLabel,
 } from '../../constants/customer'
 import { useCustomerList } from '../../composables/useCustomerList'
 import { useAuthStore } from '../../stores/auth'
-import { formatCurrency, formatDate, formatPhone } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../../utils/formatters'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -172,8 +173,11 @@ const {
   branchErrorMessage,
   initialize,
   searchCustomers,
+  resetFilters,
   changePage,
 } = useCustomerList(authStore)
+
+const statusOptions = CUSTOMER_STATUS_OPTIONS
 
 const summaryCards = computed(() => [
   {
@@ -184,25 +188,32 @@ const summaryCards = computed(() => [
     icon: 'mdi-account-group-outline',
   },
   {
-    label: '계약 고객',
+    label: '계약 유지 고객 수',
     value: summary.value.contractedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#f97316',
-    tone: '#fff7ed',
-    icon: 'mdi-file-document-outline',
-  },
-  {
-    label: '잠재 고객',
-    value: summary.value.prospectCustomerCount.toLocaleString('ko-KR'),
     accent: '#16a34a',
     tone: '#ecfdf3',
-    icon: 'mdi-sprout-outline',
+    icon: 'mdi-file-document-check-outline',
   },
   {
-    label: '관심 고객',
-    value: summary.value.interestCustomerCount.toLocaleString('ko-KR'),
+    label: '잠재 고객 수',
+    value: summary.value.prospectCustomerCount.toLocaleString('ko-KR'),
+    accent: '#f59e0b',
+    tone: '#fff7ed',
+    icon: 'mdi-account-search-outline',
+  },
+  {
+    label: '만기 고객 수',
+    value: summary.value.completedCustomerCount.toLocaleString('ko-KR'),
+    accent: '#8b5cf6',
+    tone: '#f5f3ff',
+    icon: 'mdi-calendar-check-outline',
+  },
+  {
+    label: '해지 고객 수',
+    value: summary.value.terminatedCustomerCount.toLocaleString('ko-KR'),
     accent: '#ef4444',
     tone: '#fff1f2',
-    icon: 'mdi-alert-outline',
+    icon: 'mdi-close-circle-outline',
   },
 ])
 
@@ -232,21 +243,30 @@ function goToCustomerDetail(customerId) {
   gap: 16px;
 }
 
-.customer-page__branch-row {
+.customer-page__filters {
   display: flex;
-  justify-content: flex-start;
+  gap: 12px;
+  align-items: flex-end;
 }
 
-.customer-page__branch-filter {
-  width: 224px;
+.customer-page__organization-filter {
+  min-width: 0;
+  width: 252px;
   flex: 0 0 auto;
 }
 
-.customer-page__filters {
+.customer-page__search-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.customer-page__name-filter {
+  width: 240px;
+  flex: 0 0 auto;
 }
 
 .status-tabs {
@@ -273,28 +293,29 @@ function goToCustomerDetail(customerId) {
   font-weight: 700;
 }
 
-.customer-page__search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: min(460px, 100%);
-  margin-left: auto;
-}
-
-.customer-page__search :deep(.v-input) {
-  flex: 1;
-}
-
 .customer-page__search-button {
   height: 40px;
   border-radius: 10px;
   background: #f97316;
   color: #ffffff;
+  padding: 0 18px;
+}
+
+.customer-page__reset-button {
+  height: 40px;
+  border-radius: 10px;
+  border-color: #d1d5db;
+  color: #475569;
+  padding: 0 16px;
+}
+
+.customer-page__summary {
+  overflow-x: auto;
 }
 
 .customer-page__summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -363,7 +384,7 @@ function goToCustomerDetail(customerId) {
 .customer-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1180px;
+  min-width: 1320px;
 }
 
 .customer-table th,
@@ -371,7 +392,7 @@ function goToCustomerDetail(customerId) {
   padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   color: #475569;
 }
 
@@ -389,22 +410,7 @@ function goToCustomerDetail(customerId) {
   color: #f97316;
   font-weight: 700;
   cursor: pointer;
-}
-
-.customer-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #2563eb;
-  background: #e8f0ff;
-}
-
-.customer-status--interest {
-  color: #ef4444;
-  background: #fff1f2;
+  text-align: center;
 }
 
 .customer-page__pagination {
@@ -416,28 +422,28 @@ function goToCustomerDetail(customerId) {
   color: #64748b;
 }
 
-@media (max-width: 1200px) {
-  .customer-page__summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1024px) {
+  .customer-page__filters {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .customer-page__toolbar,
-  .customer-page__branch-row,
   .customer-page__filters,
-  .customer-page__search,
   .customer-page__pagination {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .customer-page__search-group {
+    justify-content: stretch;
     flex-direction: column;
     align-items: stretch;
   }
 
   .customer-page__summary {
     grid-template-columns: 1fr;
-  }
-
-  .customer-page__branch-filter {
-    width: 100%;
   }
 }
 </style>

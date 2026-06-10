@@ -3,19 +3,18 @@ import { computed, reactive, ref, watch } from 'vue'
 import { getCustomers } from '../api/customers'
 import { getBranchOrganizations } from '../api/organizations'
 import { USER_ROLES } from '../constants/auth'
-import { CUSTOMER_FILTERS } from '../constants/customer'
 
 const DEFAULT_PAGE_SIZE = 10
 
 export function useCustomerList(authStore) {
   const filters = reactive({
-    customerType: CUSTOMER_FILTERS.ALL,
-    customerName: '',
-    keyword: '',
-    organizationCode: '',
     page: 1,
     size: DEFAULT_PAGE_SIZE,
+    customerName: '',
+    organizationCode: '',
+    customerStatus: '',
   })
+  const isResettingFilters = ref(false)
 
   const customerPage = ref(createEmptyPage())
   const summary = ref(createEmptySummary())
@@ -32,8 +31,12 @@ export function useCustomerList(authStore) {
   const showBranchFilter = computed(() => isHqManager.value)
 
   watch(
-    () => [filters.customerType, filters.organizationCode],
+    () => [filters.organizationCode, filters.customerStatus],
     () => {
+      if (isResettingFilters.value) {
+        return
+      }
+
       filters.page = 1
       loadCustomers()
     },
@@ -58,7 +61,7 @@ export function useCustomerList(authStore) {
       branches.value = [
         { title: '전사(전체 지점)', value: '' },
         ...items.map((branch) => ({
-          title: branch.organizationName,
+          title: `${branch.organizationCode} · ${branch.organizationName}`,
           value: branch.organizationCode,
         })),
       ]
@@ -79,9 +82,9 @@ export function useCustomerList(authStore) {
     try {
       const response = await getCustomers(buildCustomerParams(filters, showBranchFilter.value))
       const result = response?.result ?? {}
-      const customerPageResult = result.customers ?? {}
+      const customersResult = result.customers ?? {}
 
-      customerPage.value = normalizePage(customerPageResult)
+      customerPage.value = normalizePage(customersResult)
       summary.value = normalizeSummary(result.summary)
     } catch (error) {
       customerPage.value = createEmptyPage()
@@ -97,12 +100,23 @@ export function useCustomerList(authStore) {
 
   async function searchCustomers() {
     filters.page = 1
-    filters.customerName = filters.keyword.trim()
     await loadCustomers()
   }
 
   async function changePage(page) {
     filters.page = page
+    await loadCustomers()
+  }
+
+  async function resetFilters() {
+    isResettingFilters.value = true
+
+    filters.page = 1
+    filters.customerName = ''
+    filters.organizationCode = ''
+    filters.customerStatus = ''
+
+    isResettingFilters.value = false
     await loadCustomers()
   }
 
@@ -114,12 +128,12 @@ export function useCustomerList(authStore) {
     branches,
     isLoading,
     errorMessage,
-    isHqManager,
     showBranchFilter,
     isLoadingBranches,
     branchErrorMessage,
     initialize,
     searchCustomers,
+    resetFilters,
     changePage,
   }
 }
@@ -130,14 +144,12 @@ function buildCustomerParams(filters, includeOrganizationCode) {
     size: filters.size,
   }
 
-  if (filters.customerType === CUSTOMER_FILTERS.INTEREST) {
-    params.interestYn = true
-  } else if (filters.customerType !== CUSTOMER_FILTERS.ALL) {
-    params.customerStatus = filters.customerType
+  if (filters.customerName) {
+    params.customerName = filters.customerName.trim()
   }
 
-  if (filters.customerName) {
-    params.customerName = filters.customerName
+  if (filters.customerStatus) {
+    params.customerStatus = filters.customerStatus
   }
 
   if (includeOrganizationCode && filters.organizationCode) {
@@ -150,7 +162,7 @@ function buildCustomerParams(filters, includeOrganizationCode) {
 function normalizePage(result) {
   return {
     content: Array.isArray(result.content) ? result.content : [],
-    page: Number(result.page ?? 0),
+    page: Number(result.page ?? 1),
     size: Number(result.size ?? DEFAULT_PAGE_SIZE),
     totalElements: Number(result.totalElements ?? 0),
     totalPages: Number(result.totalPages ?? 0),
@@ -168,14 +180,15 @@ function normalizeSummary(summary) {
     totalCustomerCount: Number(summary?.totalCustomerCount ?? 0),
     contractedCustomerCount: Number(summary?.contractedCustomerCount ?? 0),
     prospectCustomerCount: Number(summary?.prospectCustomerCount ?? 0),
-    interestCustomerCount: Number(summary?.interestCustomerCount ?? 0),
+    completedCustomerCount: Number(summary?.completedCustomerCount ?? 0),
+    terminatedCustomerCount: Number(summary?.terminatedCustomerCount ?? 0),
   }
 }
 
 function createEmptyPage() {
   return {
     content: [],
-    page: 0,
+    page: 1,
     size: DEFAULT_PAGE_SIZE,
     totalElements: 0,
     totalPages: 0,
@@ -193,6 +206,7 @@ function createEmptySummary() {
     totalCustomerCount: 0,
     contractedCustomerCount: 0,
     prospectCustomerCount: 0,
-    interestCustomerCount: 0,
+    completedCustomerCount: 0,
+    terminatedCustomerCount: 0,
   }
 }

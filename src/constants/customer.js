@@ -1,32 +1,23 @@
-export const CUSTOMER_FILTERS = Object.freeze({
-  ALL: 'ALL',
-  CONTRACTED: 'CONTRACTED',
-  PROSPECT: 'PROSPECT',
-  INTEREST: 'INTEREST',
-})
-
-export const CUSTOMER_FILTER_OPTIONS = [
-  { label: '전체 고객', value: CUSTOMER_FILTERS.ALL },
-  { label: '계약 고객', value: CUSTOMER_FILTERS.CONTRACTED },
-  { label: '잠재 고객', value: CUSTOMER_FILTERS.PROSPECT },
-  { label: '관심 고객', value: CUSTOMER_FILTERS.INTEREST },
+export const CUSTOMER_STATUS_OPTIONS = [
+  { label: '계약 유지', value: 'CONTRACTED' },
+  { label: '잠재 고객', value: 'PROSPECT' },
+  { label: '만기', value: 'COMPLETED' },
+  { label: '해지', value: 'TERMINATED' },
 ]
 
-export const INTEREST_REASON_LABELS = Object.freeze({
-  UNPAID: '미납',
-  RENEWAL_DUE: '갱신 도래',
-  MATURITY_DUE: '만기 도래',
-})
-
 export const CUSTOMER_STATUS_LABELS = Object.freeze({
-  CONTRACTED: '계약 고객',
   PROSPECT: '잠재 고객',
+  CONTRACTED: '계약 유지',
+  COMPLETED: '만기',
+  TERMINATED: '해지',
 })
 
 export const CUSTOMER_GRADE_LABELS = Object.freeze({
   VIP: 'VIP',
   GOLD: 'Gold',
   NORMAL: 'Normal',
+  SILVER: 'Silver',
+  BRONZE: 'Bronze',
 })
 
 export const CONSULTATION_TYPE_LABELS = Object.freeze({
@@ -44,14 +35,12 @@ export const CONSULTATION_CHANNEL_LABELS = Object.freeze({
 
 export const CONTRACT_STATUS_LABELS = Object.freeze({
   ACTIVE: '계약 유지',
-  MATURED: '계약 만기',
+  CONTRACTED: '계약 유지',
+  MATURED: '만기',
+  COMPLETED: '만기',
   LAPSED: '실효',
   TERMINATED: '해지',
 })
-
-export function getInterestReasonLabel(value) {
-  return INTEREST_REASON_LABELS[value] ?? value ?? '-'
-}
 
 export function getCustomerStatusLabel(value) {
   return CUSTOMER_STATUS_LABELS[value] ?? value ?? '-'
