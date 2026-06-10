@@ -1,72 +1,147 @@
 import { defineStore } from 'pinia'
 
-import { DEMO_USERS, getDefaultRouteByRole, sanitizeUser } from '../constants/auth'
+import { reissueAuth, loginAuth, logoutAuth } from '../api/auth'
+import { getDefaultRouteByRole } from '../constants/auth'
 
-const STORAGE_KEY = 'relia-auth-user'
+const AUTH_PROFILE_STORAGE_KEY = 'relia.auth.profile'
 
-function loadStoredUser() {
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-
-  if (!raw) {
-    return null
+function readStoredAuthProfile() {
+  if (typeof window === 'undefined') {
+    return {
+      role: null,
+      userName: '',
+      organizationName: '',
+    }
   }
 
   try {
-    return JSON.parse(raw)
+    const rawValue = window.sessionStorage.getItem(AUTH_PROFILE_STORAGE_KEY)
+
+    if (!rawValue) {
+      return {
+        role: null,
+        userName: '',
+        organizationName: '',
+      }
+    }
+
+    const parsedValue = JSON.parse(rawValue)
+
+    return {
+      role: parsedValue.role ?? null,
+      userName: parsedValue.userName ?? '',
+      organizationName: parsedValue.organizationName ?? '',
+    }
   } catch {
-    window.localStorage.removeItem(STORAGE_KEY)
-    return null
+    return {
+      role: null,
+      userName: '',
+      organizationName: '',
+    }
   }
 }
 
-function persistUser(user) {
-  if (user) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+function writeStoredAuthProfile(profile) {
+  if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.removeItem(STORAGE_KEY)
+  window.sessionStorage.setItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify(profile))
+}
+
+function clearStoredAuthProfile() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.sessionStorage.removeItem(AUTH_PROFILE_STORAGE_KEY)
 }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: loadStoredUser(),
+    ...readStoredAuthProfile(),
+    accessToken: null,
+    isAuthenticated: false,
+    isAuthInitializing: true,
   }),
   getters: {
-    isAuthenticated: (state) => Boolean(state.user),
-    userRole: (state) => state.user?.userRole ?? null,
-    displayName: (state) => state.user?.userName ?? '',
-    defaultRoutePath: (state) => getDefaultRouteByRole(state.user?.userRole),
+    userRole: (state) => state.role,
+    displayName: (state) => state.userName,
+    defaultRoutePath: (state) => getDefaultRouteByRole(state.role),
+    user: (state) => ({
+      userName: state.userName,
+      organizationName: state.organizationName,
+      userRole: state.role,
+    }),
   },
   actions: {
-    login(credentials) {
-      const matchedUser = DEMO_USERS.find(
-        (user) => user.loginId === credentials.loginId && user.password === credentials.password,
-      )
+    setProfile(profile) {
+      this.role = profile.role ?? null
+      this.userName = profile.userName ?? ''
+      this.organizationName = profile.organizationName ?? ''
 
-      if (!matchedUser) {
-        throw new Error('로그인 ID 또는 비밀번호를 다시 확인해 주세요.')
-      }
-
-      this.user = sanitizeUser(matchedUser)
-      persistUser(this.user)
-
-      return this.user
+      writeStoredAuthProfile({
+        role: this.role,
+        userName: this.userName,
+        organizationName: this.organizationName,
+      })
     },
-    logout() {
-      this.user = null
-      persistUser(null)
+    setAuth(loginResult) {
+      this.accessToken = loginResult.accessToken
+      this.setProfile({
+        role: loginResult.role,
+        userName: loginResult.userName,
+        organizationName: loginResult.organizationName,
+      })
+      this.isAuthenticated = Boolean(loginResult.accessToken)
     },
-    signUpFp(payload) {
-      const loginTaken = DEMO_USERS.some((user) => user.loginId === payload.loginId)
+    setAccessToken(token) {
+      this.accessToken = token
+      this.isAuthenticated = Boolean(token)
+    },
+    clearAuth() {
+      this.accessToken = null
+      this.isAuthenticated = false
+      this.role = null
+      this.userName = ''
+      this.organizationName = ''
+      clearStoredAuthProfile()
+    },
+    async login(credentials) {
+      const data = await loginAuth(credentials)
+      this.setAuth(data.result)
+      return data.result
+    },
+    async restoreSession() {
+      this.isAuthInitializing = true
 
-      if (loginTaken) {
-        throw new Error('이미 사용 중인 로그인 ID입니다.')
+      try {
+        const storedProfile = readStoredAuthProfile()
+        this.role = storedProfile.role
+        this.userName = storedProfile.userName
+        this.organizationName = storedProfile.organizationName
+
+        const data = await reissueAuth()
+        this.setAccessToken(data.result.newAccessToken)
+
+        if (data.result.role || data.result.userName || data.result.organizationName) {
+          this.setProfile({
+            role: data.result.role,
+            userName: data.result.userName,
+            organizationName: data.result.organizationName,
+          })
+        }
+      } catch {
+        this.clearAuth()
+      } finally {
+        this.isAuthInitializing = false
       }
-
-      return {
-        success: true,
-        message: '회원가입이 완료되었습니다. 로그인 후 이용해 주세요.',
+    },
+    async logout() {
+      try {
+        await logoutAuth()
+      } finally {
+        this.clearAuth()
       }
     },
   },

@@ -16,12 +16,25 @@
           <v-icon icon="mdi-account-outline" size="18" />
         </div>
         <div class="app-header__profile-text">
-          <strong>{{ authStore.user?.userName }}</strong>
+          <strong>{{ authStore.userName || '사용자' }}</strong>
           <span>{{ roleLabel }}</span>
         </div>
-        <button class="app-header__logout" type="button" @click="logout">
-          <v-icon icon="mdi-chevron-down" size="16" />
-        </button>
+        <v-menu location="bottom end" offset="8">
+          <template #activator="{ props }">
+            <button
+              class="app-header__menu-trigger"
+              type="button"
+              aria-label="사용자 메뉴 열기"
+              v-bind="props"
+            >
+              <v-icon icon="mdi-chevron-down" size="16" />
+            </button>
+          </template>
+
+          <v-list class="app-header__menu" density="compact" nav>
+            <v-list-item prepend-icon="mdi-logout" title="로그아웃" @click="logout" />
+          </v-list>
+        </v-menu>
       </div>
     </div>
   </header>
@@ -41,8 +54,8 @@ const router = useRouter()
 const pageTitle = computed(() => route.meta.title ?? '대시보드')
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>
@@ -73,7 +86,7 @@ function logout() {
 }
 
 .app-header__icon-button,
-.app-header__logout {
+.app-header__menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,6 +99,12 @@ function logout() {
 .app-header__icon-button {
   width: 36px;
   height: 36px;
+}
+
+.app-header__menu-trigger {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
 }
 
 .app-header__profile {
@@ -123,6 +142,27 @@ function logout() {
 .app-header__profile-text span {
   font-size: 11px;
   color: #6b7280;
+}
+
+.app-header__menu {
+  min-width: 72px;
+}
+
+.app-header__menu :deep(.v-list-item) {
+  min-height: 28px;
+  padding-inline: 8px;
+}
+
+.app-header__menu :deep(.v-list-item__prepend) {
+  width: auto;
+}
+
+.app-header__menu :deep(.v-list-item__spacer) {
+  width: 4px;
+}
+
+.app-header__menu :deep(.v-list-item-title) {
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {
