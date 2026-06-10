@@ -9,12 +9,22 @@ import { useAuthStore } from '../stores/auth'
 import FpSignupView from '../views/auth/FpSignupView.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import PlaceholderView from '../views/common/PlaceholderView.vue'
+import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
+import CustomerListView from '../views/customer/CustomerListView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
+
+function resolveProtectedComponent(page) {
+  if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
+    return CustomerListView
+  }
+
+  return PlaceholderView
+}
 
 const protectedChildren = APP_PAGE_SPECS.map((page) => ({
   path: page.path,
   name: page.name,
-  component: PlaceholderView,
+  component: resolveProtectedComponent(page),
   props: {
     title: page.title,
     description: page.description,
@@ -25,7 +35,18 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     roles: page.roles,
     title: page.title,
   },
-}))
+})).concat([
+  {
+    path: 'customers/detail/:customerId',
+    name: 'customer-detail',
+    component: CustomerDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
+      title: '고객 상세',
+    },
+  },
+])
 
 const router = createRouter({
   history: createWebHistory(),
