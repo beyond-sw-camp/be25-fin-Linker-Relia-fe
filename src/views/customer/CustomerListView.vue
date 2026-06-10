@@ -1,6 +1,20 @@
 <template>
   <section class="customer-page">
     <div class="customer-page__toolbar">
+      <div v-if="showBranchFilter" class="customer-page__branch-row">
+        <v-select
+          v-model="filters.organizationCode"
+          :items="branches"
+          item-title="title"
+          item-value="value"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :loading="isLoadingBranches"
+          class="customer-page__branch-filter"
+        />
+      </div>
+
       <div class="customer-page__filters">
         <div class="status-tabs" role="tablist" aria-label="고객 유형">
           <button
@@ -15,30 +29,17 @@
           </button>
         </div>
 
-        <v-select
-          v-if="showBranchFilter"
-          v-model="filters.organizationCode"
-          :items="branches"
-          item-title="title"
-          item-value="value"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingBranches"
-          class="customer-page__branch-filter"
-        />
-      </div>
-
-      <div class="customer-page__search">
-        <v-text-field
-          v-model="filters.keyword"
-          placeholder="고객명을 입력하세요"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          @keyup.enter="searchCustomers"
-        />
-        <v-btn class="customer-page__search-button" @click="searchCustomers">검색</v-btn>
+        <div class="customer-page__search">
+          <v-text-field
+            v-model="filters.keyword"
+            placeholder="고객명을 입력하세요"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            @keyup.enter="searchCustomers"
+          />
+          <v-btn class="customer-page__search-button" @click="searchCustomers">검색</v-btn>
+        </div>
       </div>
     </div>
 
@@ -121,9 +122,7 @@
         </div>
 
         <div class="customer-page__pagination">
-          <span>
-            총 {{ customerPage.totalElements.toLocaleString('ko-KR') }}건
-          </span>
+          <span>총 {{ customerPage.totalElements.toLocaleString('ko-KR') }}건</span>
           <v-pagination
             :model-value="filters.page"
             :length="Math.max(customerPage.totalPages, 1)"
@@ -145,7 +144,6 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { USER_ROLES } from '../../constants/auth'
 import {
   CUSTOMER_FILTERS,
   CUSTOMER_FILTER_OPTIONS,
@@ -230,16 +228,25 @@ function goToCustomerDetail(customerId) {
 }
 
 .customer-page__toolbar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
+  display: grid;
   gap: 16px;
+}
+
+.customer-page__branch-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.customer-page__branch-filter {
+  width: 224px;
+  flex: 0 0 auto;
 }
 
 .customer-page__filters {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .status-tabs {
@@ -266,15 +273,12 @@ function goToCustomerDetail(customerId) {
   font-weight: 700;
 }
 
-.customer-page__branch-filter {
-  width: 180px;
-}
-
 .customer-page__search {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(360px, 100%);
+  width: min(460px, 100%);
+  margin-left: auto;
 }
 
 .customer-page__search :deep(.v-input) {
@@ -420,6 +424,7 @@ function goToCustomerDetail(customerId) {
 
 @media (max-width: 768px) {
   .customer-page__toolbar,
+  .customer-page__branch-row,
   .customer-page__filters,
   .customer-page__search,
   .customer-page__pagination {
