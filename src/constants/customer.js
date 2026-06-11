@@ -46,8 +46,7 @@ export const CONSULTATION_CHANNEL_LABELS = Object.freeze({
 })
 
 export const CONTRACT_STATUS_LABELS = Object.freeze({
-  ACTIVE: '계약 유지',
-  CONTRACTED: '계약 유지',
+  MAINTENANCE : '계약 유지',
   MATURED: '만기',
   COMPLETED: '만기',
   LAPSED: '실효',
