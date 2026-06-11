@@ -17,7 +17,6 @@
     <template v-else-if="customer">
       <div class="customer-detail__heading">
         <h2>고객 상세</h2>
-        <p>고객 기본 정보는 상단에 유지하고, 하단에서 계약/상담/브리핑/설계사 이력을 확인할 수 있습니다.</p>
       </div>
 
       <section class="customer-profile">
