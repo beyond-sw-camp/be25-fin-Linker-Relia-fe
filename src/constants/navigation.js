@@ -181,14 +181,14 @@ export const APP_PAGE_SPECS = [
     name: 'insurance-partners',
     title: '제휴 보험사 목록',
     description: '제휴 보험사 목록 관리 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'insurance/products',
     name: 'insurance-products',
     title: '보험 상품 목록',
     description: '보험 상품 관리 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'commissions/hq',
@@ -257,6 +257,14 @@ export const MENU_BY_ROLE = {
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
     },
+    {
+      title: '보험 상품 관리',
+      icon: 'mdi-shield-check-outline',
+      children: [
+        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
+        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
+      ],
+    },
   ],
   [USER_ROLES.BRANCH_MANAGER]: [
     {
@@ -307,6 +315,14 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-cash-multiple',
       children: [
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
+      ],
+    },
+    {
+      title: '보험 상품 관리',
+      icon: 'mdi-shield-check-outline',
+      children: [
+        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
+        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
       ],
     },
   ],

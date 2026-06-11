@@ -5,6 +5,11 @@ export async function getCustomers(params) {
   return response.data
 }
 
+export async function getInterestCustomers(params) {
+  const response = await authApi.get('/customers/interests', { params })
+  return response.data
+}
+
 export async function getCustomerDetail(customerId) {
   const response = await authApi.get(`/customers/${customerId}`)
   return response.data

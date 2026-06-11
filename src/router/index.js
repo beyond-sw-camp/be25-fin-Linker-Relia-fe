@@ -11,11 +11,16 @@ import LoginView from '../views/auth/LoginView.vue'
 import PlaceholderView from '../views/common/PlaceholderView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
+import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
+  }
+
+  if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
+    return InterestCustomerListView
   }
 
   return PlaceholderView

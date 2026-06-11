@@ -1,19 +1,21 @@
 import { computed, reactive, ref, watch } from 'vue'
 
-import { getCustomers } from '../api/customers'
+import { getInterestCustomers } from '../api/customers'
 import { useBranchFilter } from './useBranchFilter'
 
 const DEFAULT_PAGE_SIZE = 10
 
-export function useCustomerList(authStore) {
+export function useInterestCustomerList(authStore, route, router) {
   const filters = reactive({
     page: 1,
     size: DEFAULT_PAGE_SIZE,
     customerName: '',
     organizationCode: '',
-    customerStatus: '',
+    interestReason: '',
   })
+
   const isResettingFilters = ref(false)
+  const isApplyingRouteQuery = ref(false)
 
   const customerPage = ref(createEmptyPage())
   const summary = ref(createEmptySummary())
@@ -31,9 +33,9 @@ export function useCustomerList(authStore) {
   } = useBranchFilter(authStore)
 
   watch(
-    () => [filters.organizationCode, filters.customerStatus],
+    () => [filters.organizationCode, filters.interestReason],
     () => {
-      if (isResettingFilters.value) {
+      if (isResettingFilters.value || isApplyingRouteQuery.value) {
         return
       }
 
@@ -43,6 +45,7 @@ export function useCustomerList(authStore) {
   )
 
   async function initialize() {
+    applyQueryToFilters()
     await initializeBranchFilter()
     await loadCustomers()
   }
@@ -50,9 +53,10 @@ export function useCustomerList(authStore) {
   async function loadCustomers() {
     errorMessage.value = ''
     isLoading.value = true
+    await syncQuery()
 
     try {
-      const response = await getCustomers(buildCustomerParams(filters, showBranchFilter.value))
+      const response = await getInterestCustomers(buildInterestCustomerParams(filters, showBranchFilter.value))
       const result = response?.result ?? {}
       const customersResult = result.customers ?? {}
 
@@ -64,7 +68,7 @@ export function useCustomerList(authStore) {
       errorMessage.value =
         error.response?.data?.message ||
         error.message ||
-        '고객 목록을 불러오지 못했습니다.'
+        '관심 고객 목록을 불러오지 못했습니다.'
     } finally {
       isLoading.value = false
     }
@@ -84,12 +88,41 @@ export function useCustomerList(authStore) {
     isResettingFilters.value = true
 
     filters.page = 1
+    filters.size = DEFAULT_PAGE_SIZE
     filters.customerName = ''
     filters.organizationCode = ''
-    filters.customerStatus = ''
+    filters.interestReason = ''
 
     isResettingFilters.value = false
     await loadCustomers()
+  }
+
+  async function syncQuery() {
+    const nextQuery = buildQueryFromFilters(filters, showBranchFilter.value)
+    const currentQuery = normalizeQuery(route.query)
+
+    if (JSON.stringify(nextQuery) === JSON.stringify(currentQuery)) {
+      return
+    }
+
+    await router.replace({
+      query: nextQuery,
+    })
+  }
+
+  function applyQueryToFilters() {
+    const page = toPositiveInteger(route.query.page, 1)
+    const size = toPositiveInteger(route.query.size, DEFAULT_PAGE_SIZE)
+
+    isApplyingRouteQuery.value = true
+
+    filters.page = page
+    filters.size = size
+    filters.customerName = toStringOrEmpty(route.query.customerName)
+    filters.organizationCode = showBranchFilter.value ? toStringOrEmpty(route.query.organizationCode) : ''
+    filters.interestReason = toStringOrEmpty(route.query.interestReason)
+
+    isApplyingRouteQuery.value = false
   }
 
   return {
@@ -110,25 +143,46 @@ export function useCustomerList(authStore) {
   }
 }
 
-function buildCustomerParams(filters, includeOrganizationCode) {
+function buildInterestCustomerParams(filters, includeOrganizationCode) {
   const params = {
     page: Math.max(filters.page, 1),
-    size: filters.size,
+    size: Math.max(filters.size, 1),
   }
 
   if (filters.customerName) {
     params.customerName = filters.customerName.trim()
   }
 
-  if (filters.customerStatus) {
-    params.customerStatus = filters.customerStatus
-  }
-
   if (includeOrganizationCode && filters.organizationCode) {
     params.organizationCode = filters.organizationCode
   }
 
+  if (filters.interestReason) {
+    params.interestReason = filters.interestReason
+  }
+
   return params
+}
+
+function buildQueryFromFilters(filters, includeOrganizationCode) {
+  const query = {
+    page: String(Math.max(filters.page, 1)),
+    size: String(Math.max(filters.size, 1)),
+  }
+
+  if (filters.customerName) {
+    query.customerName = filters.customerName.trim()
+  }
+
+  if (includeOrganizationCode && filters.organizationCode) {
+    query.organizationCode = filters.organizationCode
+  }
+
+  if (filters.interestReason) {
+    query.interestReason = filters.interestReason
+  }
+
+  return query
 }
 
 function normalizePage(result) {
@@ -149,11 +203,10 @@ function normalizePage(result) {
 
 function normalizeSummary(summary) {
   return {
-    totalCustomerCount: Number(summary?.totalCustomerCount ?? 0),
-    contractedCustomerCount: Number(summary?.contractedCustomerCount ?? 0),
-    prospectCustomerCount: Number(summary?.prospectCustomerCount ?? 0),
-    completedCustomerCount: Number(summary?.completedCustomerCount ?? 0),
-    terminatedCustomerCount: Number(summary?.terminatedCustomerCount ?? 0),
+    totalInterestCustomerCount: Number(summary?.totalInterestCustomerCount ?? 0),
+    unpaidInterestCustomerCount: Number(summary?.unpaidInterestCustomerCount ?? 0),
+    renewalDueInterestCustomerCount: Number(summary?.renewalDueInterestCustomerCount ?? 0),
+    maturityDueInterestCustomerCount: Number(summary?.maturityDueInterestCustomerCount ?? 0),
   }
 }
 
@@ -175,10 +228,35 @@ function createEmptyPage() {
 
 function createEmptySummary() {
   return {
-    totalCustomerCount: 0,
-    contractedCustomerCount: 0,
-    prospectCustomerCount: 0,
-    completedCustomerCount: 0,
-    terminatedCustomerCount: 0,
+    totalInterestCustomerCount: 0,
+    unpaidInterestCustomerCount: 0,
+    renewalDueInterestCustomerCount: 0,
+    maturityDueInterestCustomerCount: 0,
   }
+}
+
+function toPositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10)
+
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback
+  }
+
+  return parsed
+}
+
+function toStringOrEmpty(value) {
+  return typeof value === 'string' ? value : ''
+}
+
+function normalizeQuery(query) {
+  const normalized = {}
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (typeof value === 'string' && value.length > 0) {
+      normalized[key] = value
+    }
+  })
+
+  return normalized
 }

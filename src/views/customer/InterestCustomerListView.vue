@@ -17,22 +17,22 @@
       </div>
 
       <div class="customer-page__filter-row">
-        <div class="status-tabs" role="tablist" aria-label="고객 상태">
+        <div class="status-tabs" role="tablist" aria-label="관심 고객 사유">
           <button
             type="button"
             class="status-tabs__button"
-            :class="{ 'status-tabs__button--active': filters.customerStatus === '' }"
-            @click="filters.customerStatus = ''"
+            :class="{ 'status-tabs__button--active': filters.interestReason === '' }"
+            @click="filters.interestReason = ''"
           >
             전체
           </button>
           <button
-            v-for="option in statusOptions"
+            v-for="option in interestReasonOptions"
             :key="option.value"
             type="button"
             class="status-tabs__button"
-            :class="{ 'status-tabs__button--active': filters.customerStatus === option.value }"
-            @click="filters.customerStatus = option.value"
+            :class="{ 'status-tabs__button--active': filters.interestReason === option.value }"
+            @click="filters.interestReason = option.value"
           >
             {{ option.label }}
           </button>
@@ -82,7 +82,7 @@
 
       <div v-if="isLoading" class="customer-panel__state">
         <v-progress-circular indeterminate color="#f97316" />
-        <p>고객 목록을 불러오는 중입니다.</p>
+        <p>관심 고객 목록을 불러오는 중입니다.</p>
       </div>
 
       <template v-else-if="customers.length > 0">
@@ -93,37 +93,31 @@
                 <th>고객명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
-                <th v-if="showLifecycleDateColumn">{{ lifecycleDateColumnLabel }}</th>
-                <template v-else>
-                  <th>보유 계약 수</th>
-                  <th>월 납입 보험료</th>
-                </template>
-                <th>최근 상담일시</th>
-                <th v-if="!showLifecycleDateColumn">다음 상담일시</th>
-                <th>고객 등급</th>
-                <th>고객 상태</th>
-                <th>조직명</th>
+                <th>관심 고객 사유</th>
+                <th>최근 상담일</th>
+                <th>계약 종료일</th>
+                <th>미납 회차</th>
+                <th>갱신 D-Day</th>
+                <th>만기 D-Day</th>
+                <th>지점명</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="customer in customers" :key="customer.customerId">
                 <td>
                   <button class="customer-table__link" type="button" @click="goToCustomerDetail(customer.customerId)">
-                    {{ customer.customerName }}
+                    {{ formatNullableText(customer.customerName) }}
                   </button>
                 </td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
-                <td v-if="showLifecycleDateColumn">{{ formatDate(getLifecycleDateValue(customer)) }}</td>
-                <template v-else>
-                  <td>{{ customer.contractCount ?? 0 }}</td>
-                  <td>{{ formatCurrency(customer.monthlyPremium) }}</td>
-                </template>
-                <td>{{ formatDateTime(customer.lastConsultedAt) }}</td>
-                <td v-if="!showLifecycleDateColumn">{{ formatDateTime(customer.nextConsultedAt) }}</td>
-                <td>{{ getCustomerGradeLabel(customer.customerGrade) }}</td>
-                <td>{{ getCustomerStatusLabel(customer.customerStatus) }}</td>
-                <td>{{ customer.organizationName || '-' }}</td>
+                <td>{{ getInterestReasonLabel(customer.interestReason) }}</td>
+                <td>{{ formatDate(customer.lastConsultedAt) }}</td>
+                <td>{{ formatDate(customer.contractEndDate) }}</td>
+                <td>{{ formatNullableNumber(customer.unpaidInstallmentCount) }}</td>
+                <td>{{ formatDDay(customer.renewalDDay) }}</td>
+                <td>{{ formatDDay(customer.maturityDDay) }}</td>
+                <td>{{ formatNullableText(customer.organizationName) }}</td>
               </tr>
             </tbody>
           </table>
@@ -142,7 +136,7 @@
       </template>
 
       <div v-else class="customer-panel__state">
-        <p>조건에 맞는 고객이 없습니다.</p>
+        <p>조건에 맞는 관심 고객이 없습니다.</p>
       </div>
     </section>
   </section>
@@ -153,13 +147,12 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
-  CUSTOMER_STATUS_OPTIONS,
-  getCustomerGradeLabel,
-  getCustomerStatusLabel,
+  INTEREST_REASON_OPTIONS,
+  getInterestReasonLabel,
 } from '../../constants/customer'
-import { useCustomerList } from '../../composables/useCustomerList'
+import { useInterestCustomerList } from '../../composables/useInterestCustomerList'
 import { useAuthStore } from '../../stores/auth'
-import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../../utils/formatters'
+import { formatDate, formatNullableText, formatPhone } from '../../utils/formatters'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -180,61 +173,40 @@ const {
   searchCustomers,
   resetFilters,
   changePage,
-} = useCustomerList(authStore)
+} = useInterestCustomerList(authStore, route, router)
 
-const statusOptions = CUSTOMER_STATUS_OPTIONS
-
-const showLifecycleDateColumn = computed(() =>
-  filters.customerStatus === 'COMPLETED' || filters.customerStatus === 'TERMINATED',
-)
-
-const lifecycleDateColumnLabel = computed(() => {
-  if (filters.customerStatus === 'COMPLETED') {
-    return '만기일'
-  }
-
-  if (filters.customerStatus === 'TERMINATED') {
-    return '해지일'
-  }
-
-  return ''
-})
+const interestReasonOptions = [
+  ...INTEREST_REASON_OPTIONS,
+]
 
 const summaryCards = computed(() => [
   {
-    label: '전체 고객 수',
-    value: summary.value.totalCustomerCount.toLocaleString('ko-KR'),
+    label: '전체 관심 고객',
+    value: summary.value.totalInterestCustomerCount.toLocaleString('ko-KR'),
     accent: '#2563eb',
     tone: '#eff6ff',
-    icon: 'mdi-account-group-outline',
+    icon: 'mdi-star-outline',
   },
   {
-    label: '계약 유지 고객 수',
-    value: summary.value.contractedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#16a34a',
-    tone: '#ecfdf3',
-    icon: 'mdi-file-document-check-outline',
-  },
-  {
-    label: '잠재 고객 수',
-    value: summary.value.prospectCustomerCount.toLocaleString('ko-KR'),
-    accent: '#f59e0b',
-    tone: '#fff7ed',
-    icon: 'mdi-account-search-outline',
-  },
-  {
-    label: '만기 고객 수',
-    value: summary.value.completedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#8b5cf6',
-    tone: '#f5f3ff',
-    icon: 'mdi-calendar-check-outline',
-  },
-  {
-    label: '해지 고객 수',
-    value: summary.value.terminatedCustomerCount.toLocaleString('ko-KR'),
+    label: '보험료 미납',
+    value: summary.value.unpaidInterestCustomerCount.toLocaleString('ko-KR'),
     accent: '#ef4444',
     tone: '#fff1f2',
-    icon: 'mdi-close-circle-outline',
+    icon: 'mdi-alert-circle-outline',
+  },
+  {
+    label: '갱신 예정',
+    value: summary.value.renewalDueInterestCustomerCount.toLocaleString('ko-KR'),
+    accent: '#f59e0b',
+    tone: '#fff7ed',
+    icon: 'mdi-refresh-circle',
+  },
+  {
+    label: '만기 예정',
+    value: summary.value.maturityDueInterestCustomerCount.toLocaleString('ko-KR'),
+    accent: '#8b5cf6',
+    tone: '#f5f3ff',
+    icon: 'mdi-calendar-clock-outline',
   },
 ])
 
@@ -252,16 +224,30 @@ function goToCustomerDetail(customerId) {
   })
 }
 
-function getLifecycleDateValue(customer) {
-  if (filters.customerStatus === 'COMPLETED') {
-    return customer.contractEndDate
+function formatNullableNumber(value) {
+  return value === null || value === undefined || value === '' ? '-' : String(value)
+}
+
+function formatDDay(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-'
   }
 
-  if (filters.customerStatus === 'TERMINATED') {
-    return customer.terminatedAt
+  const parsed = Number(value)
+
+  if (Number.isNaN(parsed)) {
+    return '-'
   }
 
-  return null
+  if (parsed === 0) {
+    return 'D-Day'
+  }
+
+  if (parsed > 0) {
+    return `D-${parsed}`
+  }
+
+  return `D+${Math.abs(parsed)}`
 }
 </script>
 
@@ -279,6 +265,8 @@ function getLifecycleDateValue(customer) {
 .customer-page__filters {
   display: flex;
   align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .customer-page__filter-row {
@@ -288,22 +276,10 @@ function getLifecycleDateValue(customer) {
   gap: 16px;
 }
 
-.customer-page__organization-filter {
+.customer-page__organization-filter,
+.customer-page__reason-filter {
   min-width: 0;
   width: 252px;
-  flex: 0 0 auto;
-}
-
-.customer-page__search-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-  flex: 0 0 auto;
-}
-
-.customer-page__name-filter {
-  width: 240px;
   flex: 0 0 auto;
 }
 
@@ -331,6 +307,19 @@ function getLifecycleDateValue(customer) {
   font-weight: 700;
 }
 
+.customer-page__search-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.customer-page__name-filter {
+  width: 240px;
+  flex: 0 0 auto;
+}
+
 .customer-page__search-button {
   height: 40px;
   border-radius: 10px;
@@ -349,11 +338,8 @@ function getLifecycleDateValue(customer) {
 
 .customer-page__summary {
   overflow-x: auto;
-}
-
-.customer-page__summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -422,7 +408,7 @@ function getLifecycleDateValue(customer) {
 .customer-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1160px;
+  min-width: 1360px;
 }
 
 .customer-table th,
@@ -465,6 +451,10 @@ function getLifecycleDateValue(customer) {
     display: grid;
     grid-template-columns: 1fr;
   }
+
+  .customer-page__search-group {
+    margin-left: 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -473,6 +463,11 @@ function getLifecycleDateValue(customer) {
   .customer-page__pagination {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .customer-page__organization-filter,
+  .customer-page__name-filter {
+    width: 100%;
   }
 
   .customer-page__search-group {
