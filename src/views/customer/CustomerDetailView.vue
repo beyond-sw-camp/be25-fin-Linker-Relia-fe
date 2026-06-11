@@ -31,6 +31,9 @@
               <span class="customer-profile__status">
                 {{ customer.interestYn ? '관심 고객' : getCustomerStatusLabel(customer.customerStatus) }}
               </span>
+              <span v-if="customer.interestReason" class="customer-profile__interest-reason">
+                {{ getInterestReasonLabel(customer.interestReason) }}
+              </span>
               <span v-if="customer.customerGrade" class="customer-profile__grade">
                 {{ getCustomerGradeLabel(customer.customerGrade) }}
               </span>
@@ -48,6 +51,23 @@
           <p><v-icon icon="mdi-briefcase-outline" size="14" />{{ customerCompanyText }}</p>
           <p><v-icon icon="mdi-calendar-month-outline" size="14" />최근 상담: {{ formatDate(customer.lastConsultedAt) }}</p>
           <p><v-icon icon="mdi-calendar-clock-outline" size="14" />다음 상담: {{ formatDate(customer.nextConsultedAt) }}</p>
+        </div>
+
+        <div v-if="interestDetailCards.length > 0" class="customer-profile__signals">
+          <article
+            v-for="item in interestDetailCards"
+            :key="item.label"
+            class="signal-card"
+            :style="{ background: item.tone, borderColor: item.borderColor }"
+          >
+            <div class="signal-card__icon" :style="{ color: item.accent, background: item.iconTone }">
+              <v-icon :icon="item.icon" size="18" />
+            </div>
+            <div class="signal-card__body">
+              <p>{{ item.label }}</p>
+              <strong :style="{ color: item.accent }">{{ item.value }}</strong>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -231,6 +251,7 @@ import {
   getConsultationTypeLabel,
   getContractStatusLabel,
   getCustomerGradeLabel,
+  getInterestReasonLabel,
   getCustomerStatusLabel,
 } from '../../constants/customer'
 import { useCustomerDetail } from '../../composables/useCustomerDetail'
@@ -312,6 +333,76 @@ const customerCompanyText = computed(() => {
 const consultationPageNumber = computed(() => consultations.page.page || 1)
 const fpHistoryPageNumber = computed(() => fpHistories.page.page || 1)
 
+const interestDetailCards = computed(() => {
+  const detail = customer.value
+
+  if (!detail?.interestReason) {
+    return []
+  }
+
+  const items = []
+
+  if (detail.interestReason === 'UNPAID') {
+    items.push({
+      label: '미납 회차',
+      value: formatNullableText(detail.unpaidInstallmentCount),
+      icon: 'mdi-alert-circle-outline',
+      accent: '#dc2626',
+      tone: 'linear-gradient(135deg, #fff1f2 0%, #ffffff 100%)',
+      iconTone: '#fee2e2',
+      borderColor: '#fecdd3',
+    })
+  }
+
+  if (detail.interestReason === 'RENEWAL_DUE') {
+    items.push({
+      label: '갱신 D-Day',
+      value: formatDDay(detail.renewalDDay),
+      icon: 'mdi-refresh-circle',
+      accent: '#d97706',
+      tone: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)',
+      iconTone: '#ffedd5',
+      borderColor: '#fed7aa',
+    })
+    if (detail.contractEndDate) {
+      items.push({
+        label: '계약 종료일',
+        value: formatDate(detail.contractEndDate),
+        icon: 'mdi-calendar-end',
+        accent: '#b45309',
+        tone: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)',
+        iconTone: '#fef3c7',
+        borderColor: '#fde68a',
+      })
+    }
+  }
+
+  if (detail.interestReason === 'MATURITY_DUE') {
+    items.push({
+      label: '만기 D-Day',
+      value: formatDDay(detail.maturityDDay),
+      icon: 'mdi-calendar-clock-outline',
+      accent: '#7c3aed',
+      tone: 'linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%)',
+      iconTone: '#ede9fe',
+      borderColor: '#ddd6fe',
+    })
+    if (detail.contractEndDate) {
+      items.push({
+        label: '계약 종료일',
+        value: formatDate(detail.contractEndDate),
+        icon: 'mdi-calendar-end',
+        accent: '#6d28d9',
+        tone: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)',
+        iconTone: '#f3e8ff',
+        borderColor: '#e9d5ff',
+      })
+    }
+  }
+
+  return items
+})
+
 watch(
   () => activeTab.value,
   async (tab) => {
@@ -357,6 +448,28 @@ function goBack() {
   }
 
   router.push('/')
+}
+
+function formatDDay(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+
+  const parsed = Number(value)
+
+  if (Number.isNaN(parsed)) {
+    return '-'
+  }
+
+  if (parsed === 0) {
+    return 'D-Day'
+  }
+
+  if (parsed > 0) {
+    return `D-${parsed}`
+  }
+
+  return `D+${Math.abs(parsed)}`
 }
 </script>
 
@@ -428,6 +541,7 @@ function goBack() {
 }
 
 .customer-profile__status,
+.customer-profile__interest-reason,
 .customer-profile__grade {
   display: inline-flex;
   align-items: center;
@@ -440,6 +554,11 @@ function goBack() {
 .customer-profile__status {
   color: #2563eb;
   background: #e8f0ff;
+}
+
+.customer-profile__interest-reason {
+  color: #f97316;
+  background: #fff7ed;
 }
 
 .customer-profile__grade {
@@ -463,6 +582,49 @@ function goBack() {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.customer-profile__signals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.signal-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+}
+
+.signal-card__icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  flex: 0 0 auto;
+}
+
+.signal-card__body {
+  min-width: 0;
+}
+
+.signal-card__body p {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.signal-card__body strong {
+  display: block;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .customer-detail__summary {
