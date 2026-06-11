@@ -1,8 +1,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 
 import { getInterestCustomers } from '../api/customers'
-import { getBranchOrganizations } from '../api/organizations'
-import { USER_ROLES } from '../constants/auth'
+import { useBranchFilter } from './useBranchFilter'
 
 const DEFAULT_PAGE_SIZE = 10
 
@@ -25,12 +24,13 @@ export function useInterestCustomerList(authStore, route, router) {
   const isLoading = ref(false)
   const errorMessage = ref('')
 
-  const branches = ref([{ title: '전사(전체 지점)', value: '' }])
-  const isLoadingBranches = ref(false)
-  const branchErrorMessage = ref('')
-
-  const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
-  const showBranchFilter = computed(() => isHqManager.value)
+  const {
+    branches,
+    showBranchFilter,
+    isLoadingBranches,
+    branchErrorMessage,
+    initializeBranchFilter,
+  } = useBranchFilter(authStore)
 
   watch(
     () => [filters.organizationCode, filters.interestReason],
@@ -46,37 +46,8 @@ export function useInterestCustomerList(authStore, route, router) {
 
   async function initialize() {
     applyQueryToFilters()
-
-    if (showBranchFilter.value) {
-      await loadBranches()
-    }
-
+    await initializeBranchFilter()
     await loadCustomers()
-  }
-
-  async function loadBranches() {
-    branchErrorMessage.value = ''
-    isLoadingBranches.value = true
-
-    try {
-      const response = await getBranchOrganizations()
-      const items = Array.isArray(response?.result) ? response.result : []
-
-      branches.value = [
-        { title: '전사(전체 지점)', value: '' },
-        ...items.map((branch) => ({
-          title: `${branch.organizationCode} · ${branch.organizationName}`,
-          value: branch.organizationCode,
-        })),
-      ]
-    } catch (error) {
-      branchErrorMessage.value =
-        error.response?.data?.message ||
-        error.message ||
-        '지점 목록을 불러오지 못했습니다.'
-    } finally {
-      isLoadingBranches.value = false
-    }
   }
 
   async function loadCustomers() {
