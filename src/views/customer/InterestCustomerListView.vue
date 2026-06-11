@@ -93,9 +93,9 @@
                 <th>고객명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
-                <th>고객 상태</th>
                 <th>관심 고객 사유</th>
                 <th>최근 상담일</th>
+                <th>계약 종료일</th>
                 <th>미납 회차</th>
                 <th>갱신 D-Day</th>
                 <th>만기 D-Day</th>
@@ -111,9 +111,9 @@
                 </td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
-                <td>{{ getCustomerStatusLabel(customer.customerStatus) }}</td>
                 <td>{{ getInterestReasonLabel(customer.interestReason) }}</td>
                 <td>{{ formatDate(customer.lastConsultedAt) }}</td>
+                <td>{{ formatDate(customer.contractEndDate) }}</td>
                 <td>{{ formatNullableNumber(customer.unpaidInstallmentCount) }}</td>
                 <td>{{ formatDDay(customer.renewalDDay) }}</td>
                 <td>{{ formatDDay(customer.maturityDDay) }}</td>
@@ -148,7 +148,6 @@ import { useRoute, useRouter } from 'vue-router'
 
 import {
   INTEREST_REASON_OPTIONS,
-  getCustomerStatusLabel,
   getInterestReasonLabel,
 } from '../../constants/customer'
 import { useInterestCustomerList } from '../../composables/useInterestCustomerList'
