@@ -5,11 +5,23 @@ export const CUSTOMER_STATUS_OPTIONS = [
   { label: '해지', value: 'TERMINATED' },
 ]
 
+export const INTEREST_REASON_OPTIONS = [
+  { label: '보험료 미납', value: 'UNPAID' },
+  { label: '갱신 예정', value: 'RENEWAL_DUE' },
+  { label: '만기 예정', value: 'MATURITY_DUE' },
+]
+
 export const CUSTOMER_STATUS_LABELS = Object.freeze({
   PROSPECT: '잠재 고객',
   CONTRACTED: '계약 유지',
   COMPLETED: '만기',
   TERMINATED: '해지',
+})
+
+export const INTEREST_REASON_LABELS = Object.freeze({
+  UNPAID: '보험료 미납',
+  RENEWAL_DUE: '갱신 예정',
+  MATURITY_DUE: '만기 예정',
 })
 
 export const CUSTOMER_GRADE_LABELS = Object.freeze({
@@ -44,6 +56,10 @@ export const CONTRACT_STATUS_LABELS = Object.freeze({
 
 export function getCustomerStatusLabel(value) {
   return CUSTOMER_STATUS_LABELS[value] ?? value ?? '-'
+}
+
+export function getInterestReasonLabel(value) {
+  return INTEREST_REASON_LABELS[value] ?? value ?? '-'
 }
 
 export function getCustomerGradeLabel(value) {
