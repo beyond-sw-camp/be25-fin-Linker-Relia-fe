@@ -9,6 +9,11 @@ import { useAuthStore } from '../stores/auth'
 import FpSignupView from '../views/auth/FpSignupView.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import PlaceholderView from '../views/common/PlaceholderView.vue'
+import BranchContractListView from '../views/contract/BranchContractListView.vue'
+import ContractCreateView from '../views/contract/ContractCreateView.vue'
+import ContractDetailView from '../views/contract/ContractDetailView.vue'
+import FpContractListView from '../views/contract/FpContractListView.vue'
+import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
 import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
@@ -21,6 +26,22 @@ function resolveProtectedComponent(page) {
 
   if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
     return InterestCustomerListView
+  }
+
+  if (page.name === 'fp-contracts') {
+    return FpContractListView
+  }
+
+  if (page.name === 'contract-create') {
+    return ContractCreateView
+  }
+
+  if (page.name === 'branch-contracts') {
+    return BranchContractListView
+  }
+
+  if (page.name === 'hq-contracts') {
+    return HqContractListView
   }
 
   return PlaceholderView
@@ -49,6 +70,16 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
       requiresAuth: true,
       roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
       title: '고객 상세',
+    },
+  },
+  {
+    path: 'contracts/:contractId',
+    name: 'contract-detail',
+    component: ContractDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
+      title: '계약 상세',
     },
   },
 ])

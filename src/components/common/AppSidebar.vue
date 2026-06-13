@@ -43,7 +43,7 @@
             :key="child.title"
             :to="child.to"
             class="app-sidebar__submenu-link"
-            :class="{ 'is-active': route.name === child.to.name }"
+            :class="{ 'is-active': isChildActive(child) }"
           >
             {{ child.title }}
           </RouterLink>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { MENU_BY_ROLE } from '../../constants/navigation'
@@ -73,8 +73,24 @@ const openSections = ref([])
 
 const menuSections = computed(() => MENU_BY_ROLE[authStore.userRole] ?? [])
 
+watch(
+  [menuSections, () => route.name, () => route.query.from],
+  () => {
+    const activeSectionTitles = menuSections.value
+      .filter((section) => section.children?.some((child) => isChildActive(child)))
+      .map((section) => section.title)
+
+    openSections.value = Array.from(new Set([...openSections.value, ...activeSectionTitles]))
+  },
+  { immediate: true },
+)
+
 function isSectionOpen(title) {
   return openSections.value.includes(title)
+}
+
+function isChildActive(child) {
+  return route.name === child.to.name || route.query.from === child.to.name
 }
 
 function toggleSection(title) {
