@@ -8,7 +8,7 @@ export const USER_ROLES = Object.freeze({
 export const ROLE_LABELS = Object.freeze({
   [USER_ROLES.FP]: '설계사',
   [USER_ROLES.BRANCH_MANAGER]: '지점장',
-  [USER_ROLES.HQ_MANAGER]: '본사 영업 관리자',
+  [USER_ROLES.HQ_MANAGER]: '본사 영업 담당자',
   [USER_ROLES.SYSTEM_ADMIN]: '시스템 관리자',
 })
 
