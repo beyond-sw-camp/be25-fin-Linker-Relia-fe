@@ -44,6 +44,13 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
+    path: 'contracts/fp/new',
+    name: 'contract-create',
+    title: '계약 등록',
+    description: '설계사가 새 계약을 등록하는 화면입니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
     path: 'commissions/fp',
     name: 'fp-commissions',
     title: '설계사 지급 수수료 현황',
@@ -81,8 +88,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'contracts/branch',
     name: 'branch-contracts',
-    title: '지점 계약 목록',
-    description: '지점 계약 현황 화면입니다.',
+    title: '전체 계약',
+    description: '지점 계약을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -124,7 +131,7 @@ export const APP_PAGE_SPECS = [
     path: 'dashboard/hq',
     name: 'hq-dashboard',
     title: '본사 대시보드',
-    description: '본사 영업 관리자의 기본 진입 화면입니다.',
+    description: '본사 영업 담당자의 기본 진입 화면입니다.',
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
@@ -248,6 +255,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-file-document-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
+        { title: '계약 등록', to: { name: 'contract-create' } },
       ],
     },
     {
@@ -291,7 +299,7 @@ export const MENU_BY_ROLE = {
       title: '계약 관리',
       icon: 'mdi-file-document-outline',
       children: [
-        { title: '지점 계약 목록', to: { name: 'branch-contracts' } },
+        { title: '전체 계약', to: { name: 'branch-contracts' } },
       ],
     },
     {
