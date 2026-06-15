@@ -186,25 +186,25 @@
               <thead>
                 <tr>
                   <th>설계사명</th>
+                  <th>계약 건수</th>
+                  <th>환수 건수</th>
                   <th>신계약 수수료</th>
                   <th>유지 수수료</th>
-                  <th>환수금액</th>
-                  <th>지급총액</th>
+                  <th>지급 예정액</th>
+                  <th>환수 차감액</th>
                   <th>실수령액</th>
-                  <th>계약건수</th>
-                  <th>환수건수</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="row in fpCommissionPage.content" :key="row.fpId">
                   <td>{{ row.fpName }}</td>
-                  <td>{{ formatCurrency(row.initialCommissionAmount) }}</td>
-                  <td>{{ formatCurrency(row.maintenanceCommissionAmount) }}</td>
-                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
-                  <td>{{ formatCurrency(row.totalPaymentCommissionAmount) }}</td>
-                  <td>{{ formatCurrency(row.netCommissionAmount) }}</td>
                   <td>{{ formatCount(row.contractCount) }}</td>
                   <td>{{ formatCount(row.recoveryContractCount) }}</td>
+                  <td>{{ formatCurrency(row.initialCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.maintenanceCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.totalPaymentCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
+                  <td>{{ formatCurrency(row.netCommissionAmount) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -251,13 +251,13 @@
                 <tr>
                   <th>지점명</th>
                   <th>FP 수</th>
-                  <th>계약건수</th>
-                  <th>환수건수</th>
+                  <th>계약 건수</th>
+                  <th>환수 건수</th>
                   <th>신계약 수수료</th>
                   <th>유지 수수료</th>
-                  <th>환수금액</th>
-                  <th>지급총액</th>
-                  <th>실수령액</th>
+                  <th>지급 예정 총액</th>
+                  <th>환수 차감 총액</th>
+                  <th>최종 지급 총액</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,8 +268,8 @@
                   <td>{{ formatCount(row.recoveryContractCount) }}</td>
                   <td>{{ formatCurrency(row.initialCommissionAmount) }}</td>
                   <td>{{ formatCurrency(row.maintenanceCommissionAmount) }}</td>
-                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
                   <td>{{ formatCurrency(row.totalPaymentCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
                   <td>{{ formatCurrency(row.netCommissionAmount) }}</td>
                 </tr>
               </tbody>
