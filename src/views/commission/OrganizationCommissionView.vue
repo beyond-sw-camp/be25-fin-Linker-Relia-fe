@@ -284,29 +284,29 @@ const effectiveScope = computed(() => {
 const summaryCards = computed(() => {
   const comparisonCaption =
     summary.value.previousMetricAmount === null
-      ? '비교 데이터 없음'
-      : `전월 ${formatCurrency(summary.value.previousMetricAmount)}`
+      ? '수입 수수료 전월 비교 데이터 없음'
+      : `수입 수수료 전월 ${formatCurrency(summary.value.previousMetricAmount)}`
   const recoveryLossCaption =
     summary.value.netRecoveryLossAmount === null
       ? '분리 환수 데이터 없음'
       : summary.value.netRecoveryLossAmount > 0
-        ? '보험사 환수 우세'
+        ? '설계사 환수 우세'
         : summary.value.netRecoveryLossAmount < 0
-          ? '설계사 회수 우세'
+          ? '원수사 환수 우세'
           : '환수 손익 균형'
   const basePaymentCaption =
     effectiveScope.value === 'hq'
       ? summaryErrorMessage.value || '전사 설계사 지급 총액'
       : summaryErrorMessage.value || '지점 설계사 지급 총액'
-  const incomeLabel = effectiveScope.value === 'hq' ? '전사 수입수수료' : '수입수수료'
+  const incomeLabel = effectiveScope.value === 'hq' ? '전사 수입 수수료' : '수입 수수료'
   const incomeCaption =
-    summary.value.previousMetricAmount === null
-      ? '전월 비교 데이터 없음'
-      : `전월 ${formatCurrency(summary.value.previousMetricAmount)}`
+    effectiveScope.value === 'hq'
+      ? '당월 기준 전사 수입 수수료 총액'
+      : '당월 기준 지점 수입 수수료 총액'
 
   return [
     {
-      label: '전체 지급 수수료',
+      label: '총 지급 수수료',
       value: formatCurrency(summary.value.totalPaymentCommissionAmount),
       caption: basePaymentCaption,
       accent: '#f97316',
@@ -340,35 +340,35 @@ const summaryCards = computed(() => {
       valueClass: getNetRecoveryLossClass(summary.value.netRecoveryLossAmount),
     },
     {
-      label: '초입 원수수료',
+      label: '신계약 수수료',
       value: formatCurrency(summary.value.initialCommissionAmount),
-      caption: '초입 기준 회사 총원수수료',
+      caption: '당월 신규 체결된 계약으로 발생한 회사 수입 수수료',
       accent: '#7c3aed',
       tone: '#f5f3ff',
       icon: 'mdi-cash-plus',
     },
     {
-      label: '유지 원수수료',
+      label: '유지 수수료',
       value: formatCurrency(summary.value.renewalCommissionAmount),
-      caption: '유지 기준 회사 총원수수료',
+      caption: '유지 중인 계약에서 발생한 회사 수입 수수료',
       accent: '#0ea5a4',
       tone: '#ecfeff',
       icon: 'mdi-chart-line',
     },
     {
-      label: '보험사 환수금',
+      label: '원수사 환수금',
       value: formatMetricCurrency(summary.value.insuranceClawbackAmount),
       caption:
         summary.value.insuranceClawbackAmount === null
           ? '분리 환수 데이터 없음'
-          : '보험사가 회사에서 다시 회수한 금액',
+          : '원수사(보험사)가 본사(GA)로 청구한 환수 총액',
       accent: '#ef4444',
       tone: '#fff1f2',
       icon: 'mdi-cash-remove',
       valueClass: 'summary-card__value--danger',
     },
     {
-      label: '설계사 환수 회수금',
+      label: '설계사 환수금',
       value: formatMetricCurrency(summary.value.fpClawbackAmount),
       caption:
         summary.value.fpClawbackAmount === null
@@ -612,7 +612,7 @@ function normalizeOrganizationSummary(result) {
   )
   const netRecoveryLossAmount =
     hasRecoveryBreakdown && insuranceClawbackAmount !== null && fpClawbackAmount !== null
-      ? insuranceClawbackAmount - fpClawbackAmount
+      ? fpClawbackAmount - insuranceClawbackAmount
       : null
 
   return {
@@ -850,11 +850,11 @@ function getNetRecoveryLossClass(value) {
   }
 
   if (value > 0) {
-    return 'summary-card__value--danger'
+    return 'summary-card__value--success'
   }
 
   if (value < 0) {
-    return 'summary-card__value--success'
+    return 'summary-card__value--danger'
   }
 
   return ''
@@ -1018,7 +1018,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card__value--success {
-  color: #16a34a;
+  color: #65a30d;
 }
 
 .summary-card__value--danger {
