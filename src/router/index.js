@@ -9,6 +9,9 @@ import { useAuthStore } from '../stores/auth'
 import FpSignupView from '../views/auth/FpSignupView.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import PlaceholderView from '../views/common/PlaceholderView.vue'
+import BranchCommissionView from '../views/commission/BranchCommissionView.vue'
+import FpCommissionView from '../views/commission/FpCommissionView.vue'
+import HqCommissionView from '../views/commission/HqCommissionView.vue'
 import BranchContractListView from '../views/contract/BranchContractListView.vue'
 import ContractCreateView from '../views/contract/ContractCreateView.vue'
 import ContractDetailView from '../views/contract/ContractDetailView.vue'
@@ -42,6 +45,18 @@ function resolveProtectedComponent(page) {
 
   if (page.name === 'hq-contracts') {
     return HqContractListView
+  }
+
+  if (page.name === 'fp-commissions') {
+    return FpCommissionView
+  }
+
+  if (page.name === 'branch-commissions') {
+    return BranchCommissionView
+  }
+
+  if (page.name === 'hq-commissions') {
+    return HqCommissionView
   }
 
   return PlaceholderView

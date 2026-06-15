@@ -1,0 +1,1245 @@
+<template>
+  <section class="commission-page">
+    <div class="commission-page__hero">
+      <div>
+        <p class="commission-page__eyebrow">{{ heroEyebrow }}</p>
+        <h2>{{ pageHeading }}</h2>
+        <p class="commission-page__description">{{ pageDescription }}</p>
+      </div>
+
+      <div class="commission-page__toolbar">
+        <v-select
+          v-if="props.scope === 'hq'"
+          v-model="filters.organizationCode"
+          :items="branches"
+          item-title="title"
+          item-value="value"
+          label="지점 선택"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :loading="isLoadingBranches"
+          class="commission-page__organization-filter"
+        />
+        <v-text-field
+          v-model="filters.closingMonth"
+          type="month"
+          label="정산 월"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :max="latestAvailableClosingMonth"
+          class="commission-page__month-field"
+        />
+        <v-btn variant="outlined" class="commission-page__reset-button" @click="resetFilters">
+          초기화
+        </v-btn>
+      </div>
+    </div>
+
+    <v-alert v-if="branchErrorMessage" type="warning" variant="tonal" density="comfortable">
+      {{ branchErrorMessage }}
+    </v-alert>
+    <v-alert v-if="validationMessage" type="warning" variant="tonal" density="comfortable">
+      {{ validationMessage }}
+    </v-alert>
+
+    <div class="commission-summary">
+      <article v-for="card in summaryCards" :key="card.label" class="summary-card">
+        <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
+          <v-icon :icon="card.icon" size="18" />
+        </div>
+        <p class="summary-card__label">{{ card.label }}</p>
+        <strong class="summary-card__value" :class="card.valueClass">{{ card.value }}</strong>
+        <p class="summary-card__caption">{{ card.caption }}</p>
+      </article>
+    </div>
+
+    <div class="commission-layout commission-layout--top">
+      <section class="panel">
+        <div class="panel__header">
+          <div>
+            <h3>전월 지급 수수료 현황</h3>
+            <p>전월 기준 보험사별 지급 수수료 상위 현황입니다.</p>
+          </div>
+          <span class="panel__chip">{{ previousMonthLabel }}</span>
+        </div>
+
+        <div v-if="isPreviousMonthLoading" class="panel__state">
+          <v-progress-circular indeterminate color="#f97316" />
+          <p>전월 보험사 현황을 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="previousMonthErrorMessage" class="panel__state panel__state--error">
+          <p>{{ previousMonthErrorMessage }}</p>
+        </div>
+        <div v-else-if="previousMonthCompanyItems.length === 0" class="panel__state">
+          <p>전월 지급 수수료 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="table-panel">
+          <table>
+            <thead>
+              <tr>
+                <th>보험사명</th>
+                <th>총 지급 수수료</th>
+                <th>순수수료</th>
+                <th>환수 금액</th>
+                <th>비중</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in previousMonthCompanyItems" :key="item.name">
+                <td>{{ item.name }}</td>
+                <td>{{ formatCurrency(item.amount) }}</td>
+                <td>{{ formatCurrency(item.netAmount) }}</td>
+                <td>{{ formatCurrency(item.clawbackAmount) }}</td>
+                <td>{{ formatPercent(item.ratio) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <div>
+            <h3>보험사별 수입수수료 조회</h3>
+            <p>현재 조회 범위의 보험사별 비중과 금액을 함께 보여줍니다.</p>
+          </div>
+        </div>
+
+        <div v-if="isInsuranceCompanyLoading" class="panel__state">
+          <v-progress-circular indeterminate color="#f97316" />
+          <p>보험사별 수수료 데이터를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="insuranceCompanyErrorMessage" class="panel__state panel__state--error">
+          <p>{{ insuranceCompanyErrorMessage }}</p>
+        </div>
+        <div v-else-if="insuranceCompanyItems.length === 0" class="panel__state">
+          <p>보험사별 수수료 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="company-panel">
+          <div class="company-panel__chart">
+            <Doughnut :data="companyChartData" :options="doughnutChartOptions" />
+          </div>
+          <div class="company-panel__legend">
+            <article
+              v-for="item in insuranceCompanyItems.slice(0, 6)"
+              :key="item.name"
+              class="legend-row"
+            >
+              <div class="legend-row__label">
+                <span class="legend-row__dot" :style="{ backgroundColor: item.color }" />
+                <strong>{{ item.name }}</strong>
+              </div>
+              <div class="legend-row__metrics">
+                <span>{{ formatCurrency(item.amount) }}</span>
+                <strong>{{ formatPercent(item.ratio) }}</strong>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="commission-layout commission-layout--middle">
+      <section class="panel panel--compact">
+        <div class="panel__header">
+          <div>
+            <h3>지급 구분 요약</h3>
+            <p>초회 수수료, 유지 수수료, 환수 금액의 구성 비율입니다.</p>
+          </div>
+        </div>
+
+        <div v-if="isPaymentTypeLoading" class="panel__state">
+          <v-progress-circular indeterminate color="#f97316" />
+          <p>지급 구분 데이터를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="paymentTypeErrorMessage" class="panel__state panel__state--error">
+          <p>{{ paymentTypeErrorMessage }}</p>
+        </div>
+        <div v-else-if="paymentTypeItems.length === 0" class="panel__state">
+          <p>지급 구분 요약 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="payment-type-panel">
+          <div class="payment-type-panel__chart">
+            <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
+          </div>
+          <div class="payment-type-panel__legend">
+            <article
+              v-for="item in paymentTypeItems"
+              :key="item.label"
+              class="legend-row"
+            >
+              <div class="legend-row__label">
+                <span class="legend-row__dot" :style="{ backgroundColor: item.color }" />
+                <strong>{{ item.label }}</strong>
+              </div>
+              <div class="legend-row__metrics">
+                <span>{{ formatCurrency(item.amount) }}</span>
+                <strong>{{ formatPercent(item.ratio) }}</strong>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="commission-layout commission-layout--bottom">
+      <section class="panel panel--tall">
+        <div class="panel__header">
+          <div>
+            <h3>지점별 수수료 비교 차트</h3>
+            <p>다지점 비교 전용 API가 준비되면 지점 간 랭킹과 비교 차트가 표시됩니다.</p>
+          </div>
+          <span class="panel__chip">준비중</span>
+        </div>
+
+        <div class="panel__state">
+          <v-icon icon="mdi-chart-bar-stacked" size="30" color="#94a3b8" />
+          <p>현재 정의된 API는 단일 범위 요약 중심이라 지점 간 비교 차트는 아직 연결되지 않았습니다.</p>
+        </div>
+      </section>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Doughnut } from 'vue-chartjs'
+
+import {
+  getCommissionInsuranceCompanySummary,
+  getCommissionPaymentTypeSummary,
+  getOrganizationCommissionSummary,
+} from '../../api/commissions'
+import { useBranchFilter } from '../../composables/useBranchFilter'
+import { useAuthStore } from '../../stores/auth'
+import { formatCurrency } from '../../utils/formatters'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
+
+const props = defineProps({
+  scope: {
+    type: String,
+    required: true,
+    validator(value) {
+      return ['branch', 'hq'].includes(value)
+    },
+  },
+})
+
+const COMPANY_COLORS = ['#f97316', '#2563eb', '#22c55e', '#f59e0b', '#8b5cf6', '#14b8a6', '#ef4444', '#64748b']
+const PAYMENT_TYPE_CONFIG = [
+  { label: '초회 수수료', color: '#f97316', keys: ['firstCommissionAmount', 'initialCommissionAmount'] },
+  { label: '유지 수수료', color: '#2563eb', keys: ['renewalCommissionAmount', 'maintenanceCommissionAmount'] },
+  { label: '환수 금액', color: '#ef4444', keys: ['clawbackAmount', 'recoveryAmount', 'refundAmount'] },
+]
+
+const authStore = useAuthStore()
+const { branches, isLoadingBranches, branchErrorMessage, initializeBranchFilter } = useBranchFilter(authStore)
+
+const filters = reactive({
+  closingMonth: getLatestAvailableClosingMonth(),
+  organizationCode: '',
+})
+
+const validationMessage = ref('')
+const summary = ref(createEmptyOrganizationSummary())
+const paymentTypeItems = ref([])
+const insuranceCompanyItems = ref([])
+const previousMonthCompanyItems = ref([])
+
+const isSummaryLoading = ref(false)
+const isPaymentTypeLoading = ref(false)
+const isInsuranceCompanyLoading = ref(false)
+const isPreviousMonthLoading = ref(false)
+
+const summaryErrorMessage = ref('')
+const paymentTypeErrorMessage = ref('')
+const insuranceCompanyErrorMessage = ref('')
+const previousMonthErrorMessage = ref('')
+
+const heroEyebrow = computed(() => (props.scope === 'branch' ? 'Branch Commission' : 'Headquarter Commission'))
+const pageHeading = computed(() => (props.scope === 'branch' ? '지점 수수료 관리' : '본사 수수료 관리'))
+const pageDescription = computed(() =>
+  props.scope === 'branch'
+    ? '소속 지점 기준 수수료 및 지급 정보를 조회할 수 있습니다.'
+    : '전사 또는 선택 지점 기준 수수료 및 지급 정보를 조회할 수 있습니다.',
+)
+const previousMonthLabel = computed(() => formatMonthLabel(getPreviousMonth(filters.closingMonth)))
+const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
+const effectiveScope = computed(() => {
+  if (props.scope === 'branch') {
+    return 'branch'
+  }
+
+  if (summary.value.scopeType === 'branch' || filters.organizationCode) {
+    return 'branch'
+  }
+
+  return 'hq'
+})
+
+const summaryCards = computed(() => {
+  const comparisonCaption =
+    summary.value.previousMetricAmount === null
+      ? '비교 데이터 없음'
+      : `전월 ${formatCurrency(summary.value.previousMetricAmount)}`
+  const recoveryLossCaption =
+    summary.value.netRecoveryLossAmount === null
+      ? '분리 환수 데이터 없음'
+      : summary.value.netRecoveryLossAmount > 0
+        ? '보험사 환수 우세'
+        : summary.value.netRecoveryLossAmount < 0
+          ? '설계사 회수 우세'
+          : '환수 손익 균형'
+  const basePaymentCaption =
+    effectiveScope.value === 'hq'
+      ? summaryErrorMessage.value || '전사 설계사 지급 총액'
+      : summaryErrorMessage.value || '지점 설계사 지급 총액'
+  const incomeLabel = effectiveScope.value === 'hq' ? '전사 수입수수료' : '수입수수료'
+  const incomeCaption =
+    summary.value.previousMetricAmount === null
+      ? '전월 비교 데이터 없음'
+      : `전월 ${formatCurrency(summary.value.previousMetricAmount)}`
+
+  return [
+    {
+      label: '전체 지급 수수료',
+      value: formatCurrency(summary.value.totalPaymentCommissionAmount),
+      caption: basePaymentCaption,
+      accent: '#f97316',
+      tone: '#fff3e8',
+      icon: 'mdi-cash-multiple',
+    },
+    {
+      label: incomeLabel,
+      value: formatCurrency(summary.value.netCommissionAmount),
+      caption: incomeCaption,
+      accent: '#2563eb',
+      tone: '#eff6ff',
+      icon: 'mdi-finance',
+    },
+    {
+      label: '전월 대비 증감률',
+      value: formatComparisonRate(summary.value.comparisonRate),
+      caption: comparisonCaption,
+      accent: '#16a34a',
+      tone: '#ecfdf3',
+      icon: 'mdi-trending-up',
+      valueClass: getComparisonRateClass(summary.value.comparisonRate),
+    },
+    {
+      label: '환수 순손실',
+      value: formatMetricCurrency(summary.value.netRecoveryLossAmount),
+      caption: recoveryLossCaption,
+      accent: '#8b5cf6',
+      tone: '#f5f3ff',
+      icon: 'mdi-scale-balance',
+      valueClass: getNetRecoveryLossClass(summary.value.netRecoveryLossAmount),
+    },
+    {
+      label: '초입 원수수료',
+      value: formatCurrency(summary.value.initialCommissionAmount),
+      caption: '초입 기준 회사 총원수수료',
+      accent: '#7c3aed',
+      tone: '#f5f3ff',
+      icon: 'mdi-cash-plus',
+    },
+    {
+      label: '유지 원수수료',
+      value: formatCurrency(summary.value.renewalCommissionAmount),
+      caption: '유지 기준 회사 총원수수료',
+      accent: '#0ea5a4',
+      tone: '#ecfeff',
+      icon: 'mdi-chart-line',
+    },
+    {
+      label: '보험사 환수금',
+      value: formatMetricCurrency(summary.value.insuranceClawbackAmount),
+      caption:
+        summary.value.insuranceClawbackAmount === null
+          ? '분리 환수 데이터 없음'
+          : '보험사가 회사에서 다시 회수한 금액',
+      accent: '#ef4444',
+      tone: '#fff1f2',
+      icon: 'mdi-cash-remove',
+      valueClass: 'summary-card__value--danger',
+    },
+    {
+      label: '설계사 환수 회수금',
+      value: formatMetricCurrency(summary.value.fpClawbackAmount),
+      caption:
+        summary.value.fpClawbackAmount === null
+          ? '분리 환수 데이터 없음'
+          : '회사가 설계사에게서 다시 회수한 금액',
+      accent: '#0f766e',
+      tone: '#ecfeff',
+      icon: 'mdi-cash-refund',
+    },
+  ]
+})
+
+const companyChartData = computed(() => ({
+  labels: insuranceCompanyItems.value.map((item) => item.name),
+  datasets: [
+    {
+      data: insuranceCompanyItems.value.map((item) => item.amount),
+      backgroundColor: insuranceCompanyItems.value.map((item) => item.color),
+      borderColor: '#ffffff',
+      borderWidth: 2,
+      hoverOffset: 6,
+      cutout: '56%',
+    },
+  ],
+}))
+
+const paymentTypeChartData = computed(() => ({
+  labels: paymentTypeItems.value.map((item) => item.label),
+  datasets: [
+    {
+      data: paymentTypeItems.value.map((item) => item.amount),
+      backgroundColor: paymentTypeItems.value.map((item) => item.color),
+      borderColor: '#ffffff',
+      borderWidth: 2,
+      hoverOffset: 6,
+      cutout: '68%',
+    },
+  ],
+}))
+
+const doughnutChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false,
+    },
+  },
+}))
+
+onMounted(async () => {
+  await initializeBranchFilter()
+  await loadDashboard()
+})
+
+watch(
+  () => filters.closingMonth,
+  (value, previousValue) => {
+    if (value === previousValue) {
+      return
+    }
+
+    if (!isValidClosingMonth(value)) {
+      validationMessage.value = '정산 월은 YYYY-MM 형식으로 입력해주세요.'
+      return
+    }
+
+    if (value > latestAvailableClosingMonth.value) {
+      filters.closingMonth = latestAvailableClosingMonth.value
+      return
+    }
+
+    loadDashboard()
+  },
+)
+
+watch(
+  () => filters.organizationCode,
+  (value, previousValue) => {
+    if (props.scope !== 'hq' || value === previousValue) {
+      return
+    }
+
+    loadDashboard()
+  },
+)
+
+async function loadDashboard() {
+  validationMessage.value = ''
+
+  if (!isValidClosingMonth(filters.closingMonth)) {
+    validationMessage.value = '정산 월은 YYYY-MM 형식으로 입력해주세요.'
+    return
+  }
+
+  if (filters.closingMonth > latestAvailableClosingMonth.value) {
+    validationMessage.value = `정산 월은 ${latestAvailableClosingMonth.value}까지만 조회할 수 있습니다.`
+    filters.closingMonth = latestAvailableClosingMonth.value
+    return
+  }
+
+  await Promise.all([loadSummary(), loadPaymentTypes(), loadInsuranceCompanies(), loadPreviousMonthCompanies()])
+}
+
+function resetFilters() {
+  filters.closingMonth = latestAvailableClosingMonth.value
+  filters.organizationCode = ''
+}
+
+async function loadSummary() {
+  summaryErrorMessage.value = ''
+  isSummaryLoading.value = true
+
+  try {
+    const response = await getOrganizationCommissionSummary(buildScopeParams(filters.closingMonth))
+    summary.value = normalizeOrganizationSummary(response?.result)
+  } catch (error) {
+    summary.value = createEmptyOrganizationSummary()
+    summaryErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '조직 수수료 요약을 불러오지 못했습니다.'
+  } finally {
+    isSummaryLoading.value = false
+  }
+}
+
+async function loadPaymentTypes() {
+  paymentTypeErrorMessage.value = ''
+  isPaymentTypeLoading.value = true
+
+  try {
+    const response = await getCommissionPaymentTypeSummary(buildScopeParams(filters.closingMonth))
+    paymentTypeItems.value = normalizePaymentTypeItems(response?.result)
+  } catch (error) {
+    paymentTypeItems.value = []
+    paymentTypeErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지급 구분 요약을 불러오지 못했습니다.'
+  } finally {
+    isPaymentTypeLoading.value = false
+  }
+}
+
+async function loadInsuranceCompanies() {
+  insuranceCompanyErrorMessage.value = ''
+  isInsuranceCompanyLoading.value = true
+
+  try {
+    const response = await getCommissionInsuranceCompanySummary(buildScopeParams(filters.closingMonth))
+    insuranceCompanyItems.value = normalizeInsuranceCompanyItems(response?.result)
+  } catch (error) {
+    insuranceCompanyItems.value = []
+    insuranceCompanyErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '보험사별 수수료 현황을 불러오지 못했습니다.'
+  } finally {
+    isInsuranceCompanyLoading.value = false
+  }
+}
+
+async function loadPreviousMonthCompanies() {
+  previousMonthErrorMessage.value = ''
+  isPreviousMonthLoading.value = true
+
+  try {
+    const response = await getCommissionInsuranceCompanySummary(buildScopeParams(getPreviousMonth(filters.closingMonth)))
+    previousMonthCompanyItems.value = normalizeInsuranceCompanyItems(response?.result).slice(0, 5)
+  } catch (error) {
+    previousMonthCompanyItems.value = []
+    previousMonthErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '전월 지급 수수료 현황을 불러오지 못했습니다.'
+  } finally {
+    isPreviousMonthLoading.value = false
+  }
+}
+
+function buildScopeParams(closingMonth) {
+  const params = { closingMonth }
+
+  if (props.scope === 'hq' && filters.organizationCode) {
+    params.organizationCode = filters.organizationCode
+  }
+
+  return params
+}
+
+function normalizeOrganizationSummary(result) {
+  const comparison = result?.comparison ?? {}
+  const scopeType = result?.branchSummary ? 'branch' : result?.hqSummary ? 'hq' : 'organization'
+  const summarySource =
+    result?.branchSummary ??
+    result?.hqSummary ??
+      result?.organizationSummary ??
+      result ??
+      {}
+  const rawInsuranceClawbackAmount = toNullableNumber(
+    getValue(summarySource, [
+      'insuranceCompanyClawbackAmount',
+      'insuranceClawbackAmount',
+      'insuranceRecoveryAmount',
+      'totalInsuranceRecoveryAmount',
+      'totalInsuranceRecoveryCollectionAmount',
+      'insuranceRecoveryCollectionAmount',
+      'insuranceRecoveryCollectionAmt',
+      'totalInsuranceClawbackAmount',
+    ]),
+  )
+  const rawFpClawbackAmount = toNullableNumber(
+    getValue(summarySource, [
+      'fpClawbackAmount',
+      'totalFpRecoveryCollectionAmount',
+      'totalFpRecoveryAmount',
+      'fpRecoveryCollectionAmount',
+      'fpRecoveryAmount',
+      'advisorRecoveryCollectionAmount',
+      'advisorRecoveryAmount',
+    ]),
+  )
+  const rawTotalClawbackAmount = toNullableNumber(
+    getValue(summarySource, [
+      'totalClawbackAmount',
+      'clawbackAmount',
+      'totalRecoveryAmount',
+      'totalRecoveryCollectionAmount',
+      'totalRecoveryCollectionAmt',
+      'recoveryCollectionAmount',
+      'totalRefundAmount',
+    ]),
+  )
+  const hasRecoveryBreakdown = rawInsuranceClawbackAmount !== null || rawFpClawbackAmount !== null
+  const insuranceClawbackAmount = hasRecoveryBreakdown ? toNumber(rawInsuranceClawbackAmount) : null
+  const fpClawbackAmount = hasRecoveryBreakdown ? toNumber(rawFpClawbackAmount) : null
+  const totalClawbackAmount = toNumber(
+    rawTotalClawbackAmount ??
+      ((insuranceClawbackAmount ?? 0) + (fpClawbackAmount ?? 0)),
+  )
+  const netRecoveryLossAmount =
+    hasRecoveryBreakdown && insuranceClawbackAmount !== null && fpClawbackAmount !== null
+      ? insuranceClawbackAmount - fpClawbackAmount
+      : null
+
+  return {
+    totalPaymentCommissionAmount: toNumber(
+      getValue(summarySource, [
+        'totalPaymentCommissionAmount',
+        'totalCommissionAmount',
+        'paidCommissionAmount',
+        'totalPaymentAmount',
+        'totalPaymentCommissionAmount',
+      ]),
+    ),
+    totalClawbackAmount,
+    netCommissionAmount: toNumber(
+      getValue(summarySource, [
+        'netCommissionAmount',
+        'netProfitCommissionAmount',
+        'netRevenueCommissionAmount',
+        'netAmount',
+        'netIncomeCommissionAmount',
+      ]),
+    ),
+    initialCommissionAmount: toNumber(
+      getValue(summarySource, [
+        'firstCommissionAmount',
+        'initialCommissionAmount',
+        'totalInitialAmount',
+        'totalInitialGrossCommissionAmount',
+        'totalInitialPaymentAmount',
+      ]),
+    ),
+    renewalCommissionAmount: toNumber(
+      getValue(summarySource, [
+        'renewalCommissionAmount',
+        'maintenanceCommissionAmount',
+        'totalMaintenanceAmount',
+        'totalMaintenanceGrossCommissionAmount',
+        'totalMaintenancePaymentAmount',
+        'totalMaintenanceCommissionAmount',
+      ]),
+    ),
+    contractCount: toNumber(
+      getValue(summarySource, ['contractCount', 'totalContractCount', 'totalContractCnt']),
+    ),
+    advisorCount: toNumber(
+      getValue(summarySource, ['advisorCount', 'fpCount', 'advisorTotalCount', 'totalFpCount']),
+    ),
+    clawbackContractCount: toNumber(
+      getValue(summarySource, ['clawbackContractCount', 'recoveryContractCount']),
+    ),
+    insuranceClawbackAmount,
+    fpClawbackAmount,
+    netRecoveryLossAmount,
+    comparisonRate: toNullableNumber(
+      getValue(comparison, ['growthRate', 'comparisonRate', 'monthOverMonthRate']) ??
+        getValue(result, ['comparisonRate', 'monthOverMonthRate']),
+    ),
+    comparisonAmount: toNullableNumber(
+      getValue(comparison, [
+        'differenceAmount',
+        'comparisonAmount',
+        'monthOverMonthAmount',
+        'previousMetricAmount',
+      ]) ??
+        getValue(result, ['comparisonAmount', 'monthOverMonthAmount']),
+    ),
+    previousMetricAmount: toNullableNumber(
+      getValue(comparison, ['previousMetricAmount', 'previousAmount']),
+    ),
+    scopeType,
+  }
+}
+
+function normalizePaymentTypeItems(result) {
+  const itemList = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : []
+  const source = itemList.length > 0 ? collapsePaymentTypeArray(itemList) : result ?? {}
+  const items = PAYMENT_TYPE_CONFIG.map((config) => ({
+    label: config.label,
+    color: config.color,
+    amount: toNumber(getValue(source, config.keys)),
+  }))
+
+  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0)
+
+  return items
+    .filter((item) => item.amount > 0 || totalAmount > 0)
+    .map((item) => ({
+      ...item,
+      ratio: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+    }))
+}
+
+function normalizeInsuranceCompanyItems(result) {
+  const items = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : []
+  const normalized = items.map((item, index) => {
+    const amount = toNumber(
+      getValue(item, [
+        'totalPaymentCommissionAmount',
+        'totalCommissionAmount',
+        'netCommissionAmount',
+        'netProfitCommissionAmount',
+        'totalPaymentAmount',
+        'netAmount',
+      ]),
+    )
+
+    return {
+      name: getValue(item, ['insuranceCompanyName', 'companyName']) || '-',
+      amount,
+      netAmount: toNumber(getValue(item, ['netCommissionAmount', 'netProfitCommissionAmount', 'netAmount'])),
+      clawbackAmount: toNumber(
+        getValue(item, ['clawbackAmount', 'recoveryAmount', 'refundAmount', 'totalRecoveryAmount']),
+      ),
+      ratio: toNullableNumber(getValue(item, ['ratio', 'shareRate', 'percentage'])) ?? 0,
+      color: COMPANY_COLORS[index % COMPANY_COLORS.length],
+    }
+  })
+
+  const totalAmount = normalized.reduce((sum, item) => sum + item.amount, 0)
+
+  return normalized
+    .map((item) => ({
+      ...item,
+      ratio: item.ratio > 0 ? item.ratio : totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+    }))
+    .sort((left, right) => right.amount - left.amount)
+}
+
+function collapsePaymentTypeArray(items) {
+  return items.reduce((accumulator, item) => {
+    const type = String(getValue(item, ['paymentType', 'type', 'category']) || '').toUpperCase()
+    const amount = toNumber(getValue(item, ['amount', 'commissionAmount', 'totalAmount']))
+
+    if (type.includes('FIRST') || type.includes('INITIAL')) {
+      accumulator.firstCommissionAmount = amount
+    }
+
+    if (type.includes('RENEW') || type.includes('MAINT')) {
+      accumulator.renewalCommissionAmount = amount
+    }
+
+    if (type.includes('CLAW') || type.includes('RECOVERY') || type.includes('REFUND')) {
+      accumulator.clawbackAmount = amount
+    }
+
+    return accumulator
+  }, {})
+}
+
+function createEmptyOrganizationSummary() {
+  return {
+    totalPaymentCommissionAmount: 0,
+    totalClawbackAmount: 0,
+    netCommissionAmount: 0,
+    initialCommissionAmount: 0,
+    renewalCommissionAmount: 0,
+    contractCount: 0,
+    advisorCount: 0,
+    clawbackContractCount: 0,
+    insuranceClawbackAmount: null,
+    fpClawbackAmount: null,
+    netRecoveryLossAmount: null,
+    comparisonRate: null,
+    comparisonAmount: null,
+    previousMetricAmount: null,
+    scopeType: 'organization',
+  }
+}
+
+function getValue(source, keys) {
+  if (!source || typeof source !== 'object') {
+    return undefined
+  }
+
+  const matchedKey = keys.find((key) => source[key] !== undefined && source[key] !== null)
+  return matchedKey ? source[matchedKey] : undefined
+}
+
+function toNumber(value) {
+  const number = Number(value ?? 0)
+  return Number.isFinite(number) ? number : 0
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function formatPercent(value) {
+  const number = Number(value ?? 0)
+
+  return `${number.toLocaleString('ko-KR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`
+}
+
+function formatComparisonRate(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+
+  const number = Number(value)
+  const prefix = number > 0 ? '+' : ''
+
+  return `${prefix}${number.toLocaleString('ko-KR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`
+}
+
+function getComparisonRateClass(value) {
+  if (value === null || value === undefined || value === '') {
+    return ''
+  }
+
+  if (Number(value) > 0) {
+    return 'summary-card__value--success'
+  }
+
+  if (Number(value) < 0) {
+    return 'summary-card__value--danger'
+  }
+
+  return ''
+}
+
+function getNetRecoveryLossClass(value) {
+  if (value === null || value === undefined || value === '') {
+    return ''
+  }
+
+  if (value > 0) {
+    return 'summary-card__value--danger'
+  }
+
+  if (value < 0) {
+    return 'summary-card__value--success'
+  }
+
+  return ''
+}
+
+function formatMetricCurrency(value) {
+  return value === null || value === undefined ? '-' : formatCurrency(value)
+}
+
+function formatCount(value) {
+  return Number(value ?? 0).toLocaleString('ko-KR')
+}
+
+function formatMonthLabel(value) {
+  if (!value) {
+    return '-'
+  }
+
+  const [year, month] = String(value).split('-')
+  return `${year}년 ${month}월`
+}
+
+function getPreviousMonth(closingMonth) {
+  if (!isValidClosingMonth(closingMonth)) {
+    return getCurrentMonth()
+  }
+
+  const [year, month] = String(closingMonth).split('-').map(Number)
+  const date = new Date(year, month - 2, 1)
+  const nextYear = date.getFullYear()
+  const nextMonth = String(date.getMonth() + 1).padStart(2, '0')
+  return `${nextYear}-${nextMonth}`
+}
+
+function isValidClosingMonth(value) {
+  return /^\d{4}-\d{2}$/.test(String(value ?? ''))
+}
+
+function getCurrentMonth() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+function getLatestAvailableClosingMonth() {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 1)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+</script>
+
+<style scoped>
+.commission-page {
+  display: grid;
+  gap: 20px;
+}
+
+.commission-page__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.commission-page__eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f97316;
+}
+
+.commission-page h2 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  color: #111827;
+}
+
+.commission-page__description {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.commission-page__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.commission-page__organization-filter {
+  width: 220px;
+}
+
+.commission-page__month-field {
+  width: 180px;
+}
+
+.commission-page__search-button {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: #f97316;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.commission-page__reset-button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border-color: #d1d5db;
+  color: #475569;
+}
+
+.commission-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
+  padding: 20px;
+  border: 1px solid #ebeef4;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.summary-card__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.summary-card__label,
+.summary-card__caption {
+  margin: 0;
+  color: #6b7280;
+}
+
+.summary-card__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.summary-card__value {
+  display: block;
+  margin-top: 10px;
+  font-size: 30px;
+  line-height: 1.08;
+  color: #111827;
+}
+
+.summary-card__value--success {
+  color: #16a34a;
+}
+
+.summary-card__value--danger {
+  color: #ef4444;
+}
+
+.summary-card__caption {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.commission-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.commission-layout--top {
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+}
+
+.commission-layout--middle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.commission-layout--bottom {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.panel {
+  padding: 22px 24px;
+  border: 1px solid #edf1f7;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+}
+
+.panel--compact {
+  max-width: 680px;
+}
+
+.panel--tall {
+  min-height: 360px;
+}
+
+.panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.panel__header h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #111827;
+}
+
+.panel__header p {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.panel__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.panel__state {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  color: #64748b;
+  text-align: center;
+}
+
+.panel__state p {
+  margin: 0;
+}
+
+.panel__state--error {
+  color: #dc2626;
+}
+
+.table-panel {
+  overflow-x: auto;
+  border: 1px solid #edf2f7;
+  border-radius: 16px;
+}
+
+.table-panel table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.table-panel th,
+.table-panel td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  text-align: left;
+  color: #475569;
+}
+
+.table-panel th {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.company-panel,
+.payment-type-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.company-panel {
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  align-items: center;
+}
+
+.payment-type-panel {
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+  align-items: center;
+}
+
+.company-panel__chart,
+.payment-type-panel__chart {
+  position: relative;
+  height: 240px;
+}
+
+.company-panel__legend,
+.payment-type-panel__legend {
+  display: grid;
+  gap: 14px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.legend-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.legend-row__label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+}
+
+.legend-row__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.legend-row__metrics {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  color: #64748b;
+}
+
+.legend-row__metrics strong {
+  color: #111827;
+}
+
+@media (max-width: 1200px) {
+  .commission-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commission-layout--top,
+  .company-panel,
+  .payment-type-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .panel--compact {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .commission-page__hero,
+  .commission-page__toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .commission-page__organization-filter,
+  .commission-page__month-field {
+    width: 100%;
+  }
+
+  .commission-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+}
+</style>
