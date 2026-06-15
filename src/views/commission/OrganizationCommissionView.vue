@@ -59,57 +59,15 @@
       <section class="panel">
         <div class="panel__header">
           <div>
-            <h3>전월 지급 수수료 현황</h3>
-            <p>전월 기준 보험사별 지급 수수료 상위 현황입니다.</p>
+            <h3>보험사별 수수료 기여도 Top5</h3>
+            <p>상위 5개 보험사의 총 수수료 규모와 구성 정보를 비교합니다.</p>
           </div>
-          <span class="panel__chip">{{ previousMonthLabel }}</span>
-        </div>
-
-        <div v-if="isPreviousMonthLoading" class="panel__state">
-          <v-progress-circular indeterminate color="#f97316" />
-          <p>전월 보험사 현황을 불러오는 중입니다.</p>
-        </div>
-        <div v-else-if="previousMonthErrorMessage" class="panel__state panel__state--error">
-          <p>{{ previousMonthErrorMessage }}</p>
-        </div>
-        <div v-else-if="previousMonthCompanyItems.length === 0" class="panel__state">
-          <p>전월 지급 수수료 데이터가 없습니다.</p>
-        </div>
-        <div v-else class="table-panel">
-          <table>
-            <thead>
-              <tr>
-                <th>보험사명</th>
-                <th>총 지급 수수료</th>
-                <th>순수수료</th>
-                <th>환수 금액</th>
-                <th>비중</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in previousMonthCompanyItems" :key="item.name">
-                <td>{{ item.name }}</td>
-                <td>{{ formatCurrency(item.amount) }}</td>
-                <td>{{ formatCurrency(item.netAmount) }}</td>
-                <td>{{ formatCurrency(item.clawbackAmount) }}</td>
-                <td>{{ formatPercent(item.ratio) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel__header">
-          <div>
-            <h3>보험사별 수입수수료 조회</h3>
-            <p>현재 조회 범위의 보험사별 비중과 금액을 함께 보여줍니다.</p>
-          </div>
+          <span class="panel__chip">{{ closingMonthLabel }}</span>
         </div>
 
         <div v-if="isInsuranceCompanyLoading" class="panel__state">
           <v-progress-circular indeterminate color="#f97316" />
-          <p>보험사별 수수료 데이터를 불러오는 중입니다.</p>
+          <p>마감 기준월 보험사 현황을 불러오는 중입니다.</p>
         </div>
         <div v-else-if="insuranceCompanyErrorMessage" class="panel__state panel__state--error">
           <p>{{ insuranceCompanyErrorMessage }}</p>
@@ -117,31 +75,44 @@
         <div v-else-if="insuranceCompanyItems.length === 0" class="panel__state">
           <p>보험사별 수수료 데이터가 없습니다.</p>
         </div>
-        <div v-else class="company-panel">
-          <div class="company-panel__chart">
-            <Doughnut :data="companyChartData" :options="doughnutChartOptions" />
+        <div v-else class="insurance-overview">
+          <div class="insurance-overview__chart-card">
+            <div class="company-panel__chart">
+              <Bar :data="companyChartData" :options="companyChartOptions" />
+            </div>
+            <div class="insurance-overview__chart-caption">
+              <strong>보험사별 총 수수료 기여도와 환수 현황을 함께 확인할 수 있도록 상위 5개 보험사를 총 수수료 기준으로 비교합니다.</strong>
+            </div>
           </div>
-          <div class="company-panel__legend">
+
+          <div class="insurance-overview__list">
             <article
-              v-for="item in insuranceCompanyItems.slice(0, 6)"
+              v-for="item in topInsuranceCompanyItems"
               :key="item.name"
-              class="legend-row"
+              class="insurance-company-row"
             >
-              <div class="legend-row__label">
-                <span class="legend-row__dot" :style="{ backgroundColor: item.color }" />
-                <strong>{{ item.name }}</strong>
+              <div class="insurance-company-row__main">
+                <div class="insurance-company-row__title">
+                  <span
+                    class="insurance-company-row__dot"
+                    :style="{ backgroundColor: item.color }"
+                  />
+                  <strong>{{ item.name }}</strong>
+                </div>
+                <div class="insurance-company-row__details">
+                  <span>계약 건수 {{ formatCount(item.contractCount) }}건</span>
+                  <span>설계사 지급 {{ formatCurrency(item.paymentAmount) }}</span>
+                  <span>환수 회수액 {{ formatCurrency(item.clawbackAmount) }}</span>
+                </div>
               </div>
-              <div class="legend-row__metrics">
-                <span>{{ formatCurrency(item.amount) }}</span>
-                <strong>{{ formatPercent(item.ratio) }}</strong>
+              <div class="insurance-company-row__metrics">
+                <strong>{{ formatCurrency(item.totalCommissionAmount) }}</strong>
+                <span>수수료 비중 {{ formatPercent(item.ratio) }}</span>
               </div>
             </article>
           </div>
         </div>
       </section>
-    </div>
-
-    <div class="commission-layout commission-layout--middle">
       <section class="panel panel--compact">
         <div class="panel__header">
           <div>
@@ -163,6 +134,10 @@
         <div v-else class="payment-type-panel">
           <div class="payment-type-panel__chart">
             <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
+          </div>
+          <div class="payment-type-panel__summary">
+            <strong>{{ formatCurrency(summary.totalPaymentCommissionAmount) }}</strong>
+            <span>당월 지급 수수료 구성 비율</span>
           </div>
           <div class="payment-type-panel__legend">
             <article
@@ -204,9 +179,9 @@
 </template>
 
 <script setup>
-import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js'
+import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip } from 'chart.js'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Doughnut } from 'vue-chartjs'
+import { Bar, Doughnut } from 'vue-chartjs'
 
 import {
   getCommissionInsuranceCompanySummary,
@@ -217,7 +192,7 @@ import { useBranchFilter } from '../../composables/useBranchFilter'
 import { useAuthStore } from '../../stores/auth'
 import { formatCurrency } from '../../utils/formatters'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 const props = defineProps({
   scope: {
@@ -248,17 +223,13 @@ const validationMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const paymentTypeItems = ref([])
 const insuranceCompanyItems = ref([])
-const previousMonthCompanyItems = ref([])
-
 const isSummaryLoading = ref(false)
 const isPaymentTypeLoading = ref(false)
 const isInsuranceCompanyLoading = ref(false)
-const isPreviousMonthLoading = ref(false)
 
 const summaryErrorMessage = ref('')
 const paymentTypeErrorMessage = ref('')
 const insuranceCompanyErrorMessage = ref('')
-const previousMonthErrorMessage = ref('')
 
 const heroEyebrow = computed(() => (props.scope === 'branch' ? 'Branch Commission' : 'Headquarter Commission'))
 const pageHeading = computed(() => (props.scope === 'branch' ? '지점 수수료 관리' : '본사 수수료 관리'))
@@ -267,7 +238,7 @@ const pageDescription = computed(() =>
     ? '소속 지점 기준 수수료 및 지급 정보를 조회할 수 있습니다.'
     : '전사 또는 선택 지점 기준 수수료 및 지급 정보를 조회할 수 있습니다.',
 )
-const previousMonthLabel = computed(() => formatMonthLabel(getPreviousMonth(filters.closingMonth)))
+const closingMonthLabel = computed(() => formatMonthLabel(filters.closingMonth))
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
 const effectiveScope = computed(() => {
   if (props.scope === 'branch') {
@@ -381,16 +352,18 @@ const summaryCards = computed(() => {
   ]
 })
 
+const topInsuranceCompanyItems = computed(() => insuranceCompanyItems.value.slice(0, 5))
+
 const companyChartData = computed(() => ({
-  labels: insuranceCompanyItems.value.map((item) => item.name),
+  labels: topInsuranceCompanyItems.value.map((item) => item.name),
   datasets: [
     {
-      data: insuranceCompanyItems.value.map((item) => item.amount),
-      backgroundColor: insuranceCompanyItems.value.map((item) => item.color),
-      borderColor: '#ffffff',
-      borderWidth: 2,
-      hoverOffset: 6,
-      cutout: '56%',
+      data: topInsuranceCompanyItems.value.map((item) => item.totalCommissionAmount),
+      backgroundColor: topInsuranceCompanyItems.value.map((item) => item.color),
+      borderRadius: 999,
+      borderSkipped: false,
+      barThickness: 18,
+      maxBarThickness: 18,
     },
   ],
 }))
@@ -415,6 +388,69 @@ const doughnutChartOptions = computed(() => ({
   plugins: {
     legend: {
       display: false,
+    },
+  },
+}))
+
+const companyChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  layout: {
+    padding: {
+      left: 8,
+      right: 8,
+      top: 8,
+      bottom: 0,
+    },
+  },
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      callbacks: {
+        label(context) {
+          return `${context.label}: ${formatCurrency(context.raw)}`
+        },
+      },
+    },
+  },
+  scales: {
+    x: {
+      grid: {
+        display: false,
+        drawBorder: false,
+      },
+      ticks: {
+        color: '#475569',
+        maxRotation: 0,
+        minRotation: 0,
+        autoSkip: false,
+        font: {
+          size: 11,
+          weight: '600',
+        },
+      },
+    },
+    y: {
+      grid: {
+        color: 'rgba(226, 232, 240, 0.7)',
+        drawBorder: false,
+      },
+      ticks: {
+        color: '#475569',
+        callback(value) {
+          const numericValue = Number(value)
+          if (!Number.isFinite(numericValue) || numericValue === 0) {
+            return ''
+          }
+
+          return `${Math.round(numericValue / 1000000)}M`
+        },
+        font: {
+          size: 10,
+        },
+      },
     },
   },
 }))
@@ -470,7 +506,7 @@ async function loadDashboard() {
     return
   }
 
-  await Promise.all([loadSummary(), loadPaymentTypes(), loadInsuranceCompanies(), loadPreviousMonthCompanies()])
+  await Promise.all([loadSummary(), loadPaymentTypes(), loadInsuranceCompanies()])
 }
 
 function resetFilters() {
@@ -529,24 +565,6 @@ async function loadInsuranceCompanies() {
       '보험사별 수수료 현황을 불러오지 못했습니다.'
   } finally {
     isInsuranceCompanyLoading.value = false
-  }
-}
-
-async function loadPreviousMonthCompanies() {
-  previousMonthErrorMessage.value = ''
-  isPreviousMonthLoading.value = true
-
-  try {
-    const response = await getCommissionInsuranceCompanySummary(buildScopeParams(getPreviousMonth(filters.closingMonth)))
-    previousMonthCompanyItems.value = normalizeInsuranceCompanyItems(response?.result).slice(0, 5)
-  } catch (error) {
-    previousMonthCompanyItems.value = []
-    previousMonthErrorMessage.value =
-      error.response?.data?.message ||
-      error.message ||
-      '전월 지급 수수료 현황을 불러오지 못했습니다.'
-  } finally {
-    isPreviousMonthLoading.value = false
   }
 }
 
@@ -708,7 +726,7 @@ function normalizePaymentTypeItems(result) {
 function normalizeInsuranceCompanyItems(result) {
   const items = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : []
   const normalized = items.map((item, index) => {
-    const amount = toNumber(
+    const paymentAmount = toNumber(
       getValue(item, [
         'totalPaymentCommissionAmount',
         'totalCommissionAmount',
@@ -718,27 +736,43 @@ function normalizeInsuranceCompanyItems(result) {
         'netAmount',
       ]),
     )
+    const initialAmount = toNumber(
+      getValue(item, ['firstCommissionAmount', 'initialCommissionAmount', 'totalInitialAmount']),
+    )
+    const maintenanceAmount = toNumber(
+      getValue(item, [
+        'renewalCommissionAmount',
+        'maintenanceCommissionAmount',
+        'totalMaintenanceAmount',
+        'totalMaintenanceCommissionAmount',
+      ]),
+    )
+    const totalCommissionAmount = initialAmount + maintenanceAmount
 
     return {
       name: getValue(item, ['insuranceCompanyName', 'companyName']) || '-',
-      amount,
-      netAmount: toNumber(getValue(item, ['netCommissionAmount', 'netProfitCommissionAmount', 'netAmount'])),
+      amount: totalCommissionAmount,
+      totalCommissionAmount,
+      paymentAmount,
+      initialAmount,
+      maintenanceAmount,
       clawbackAmount: toNumber(
         getValue(item, ['clawbackAmount', 'recoveryAmount', 'refundAmount', 'totalRecoveryAmount']),
       ),
-      ratio: toNullableNumber(getValue(item, ['ratio', 'shareRate', 'percentage'])) ?? 0,
+      contractCount: toNumber(getValue(item, ['contractCount', 'totalContractCount', 'contractCnt'])),
+      ratio: 0,
       color: COMPANY_COLORS[index % COMPANY_COLORS.length],
     }
   })
 
-  const totalAmount = normalized.reduce((sum, item) => sum + item.amount, 0)
+  const totalAmount = normalized.reduce((sum, item) => sum + item.totalCommissionAmount, 0)
 
   return normalized
     .map((item) => ({
       ...item,
-      ratio: item.ratio > 0 ? item.ratio : totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+      ratio: totalAmount > 0 ? (item.totalCommissionAmount / totalAmount) * 100 : 0,
     }))
-    .sort((left, right) => right.amount - left.amount)
+    .sort((left, right) => right.totalCommissionAmount - left.totalCommissionAmount)
 }
 
 function collapsePaymentTypeArray(items) {
@@ -875,18 +909,6 @@ function formatMonthLabel(value) {
 
   const [year, month] = String(value).split('-')
   return `${year}년 ${month}월`
-}
-
-function getPreviousMonth(closingMonth) {
-  if (!isValidClosingMonth(closingMonth)) {
-    return getCurrentMonth()
-  }
-
-  const [year, month] = String(closingMonth).split('-').map(Number)
-  const date = new Date(year, month - 2, 1)
-  const nextYear = date.getFullYear()
-  const nextMonth = String(date.getMonth() + 1).padStart(2, '0')
-  return `${nextYear}-${nextMonth}`
 }
 
 function isValidClosingMonth(value) {
@@ -1036,11 +1058,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-layout--top {
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-}
-
-.commission-layout--middle {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .commission-layout--bottom {
@@ -1055,12 +1073,12 @@ function getLatestAvailableClosingMonth() {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
-.panel--compact {
-  max-width: 680px;
-}
-
 .panel--tall {
   min-height: 360px;
+}
+
+.panel--compact {
+  min-height: 100%;
 }
 
 .panel__header {
@@ -1112,74 +1130,123 @@ function getLatestAvailableClosingMonth() {
   color: #dc2626;
 }
 
-.table-panel {
-  overflow-x: auto;
+.insurance-overview {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.insurance-overview__chart-card {
+  display: grid;
+  gap: 14px;
+  align-content: space-between;
+  padding: 18px;
   border: 1px solid #edf2f7;
-  border-radius: 16px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.08), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
-.table-panel table {
-  width: 100%;
-  min-width: 640px;
-  border-collapse: collapse;
+.insurance-overview__chart-caption {
+  padding-top: 4px;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
 }
 
-.table-panel th,
-.table-panel td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 13px;
-  text-align: left;
-  color: #475569;
-}
-
-.table-panel th {
-  background: #f8fafc;
+.insurance-overview__chart-caption strong {
+  display: block;
   font-size: 12px;
-  font-weight: 700;
+  line-height: 1.6;
   color: #64748b;
 }
 
-.company-panel,
+.insurance-overview__list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .payment-type-panel {
   display: grid;
   gap: 22px;
-}
-
-.company-panel {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  align-items: center;
-}
-
-.payment-type-panel {
   grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
   align-items: center;
+  min-height: 100%;
+  align-content: center;
 }
 
 .company-panel__chart,
 .payment-type-panel__chart {
   position: relative;
-  height: 240px;
+  height: 220px;
 }
 
-.company-panel__legend,
+.insurance-overview .company-panel__chart {
+  height: 280px;
+}
+
 .payment-type-panel__legend {
   display: grid;
   gap: 14px;
 }
 
+.insurance-company-row,
 .legend-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 16px;
+  border: 1px solid #edf2f7;
+  border-radius: 16px;
+  background: #ffffff;
 }
 
-.legend-row:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+.insurance-company-row__main {
+  min-width: 0;
+}
+
+.insurance-company-row__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1e293b;
+}
+
+.insurance-company-row__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.insurance-company-row__details {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.insurance-company-row__metrics {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.insurance-company-row__metrics strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.insurance-company-row__metrics span {
+  color: #f97316;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .legend-row__label {
@@ -1212,13 +1279,9 @@ function getLatestAvailableClosingMonth() {
   }
 
   .commission-layout--top,
-  .company-panel,
+  .insurance-overview,
   .payment-type-panel {
     grid-template-columns: 1fr;
-  }
-
-  .panel--compact {
-    max-width: none;
   }
 }
 
@@ -1240,6 +1303,10 @@ function getLatestAvailableClosingMonth() {
 
   .panel {
     padding: 18px;
+  }
+
+  .payment-type-panel {
+    align-content: start;
   }
 }
 </style>
