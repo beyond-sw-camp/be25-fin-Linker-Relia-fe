@@ -1134,13 +1134,14 @@ function getLatestAvailableClosingMonth() {
   display: grid;
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   gap: 18px;
-  align-items: start;
+  align-items: center;
 }
 
 .insurance-overview__chart-card {
   display: grid;
   gap: 14px;
   align-content: space-between;
+  align-self: center;
   padding: 18px;
   border: 1px solid #edf2f7;
   border-radius: 18px;
@@ -1183,7 +1184,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .insurance-overview .company-panel__chart {
-  height: 280px;
+  height: 248px;
 }
 
 .payment-type-panel__legend {
