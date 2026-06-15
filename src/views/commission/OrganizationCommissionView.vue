@@ -132,12 +132,14 @@
           <p>지급 구분 요약 데이터가 없습니다.</p>
         </div>
         <div v-else class="payment-type-panel">
-          <div class="payment-type-panel__chart">
-            <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
-          </div>
-          <div class="payment-type-panel__summary">
-            <strong>{{ formatCurrency(summary.totalPaymentCommissionAmount) }}</strong>
-            <span>당월 지급 수수료 구성 비율</span>
+          <div class="payment-type-panel__visual">
+            <div class="payment-type-panel__chart">
+              <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
+            </div>
+            <div class="payment-type-panel__summary">
+              <strong>{{ formatCurrency(summary.totalPaymentCommissionAmount) }}</strong>
+              <span>당월 지급 수수료 구성 비율</span>
+            </div>
           </div>
           <div class="payment-type-panel__legend">
             <article
@@ -184,8 +186,8 @@
               <thead>
                 <tr>
                   <th>설계사명</th>
-                  <th>초회수수료</th>
-                  <th>유지수수료</th>
+                  <th>신계약 수수료</th>
+                  <th>유지 수수료</th>
                   <th>환수금액</th>
                   <th>지급총액</th>
                   <th>실수령액</th>
@@ -251,8 +253,8 @@
                   <th>FP 수</th>
                   <th>계약건수</th>
                   <th>환수건수</th>
-                  <th>초회수수료</th>
-                  <th>유지수수료</th>
+                  <th>신계약 수수료</th>
+                  <th>유지 수수료</th>
                   <th>환수금액</th>
                   <th>지급총액</th>
                   <th>실수령액</th>
@@ -1439,11 +1441,22 @@ function getLatestAvailableClosingMonth() {
 
 .payment-type-panel {
   display: grid;
-  gap: 22px;
-  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+  gap: 24px;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   align-items: center;
   min-height: 100%;
-  align-content: center;
+}
+
+.payment-type-panel__visual {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #edf2f7;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.07), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .company-panel__chart,
@@ -1456,9 +1469,28 @@ function getLatestAvailableClosingMonth() {
   height: 248px;
 }
 
+.payment-type-panel__summary {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+
+.payment-type-panel__summary strong {
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.payment-type-panel__summary span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .payment-type-panel__legend {
   display: grid;
   gap: 14px;
+  width: 100%;
 }
 
 .list-panel {
@@ -1575,6 +1607,11 @@ function getLatestAvailableClosingMonth() {
   align-items: center;
   gap: 10px;
   color: #334155;
+  min-width: 0;
+}
+
+.legend-row__label strong {
+  white-space: nowrap;
 }
 
 .legend-row__dot {
@@ -1588,6 +1625,7 @@ function getLatestAvailableClosingMonth() {
   align-items: baseline;
   gap: 14px;
   color: #64748b;
+  flex-shrink: 0;
 }
 
 .legend-row__metrics strong {
