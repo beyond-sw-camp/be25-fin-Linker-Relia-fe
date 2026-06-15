@@ -19,3 +19,13 @@ export async function getCommissionInsuranceCompanySummary(params) {
   const response = await authApi.get('/commissions/insurance-companies/summary', { params })
   return response.data
 }
+
+export async function getCommissionFpList(params) {
+  const response = await authApi.get('/commissions/fp-list', { params })
+  return response.data
+}
+
+export async function getCommissionOrganizationList(params) {
+  const response = await authApi.get('/commissions/organization-list', { params })
+  return response.data
+}

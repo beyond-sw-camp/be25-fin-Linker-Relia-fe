@@ -160,18 +160,133 @@
     </div>
 
     <div class="commission-layout commission-layout--bottom">
-      <section class="panel panel--tall">
+      <section class="panel">
         <div class="panel__header">
           <div>
-            <h3>지점별 수수료 비교 차트</h3>
-            <p>다지점 비교 전용 API가 준비되면 지점 간 랭킹과 비교 차트가 표시됩니다.</p>
+            <h3>설계사별 월 수수료 현황</h3>
+            <p>설계사별 월 수수료 지급 및 환수 현황을 서버 페이지네이션 기준으로 조회합니다.</p>
           </div>
-          <span class="panel__chip">준비중</span>
         </div>
 
-        <div class="panel__state">
-          <v-icon icon="mdi-chart-bar-stacked" size="30" color="#94a3b8" />
-          <p>현재 정의된 API는 단일 범위 요약 중심이라 지점 간 비교 차트는 아직 연결되지 않았습니다.</p>
+        <div v-if="isFpListLoading" class="panel__state">
+          <v-progress-circular indeterminate color="#f97316" />
+          <p>설계사별 월 수수료 현황을 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="fpListErrorMessage" class="panel__state panel__state--error">
+          <p>{{ fpListErrorMessage }}</p>
+        </div>
+        <div v-else-if="fpCommissionPage.empty" class="panel__state">
+          <p>설계사별 월 수수료 현황 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="list-panel">
+          <div class="table-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>설계사명</th>
+                  <th>초회수수료</th>
+                  <th>유지수수료</th>
+                  <th>환수금액</th>
+                  <th>지급총액</th>
+                  <th>실수령액</th>
+                  <th>계약건수</th>
+                  <th>환수건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in fpCommissionPage.content" :key="row.fpId">
+                  <td>{{ row.fpName }}</td>
+                  <td>{{ formatCurrency(row.initialCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.maintenanceCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
+                  <td>{{ formatCurrency(row.totalPaymentCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.netCommissionAmount) }}</td>
+                  <td>{{ formatCount(row.contractCount) }}</td>
+                  <td>{{ formatCount(row.recoveryContractCount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="list-panel__footer">
+            <p>
+              총 {{ formatCount(fpCommissionPage.totalElements) }}건 중
+              {{ formatCount(fpCommissionPage.numberOfElements) }}건 표시
+            </p>
+            <v-pagination
+              v-model="fpListPagination.page"
+              :length="Math.max(fpCommissionPage.totalPages, 1)"
+              :total-visible="5"
+              density="comfortable"
+              @update:model-value="handleFpPageChange"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <div>
+            <h3>지점별 월 수수료 현황</h3>
+            <p>지점별 월 수수료 지급 및 환수 현황을 서버 페이지네이션 기준으로 조회합니다.</p>
+          </div>
+        </div>
+
+        <div v-if="isOrganizationListLoading" class="panel__state">
+          <v-progress-circular indeterminate color="#f97316" />
+          <p>지점별 월 수수료 현황을 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="organizationListErrorMessage" class="panel__state panel__state--error">
+          <p>{{ organizationListErrorMessage }}</p>
+        </div>
+        <div v-else-if="organizationCommissionPage.empty" class="panel__state">
+          <p>지점별 월 수수료 현황 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="list-panel">
+          <div class="table-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>지점명</th>
+                  <th>FP 수</th>
+                  <th>계약건수</th>
+                  <th>환수건수</th>
+                  <th>초회수수료</th>
+                  <th>유지수수료</th>
+                  <th>환수금액</th>
+                  <th>지급총액</th>
+                  <th>실수령액</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in organizationCommissionPage.content" :key="row.organizationId">
+                  <td>{{ row.organizationName }}</td>
+                  <td>{{ formatCount(row.fpCount) }}</td>
+                  <td>{{ formatCount(row.contractCount) }}</td>
+                  <td>{{ formatCount(row.recoveryContractCount) }}</td>
+                  <td>{{ formatCurrency(row.initialCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.maintenanceCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.recoveryAmount) }}</td>
+                  <td>{{ formatCurrency(row.totalPaymentCommissionAmount) }}</td>
+                  <td>{{ formatCurrency(row.netCommissionAmount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="list-panel__footer">
+            <p>
+              총 {{ formatCount(organizationCommissionPage.totalElements) }}건 중
+              {{ formatCount(organizationCommissionPage.numberOfElements) }}건 표시
+            </p>
+            <v-pagination
+              v-model="organizationListPagination.page"
+              :length="Math.max(organizationCommissionPage.totalPages, 1)"
+              :total-visible="5"
+              density="comfortable"
+              @update:model-value="handleOrganizationPageChange"
+            />
+          </div>
         </div>
       </section>
     </div>
@@ -185,6 +300,8 @@ import { Bar, Doughnut } from 'vue-chartjs'
 
 import {
   getCommissionInsuranceCompanySummary,
+  getCommissionFpList,
+  getCommissionOrganizationList,
   getCommissionPaymentTypeSummary,
   getOrganizationCommissionSummary,
 } from '../../api/commissions'
@@ -223,13 +340,29 @@ const validationMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const paymentTypeItems = ref([])
 const insuranceCompanyItems = ref([])
+const fpCommissionPage = ref(createEmptyPage())
+const organizationCommissionPage = ref(createEmptyPage())
 const isSummaryLoading = ref(false)
 const isPaymentTypeLoading = ref(false)
 const isInsuranceCompanyLoading = ref(false)
+const isFpListLoading = ref(false)
+const isOrganizationListLoading = ref(false)
 
 const summaryErrorMessage = ref('')
 const paymentTypeErrorMessage = ref('')
 const insuranceCompanyErrorMessage = ref('')
+const fpListErrorMessage = ref('')
+const organizationListErrorMessage = ref('')
+
+const fpListPagination = reactive({
+  page: 1,
+  size: 5,
+})
+
+const organizationListPagination = reactive({
+  page: 1,
+  size: 5,
+})
 
 const heroEyebrow = computed(() => (props.scope === 'branch' ? 'Branch Commission' : 'Headquarter Commission'))
 const pageHeading = computed(() => (props.scope === 'branch' ? '지점 수수료 관리' : '본사 수수료 관리'))
@@ -477,6 +610,7 @@ watch(
       return
     }
 
+    resetListPages()
     loadDashboard()
   },
 )
@@ -488,6 +622,7 @@ watch(
       return
     }
 
+    resetListPages()
     loadDashboard()
   },
 )
@@ -506,12 +641,24 @@ async function loadDashboard() {
     return
   }
 
-  await Promise.all([loadSummary(), loadPaymentTypes(), loadInsuranceCompanies()])
+  await Promise.all([
+    loadSummary(),
+    loadPaymentTypes(),
+    loadInsuranceCompanies(),
+    loadFpCommissionList(),
+    loadOrganizationCommissionList(),
+  ])
 }
 
 function resetFilters() {
   filters.closingMonth = latestAvailableClosingMonth.value
   filters.organizationCode = ''
+  resetListPages()
+}
+
+function resetListPages() {
+  fpListPagination.page = 1
+  organizationListPagination.page = 1
 }
 
 async function loadSummary() {
@@ -568,6 +715,58 @@ async function loadInsuranceCompanies() {
   }
 }
 
+async function loadFpCommissionList() {
+  fpListErrorMessage.value = ''
+  isFpListLoading.value = true
+
+  try {
+    const response = await getCommissionFpList(buildListParams(fpListPagination))
+    fpCommissionPage.value = normalizePageResponse(
+      response?.result,
+      normalizeFpCommissionRow,
+    )
+  } catch (error) {
+    fpCommissionPage.value = createEmptyPage()
+    fpListErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '설계사별 월 수수료 현황을 불러오지 못했습니다.'
+  } finally {
+    isFpListLoading.value = false
+  }
+}
+
+async function loadOrganizationCommissionList() {
+  organizationListErrorMessage.value = ''
+  isOrganizationListLoading.value = true
+
+  try {
+    const response = await getCommissionOrganizationList(buildListParams(organizationListPagination))
+    organizationCommissionPage.value = normalizePageResponse(
+      response?.result,
+      normalizeOrganizationCommissionRow,
+    )
+  } catch (error) {
+    organizationCommissionPage.value = createEmptyPage()
+    organizationListErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점별 월 수수료 현황을 불러오지 못했습니다.'
+  } finally {
+    isOrganizationListLoading.value = false
+  }
+}
+
+function handleFpPageChange(page) {
+  fpListPagination.page = page
+  loadFpCommissionList()
+}
+
+function handleOrganizationPageChange(page) {
+  organizationListPagination.page = page
+  loadOrganizationCommissionList()
+}
+
 function buildScopeParams(closingMonth) {
   const params = { closingMonth }
 
@@ -576,6 +775,14 @@ function buildScopeParams(closingMonth) {
   }
 
   return params
+}
+
+function buildListParams(pagination) {
+  return {
+    ...buildScopeParams(filters.closingMonth),
+    page: pagination.page,
+    size: pagination.size,
+  }
 }
 
 function normalizeOrganizationSummary(result) {
@@ -794,6 +1001,67 @@ function collapsePaymentTypeArray(items) {
 
     return accumulator
   }, {})
+}
+
+function normalizePageResponse(result, rowNormalizer = (row) => row) {
+  return {
+    content: Array.isArray(result?.content) ? result.content.map(rowNormalizer) : [],
+    page: Number(result?.page ?? 1),
+    size: Number(result?.size ?? 5),
+    totalElements: Number(result?.totalElements ?? 0),
+    totalPages: Number(result?.totalPages ?? 0),
+    numberOfElements: Number(result?.numberOfElements ?? 0),
+    hasNext: Boolean(result?.hasNext),
+    hasPrevious: Boolean(result?.hasPrevious),
+    first: Boolean(result?.first),
+    last: Boolean(result?.last),
+    empty: Boolean(result?.empty ?? true),
+  }
+}
+
+function createEmptyPage() {
+  return {
+    content: [],
+    page: 1,
+    size: 5,
+    totalElements: 0,
+    totalPages: 0,
+    numberOfElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+    first: true,
+    last: true,
+    empty: true,
+  }
+}
+
+function normalizeFpCommissionRow(row) {
+  return {
+    fpId: row?.fpId ?? '',
+    fpName: row?.fpName ?? '-',
+    initialCommissionAmount: toNumber(row?.initialCommissionAmount),
+    maintenanceCommissionAmount: toNumber(row?.maintenanceCommissionAmount),
+    recoveryAmount: toNumber(row?.recoveryAmount),
+    totalPaymentCommissionAmount: toNumber(row?.totalPaymentCommissionAmount),
+    netCommissionAmount: toNumber(row?.netCommissionAmount),
+    contractCount: toNumber(row?.contractCount),
+    recoveryContractCount: toNumber(row?.recoveryContractCount),
+  }
+}
+
+function normalizeOrganizationCommissionRow(row) {
+  return {
+    organizationId: row?.organizationId ?? '',
+    organizationName: row?.organizationName ?? '-',
+    initialCommissionAmount: toNumber(row?.initialCommissionAmount),
+    maintenanceCommissionAmount: toNumber(row?.maintenanceCommissionAmount),
+    recoveryAmount: toNumber(row?.recoveryAmount),
+    totalPaymentCommissionAmount: toNumber(row?.totalPaymentCommissionAmount),
+    netCommissionAmount: toNumber(row?.netCommissionAmount),
+    fpCount: toNumber(row?.fpCount),
+    contractCount: toNumber(row?.contractCount),
+    recoveryContractCount: toNumber(row?.recoveryContractCount),
+  }
 }
 
 function createEmptyOrganizationSummary() {
@@ -1063,6 +1331,7 @@ function getLatestAvailableClosingMonth() {
 
 .commission-layout--bottom {
   grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
 }
 
 .panel {
@@ -1192,6 +1461,57 @@ function getLatestAvailableClosingMonth() {
   gap: 14px;
 }
 
+.list-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.table-panel {
+  overflow-x: auto;
+  border: 1px solid #edf2f7;
+  border-radius: 16px;
+}
+
+.table-panel table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.table-panel th,
+.table-panel td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  text-align: left;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.table-panel th {
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.table-panel tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.list-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.list-panel__footer p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .insurance-company-row,
 .legend-row {
   display: flex;
@@ -1283,6 +1603,11 @@ function getLatestAvailableClosingMonth() {
   .insurance-overview,
   .payment-type-panel {
     grid-template-columns: 1fr;
+  }
+
+  .list-panel__footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
