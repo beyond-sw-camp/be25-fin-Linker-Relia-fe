@@ -1,26 +1,1118 @@
 <template>
-  <section class="fp-dashboard">
-    <h2>설계사 대시보드</h2>
-    <p>설계사가 로그인하면 최초로 보이는 내 대시보드 화면입니다.</p>
+  <section class="fp-dashboard" aria-label="설계사 대시보드">
+    <div class="fp-dashboard__main">
+      <div class="fp-dashboard__heading">
+        <div>
+          <h2>설계사 대시보드</h2>
+          <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
+        </div>
+        <span class="fp-dashboard__heading-dot" aria-hidden="true"></span>
+      </div>
+
+      <div class="fp-dashboard__notice">
+        <span>
+          <v-icon icon="mdi-information-outline" size="16" />
+          {{ comparisonLabel }} 마감 기준으로 집계된 데이터입니다.
+        </span>
+        <strong>기준일: {{ referenceDateLabel }}</strong>
+      </div>
+
+      <div v-if="summaryError" class="fp-dashboard__error">
+        {{ summaryError }}
+      </div>
+
+      <div class="metric-grid" aria-label="주요 지표">
+        <article v-for="metric in metrics" :key="metric.label" class="metric-card">
+          <div class="metric-card__icon" :style="{ color: metric.color, backgroundColor: metric.tone }">
+            <v-icon :icon="metric.icon" size="19" />
+          </div>
+          <div class="metric-card__value">
+            <strong>{{ metric.value }}</strong>
+            <span>{{ metric.unit }}</span>
+          </div>
+          <p>{{ metric.label }}</p>
+          <small>
+            <v-progress-circular v-if="isSummaryLoading" indeterminate color="#16a34a" size="12" width="2" />
+            <v-icon v-else :icon="metric.isDown ? 'mdi-triangle-small-down' : 'mdi-triangle-small-up'" size="16" />
+            {{ metric.change }}
+          </small>
+        </article>
+      </div>
+
+      <section class="contract-overview panel">
+        <div class="panel__title-row">
+          <h3>계약 현황 및 건수 조회</h3>
+          <RouterLink class="panel__link" :to="{ name: 'fp-contracts' }">계약 목록 전체 보기</RouterLink>
+        </div>
+
+        <div class="contract-overview__cards">
+          <article class="status-card status-card--normal">
+            <span>수금</span>
+            <strong>24<small>건</small></strong>
+            <p>정상 수금된 계약</p>
+          </article>
+          <article class="status-card status-card--unpaid">
+            <span>미수금</span>
+            <strong>8<small>건</small></strong>
+            <p>수금이 필요한 계약</p>
+          </article>
+          <article class="status-card status-card--expiring">
+            <span>만기</span>
+            <strong>12<small>건</small></strong>
+            <p>만기 예정 계약</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="chart-grid">
+        <section class="panel chart-panel">
+          <h3>보험사별 계약 건수</h3>
+          <div class="bar-chart" aria-label="보험사별 계약 건수 차트">
+            <div v-for="bar in insurerBars" :key="bar.label" class="bar-chart__item">
+              <div class="bar-chart__bar" :style="{ height: `${bar.height}%` }"></div>
+              <span>{{ bar.label }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel chart-panel chart-panel--donut">
+          <h3>보험별 계약 건수</h3>
+          <div class="donut-summary">
+            <div class="donut-summary__chart" aria-hidden="true"></div>
+            <ul>
+              <li v-for="item in productSummary" :key="item.label">
+                <span :style="{ backgroundColor: item.color }"></span>
+                {{ item.label }}
+                <strong>{{ item.value }}건</strong>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="panel chart-panel">
+          <h3>월별 계약/고객 건수</h3>
+          <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 계약 고객 건수 차트">
+            <g class="line-chart__grid">
+              <line v-for="y in [20, 60, 100, 140]" :key="`h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
+              <line v-for="x in [24, 119, 214, 309, 404, 499]" :key="`v-${x}`" :x1="x" y1="16" :x2="x" y2="145" />
+            </g>
+            <polyline points="24,96 119,72 214,88 309,48 404,80 499,40" fill="none" stroke="#2563eb" stroke-width="3" />
+            <polyline points="24,118 119,106 214,112 309,86 404,100 499,78" fill="none" stroke="#f97316" stroke-width="3" />
+            <g>
+              <circle v-for="point in customerLinePoints" :key="`c-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#2563eb" />
+              <circle v-for="point in contractLinePoints" :key="`p-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#f97316" />
+            </g>
+            <g class="line-chart__labels">
+              <text v-for="month in months" :key="month.label" :x="month.x" y="164">{{ month.label }}</text>
+            </g>
+          </svg>
+          <div class="chart-legend">
+            <span><i class="chart-legend__dot chart-legend__dot--orange"></i>계약 건수</span>
+            <span><i class="chart-legend__dot chart-legend__dot--blue"></i>신규 고객</span>
+          </div>
+        </section>
+
+        <section class="panel chart-panel">
+          <h3>월별 수수료 추이</h3>
+          <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 수수료 추이 차트">
+            <g class="line-chart__grid">
+              <line v-for="y in [20, 60, 100, 140]" :key="`fee-h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
+              <line v-for="x in [24, 119, 214, 309, 404, 499]" :key="`fee-v-${x}`" :x1="x" y1="16" :x2="x" y2="145" />
+            </g>
+            <polyline points="24,104 119,82 214,100 309,54 404,66 499,36" fill="none" stroke="#16a34a" stroke-width="3" />
+            <circle v-for="point in feeLinePoints" :key="`f-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#16a34a" />
+            <g class="line-chart__labels">
+              <text v-for="month in months" :key="`fee-${month.label}`" :x="month.x" y="164">{{ month.label }}</text>
+            </g>
+          </svg>
+        </section>
+      </div>
+    </div>
+
+    <aside class="fp-dashboard__side" aria-label="일정 및 상담">
+      <section class="side-panel calendar-panel">
+        <h3>일정 캘린더</h3>
+        <div class="calendar-panel__month">
+          <v-icon icon="mdi-chevron-left" size="18" />
+          <strong>2024년 7월</strong>
+          <v-icon icon="mdi-chevron-right" size="18" />
+        </div>
+        <div class="calendar-grid">
+          <span v-for="day in weekDays" :key="day" class="calendar-grid__weekday">{{ day }}</span>
+          <button
+            v-for="day in calendarDays"
+            :key="day.date"
+            type="button"
+            class="calendar-grid__day"
+            :class="{
+              'calendar-grid__day--active': day.date === 1,
+              'calendar-grid__day--today': day.hasSchedule,
+              'calendar-grid__day--muted': day.muted,
+            }"
+          >
+            {{ day.label }}
+          </button>
+        </div>
+        <div class="calendar-panel__legend">
+          <span><i></i>상담</span>
+          <span><i></i>만기</span>
+        </div>
+      </section>
+
+      <section class="side-panel schedule-panel">
+        <div class="schedule-panel__heading">
+          <h3>오늘 상담 일정</h3>
+          <span>7월 1일 (월)</span>
+        </div>
+        <div class="schedule-list">
+          <article v-for="item in schedules" :key="item.name" class="schedule-card" :class="{ 'is-done': item.done }">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.type }}</span>
+            </div>
+            <button type="button">{{ item.done ? '수정' : '일지' }}</button>
+          </article>
+        </div>
+        <button class="schedule-panel__memo" type="button">메모 추가하기</button>
+      </section>
+    </aside>
   </section>
 </template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+
+import { getFpDashboardSummary } from '../../api/dashboard'
+
+const summary = ref(createEmptySummary())
+const isSummaryLoading = ref(false)
+const summaryError = ref('')
+
+const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
+const referenceDateLabel = computed(() => formatDate(summary.value.referenceDate))
+
+const metrics = computed(() => [
+  {
+    icon: 'mdi-file-document-outline',
+    value: formatCount(summary.value.newContractCount),
+    unit: '건',
+    label: '신규 계약 수',
+    change: `${formatSignedCount(summary.value.newContractDiff)} 전월 대비`,
+    isDown: Number(summary.value.newContractDiff) < 0,
+    color: '#2563eb',
+    tone: '#eef4ff',
+  },
+  {
+    icon: 'mdi-trending-up',
+    value: formatDecimal(summary.value.retentionRate, 1),
+    unit: '%',
+    label: '유지율',
+    change: `${formatSignedDecimal(summary.value.retentionRateDiff, 1)}%p 전월 대비`,
+    isDown: Number(summary.value.retentionRateDiff) < 0,
+    color: '#16a34a',
+    tone: '#eafaf0',
+  },
+  {
+    icon: 'mdi-message-outline',
+    value: formatNullableCount(summary.value.branchRank),
+    unit: '위',
+    label: '지점 내 자신의 순위',
+    change: formatRankChange(summary.value.branchRankChange),
+    isDown: Number(summary.value.branchRankChange) < 0,
+    color: '#f97316',
+    tone: '#fff1e8',
+  },
+  {
+    icon: 'mdi-account-group-outline',
+    value: formatCount(summary.value.customerCount),
+    unit: '명',
+    label: '담당 고객 수',
+    change: `${formatSignedCount(summary.value.customerDiff)} 전월 대비`,
+    isDown: Number(summary.value.customerDiff) < 0,
+    color: '#2563eb',
+    tone: '#eef4ff',
+  },
+  {
+    icon: 'mdi-account-plus-outline',
+    value: formatCount(summary.value.newHandoverCount),
+    unit: '명',
+    label: '신규 인수인계',
+    change: `${formatSignedCount(summary.value.handoverDiff)} 전월 대비`,
+    isDown: Number(summary.value.handoverDiff) < 0,
+    color: '#7c3aed',
+    tone: '#f3edff',
+  },
+  {
+    icon: 'mdi-cash-multiple',
+    value: formatCurrencyNumber(summary.value.expectedCommissionAmount),
+    unit: '원',
+    label: '예상 수수료',
+    change: `${formatSignedCurrency(summary.value.commissionDiffAmount)} 전월 대비`,
+    isDown: Number(summary.value.commissionDiffAmount) < 0,
+    color: '#f97316',
+    tone: '#fff1e8',
+  },
+])
+
+
+onMounted(() => {
+  loadDashboardSummary()
+})
+
+const insurerBars = [
+  { label: '한화생명', height: 100 },
+  { label: '삼성화재', height: 66 },
+  { label: '현대해상', height: 50 },
+  { label: 'DB손보', height: 34 },
+  { label: '메리츠화재', height: 26 },
+]
+
+const productSummary = [
+  { label: '생명보험', value: 32, color: '#2563eb' },
+  { label: '손해보험', value: 24, color: '#f97316' },
+  { label: '자동차보험', value: 18, color: '#16a34a' },
+  { label: '실손보험', value: 14, color: '#f59e0b' },
+  { label: '건강보험', value: 12, color: '#7c3aed' },
+]
+
+const months = [
+  { label: '2월', x: 20 },
+  { label: '3월', x: 115 },
+  { label: '4월', x: 210 },
+  { label: '5월', x: 305 },
+  { label: '6월', x: 400 },
+  { label: '7월', x: 495 },
+]
+
+const customerLinePoints = [
+  [24, 96],
+  [119, 72],
+  [214, 88],
+  [309, 48],
+  [404, 80],
+  [499, 40],
+]
+
+const contractLinePoints = [
+  [24, 118],
+  [119, 106],
+  [214, 112],
+  [309, 86],
+  [404, 100],
+  [499, 78],
+]
+
+const feeLinePoints = [
+  [24, 104],
+  [119, 82],
+  [214, 100],
+  [309, 54],
+  [404, 66],
+  [499, 36],
+]
+
+const weekDays = ['일', '월', '화', '수', '목', '금', '토']
+const scheduleDates = new Set([1, 3, 5, 8, 12, 15, 18, 22, 25, 29])
+const calendarDays = [
+  { label: 30, date: 0, muted: true },
+  ...Array.from({ length: 31 }, (_, index) => ({ label: index + 1, date: index + 1, muted: false })),
+].map((day) => ({
+  ...day,
+  hasSchedule: scheduleDates.has(day.date),
+}))
+
+const schedules = [
+  { name: '이수진', type: '신계약 상담 · 대면', done: true },
+  { name: '박정호', type: '계약 갱신 · 전화', done: true },
+  { name: '최미영', type: '보험료 납입 · 방문', done: false },
+  { name: '김태현', type: '민원 처리 · 대면', done: false },
+  { name: '정윤혜', type: '신계약 상담 · 화상', done: false },
+]
+
+async function loadDashboardSummary() {
+  summaryError.value = ''
+  isSummaryLoading.value = true
+
+  try {
+    const response = await getFpDashboardSummary()
+    summary.value = normalizeSummary(response?.result)
+  } catch (error) {
+    summary.value = createEmptySummary()
+    summaryError.value =
+      error.response?.data?.message ||
+      error.message ||
+      '설계사 대시보드 요약 정보를 불러오지 못했습니다.'
+  } finally {
+    isSummaryLoading.value = false
+  }
+}
+
+function normalizeSummary(payload) {
+  const fallback = createEmptySummary()
+
+  return {
+    referenceDate: payload?.referenceDate ?? fallback.referenceDate,
+    comparisonClosingMonth: payload?.comparisonClosingMonth ?? fallback.comparisonClosingMonth,
+    newContractCount: toNumber(payload?.newContractCount),
+    newContractDiff: toNumber(payload?.newContractDiff),
+    retentionRate: toNumber(payload?.retentionRate),
+    retentionRateDiff: toNumber(payload?.retentionRateDiff),
+    branchRank: payload?.branchRank == null ? null : toNumber(payload.branchRank),
+    branchRankChange: payload?.branchRankChange == null ? null : toNumber(payload.branchRankChange),
+    customerCount: toNumber(payload?.customerCount),
+    customerDiff: toNumber(payload?.customerDiff),
+    newHandoverCount: toNumber(payload?.newHandoverCount),
+    handoverDiff: toNumber(payload?.handoverDiff),
+    expectedCommissionAmount: toNumber(payload?.expectedCommissionAmount),
+    commissionDiffAmount: toNumber(payload?.commissionDiffAmount),
+  }
+}
+
+function createEmptySummary() {
+  const today = new Date()
+  const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+
+  return {
+    referenceDate: toDateInputValue(today),
+    comparisonClosingMonth: `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`,
+    newContractCount: 0,
+    newContractDiff: 0,
+    retentionRate: 0,
+    retentionRateDiff: 0,
+    branchRank: null,
+    branchRankChange: null,
+    customerCount: 0,
+    customerDiff: 0,
+    newHandoverCount: 0,
+    handoverDiff: 0,
+    expectedCommissionAmount: 0,
+    commissionDiffAmount: 0,
+  }
+}
+
+function toNumber(value) {
+  const numberValue = Number(value ?? 0)
+  return Number.isFinite(numberValue) ? numberValue : 0
+}
+
+function formatCount(value) {
+  return toNumber(value).toLocaleString('ko-KR')
+}
+
+function formatNullableCount(value) {
+  if (value == null) {
+    return '-'
+  }
+
+  return formatCount(value)
+}
+
+function formatDecimal(value, fractionDigits = 1) {
+  return toNumber(value).toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+}
+
+function formatSignedCount(value) {
+  const numberValue = toNumber(value)
+  const sign = numberValue > 0 ? '+' : ''
+  return `${sign}${numberValue.toLocaleString('ko-KR')}건`
+}
+
+function formatSignedDecimal(value, fractionDigits = 1) {
+  const numberValue = toNumber(value)
+  const sign = numberValue > 0 ? '+' : ''
+
+  return `${sign}${numberValue.toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })}`
+}
+
+function formatRankChange(value) {
+  if (value == null) {
+    return '전월 순위 없음'
+  }
+
+  const numberValue = toNumber(value)
+
+  if (numberValue === 0) {
+    return '순위 변동 없음'
+  }
+
+  const sign = numberValue > 0 ? '+' : ''
+  return `${sign}${numberValue.toLocaleString('ko-KR')}순위 전월 대비`
+}
+
+function formatCurrencyNumber(value) {
+  return Math.round(toNumber(value)).toLocaleString('ko-KR')
+}
+
+function formatSignedCurrency(value) {
+  const numberValue = Math.round(toNumber(value))
+  const sign = numberValue > 0 ? '+' : ''
+
+  return `${sign}${numberValue.toLocaleString('ko-KR')}원`
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '-'
+  }
+
+  return String(value).replaceAll('-', '.')
+}
+
+function formatClosingMonth(value) {
+  if (!value) {
+    return '전월'
+  }
+
+  const [year, month] = String(value).split('-')
+
+  if (!year || !month) {
+    return value
+  }
+
+  return `${year}년 ${Number(month)}월`
+}
+
+function toDateInputValue(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+</script>
 
 <style scoped>
 .fp-dashboard {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 18px;
   color: #111827;
 }
 
-.fp-dashboard h2 {
-  margin: 0;
+.fp-dashboard__main {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.fp-dashboard__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.fp-dashboard__heading h2 {
+  margin: 0 0 4px;
   font-size: 20px;
   font-weight: 800;
 }
 
-.fp-dashboard p {
+.fp-dashboard__heading p {
   margin: 0;
-  color: #6b7280;
   font-size: 13px;
+  color: #6b7280;
+}
+
+.fp-dashboard__heading-dot {
+  width: 3px;
+  height: 3px;
+  margin-top: 24px;
+  border-radius: 999px;
+  background: #111827;
+}
+
+.fp-dashboard__notice {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 16px;
+  border: 1px solid #fb923c;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+}
+
+.fp-dashboard__notice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.fp-dashboard__notice strong {
+  font-size: 11px;
+}
+
+.fp-dashboard__error {
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card,
+.panel,
+.side-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.metric-card {
+  min-height: 112px;
+  padding: 14px 16px;
+}
+
+.metric-card__icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.metric-card__value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.metric-card__value strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.metric-card__value span,
+.metric-card p {
+  color: #6b7280;
+}
+
+.metric-card p {
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+
+.metric-card small {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.panel {
+  padding: 16px;
+}
+
+.panel h3,
+.side-panel h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.panel__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel__link {
+  color: #f97316;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.panel__link::after {
+  content: '›';
+  margin-left: 5px;
+}
+
+.contract-overview__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+
+.status-card {
+  min-height: 98px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.status-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-card span::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.status-card small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-card p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.status-card--review {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.status-card--complete {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #16a34a;
+}
+
+.status-card--total {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.status-card--normal {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #16a34a;
+}
+
+.status-card--unpaid {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #f97316;
+}
+
+.status-card--lapse {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-card--expiring {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.status-card strong {
+  color: #111827;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.chart-panel {
+  min-height: 205px;
+}
+
+.bar-chart {
+  height: 160px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
+  gap: 20px;
+  margin-top: 12px;
+  padding: 0 16px 4px;
+  background:
+    linear-gradient(to top, #e5e7eb 1px, transparent 1px) 0 0 / 100% 25%;
+}
+
+.bar-chart__item {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.bar-chart__bar {
+  width: 76px;
+  align-self: end;
+  border-radius: 5px 5px 0 0;
+  background: #f97316;
+}
+
+.donut-summary {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 20px;
+  min-height: 160px;
+}
+
+.donut-summary__chart {
+  width: 118px;
+  height: 118px;
+  justify-self: center;
+  border-radius: 999px;
+  background: conic-gradient(#2563eb 0 32%, #f97316 32% 56%, #16a34a 56% 74%, #f59e0b 74% 88%, #7c3aed 88% 100%);
+  position: relative;
+}
+
+.donut-summary__chart::after {
+  content: '';
+  position: absolute;
+  inset: 32px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.donut-summary ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.donut-summary li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.donut-summary li span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.donut-summary li strong {
+  color: #111827;
+}
+
+.line-chart {
+  width: 100%;
+  height: 170px;
+  margin-top: 8px;
+}
+
+.line-chart__grid line {
+  stroke: #e5e7eb;
+  stroke-dasharray: 3 4;
+}
+
+.line-chart__labels text {
+  fill: #6b7280;
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.chart-legend__dot--orange {
+  background: #f97316;
+}
+
+.chart-legend__dot--blue {
+  background: #2563eb;
+}
+
+.fp-dashboard__side {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.side-panel {
+  padding: 18px 16px;
+}
+
+.calendar-panel__month,
+.schedule-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.calendar-panel__month {
+  margin: 16px 0 10px;
+  color: #6b7280;
+}
+
+.calendar-panel__month strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.calendar-grid__weekday {
+  text-align: center;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar-grid__weekday:first-child {
+  color: #ef4444;
+}
+
+.calendar-grid__weekday:last-of-type {
+  color: #2563eb;
+}
+
+.calendar-grid__day {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #111827;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.calendar-grid__day--active {
+  background: #f97316;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.calendar-grid__day--muted {
+  color: #94a3b8;
+}
+
+.calendar-grid__day--today::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #f97316;
+  transform: translateX(-50%);
+}
+
+.calendar-grid__day--active::after {
+  background: #ffffff;
+}
+
+.calendar-panel__legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.calendar-panel__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calendar-panel__legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #f97316;
+}
+
+.calendar-panel__legend span + span i {
+  background: #ef4444;
+}
+
+.schedule-panel__heading {
+  margin-bottom: 12px;
+}
+
+.schedule-panel__heading span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.schedule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-card {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 9px 10px 12px;
+  border-radius: 7px;
+  background: #fff1e8;
+}
+
+.schedule-card.is-done {
+  background: #f8fafc;
+}
+
+.schedule-card strong,
+.schedule-card span {
+  display: block;
+}
+
+.schedule-card strong {
+  font-size: 12px;
+}
+
+.schedule-card span {
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.schedule-card button {
+  min-width: 34px;
+  height: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-card:not(.is-done) button {
+  border-color: #f97316;
+  background: #f97316;
+  color: #ffffff;
+}
+
+.schedule-panel__memo {
+  width: 100%;
+  height: 42px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 1280px) {
+  .fp-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .fp-dashboard__side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .metric-grid,
+  .contract-overview__cards,
+  .chart-grid,
+  .fp-dashboard__side {
+    grid-template-columns: 1fr;
+  }
+
+  .donut-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .fp-dashboard__notice,
+  .panel__title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bar-chart {
+    gap: 10px;
+    padding-inline: 4px;
+  }
+
+  .bar-chart__bar {
+    width: 42px;
+  }
 }
 </style>
