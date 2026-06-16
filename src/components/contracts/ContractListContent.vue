@@ -23,16 +23,6 @@
           hide-details
           class="contract-page__filter"
         />
-        <v-select
-          v-model="filters.month"
-          :items="monthOptions"
-          item-title="title"
-          item-value="value"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          class="contract-page__filter contract-page__filter--month"
-        />
       </div>
 
       <v-btn
@@ -173,109 +163,21 @@
       </div>
     </section>
 
-    <div class="contract-page__bottom">
-      <section class="contract-chart-panel">
-        <h2>월별 계약 추이</h2>
-        <div class="contract-chart">
-          <div v-if="isMonthlyTrendLoading" class="contract-chart__state">
-            <v-progress-circular indeterminate color="#f97316" size="28" />
-            <span>월별 계약 추이를 불러오는 중입니다.</span>
-          </div>
-          <div v-else-if="monthlyTrendError" class="contract-chart__state contract-chart__state--error">
-            {{ monthlyTrendError }}
-          </div>
-          <div v-else-if="monthlyTrendRows.length === 0" class="contract-chart__state">
-            월별 계약 추이 데이터가 없습니다.
-          </div>
-          <div v-else class="contract-chart__canvas">
-            <Bar :data="monthlyTrendChartData" :options="monthlyTrendChartOptions" />
-          </div>
-        </div>
-      </section>
-
-      <section class="contract-insurer-panel">
-        <h2>보험사 계약 현황</h2>
-        <div class="contract-insurer-table">
-          <table>
-            <thead>
-              <tr>
-                <th>보험사</th>
-                <th>전체 계약</th>
-                <th>월납 보험료</th>
-                <th>유지율</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isInsuranceCompanyStatusLoading">
-                <td colspan="4" class="contract-insurer-table__state">
-                  <v-progress-circular indeterminate color="#f97316" size="28" />
-                  <span>보험사 계약 현황을 불러오는 중입니다.</span>
-                </td>
-              </tr>
-              <tr v-else-if="insuranceCompanyStatusError">
-                <td colspan="4" class="contract-insurer-table__state contract-insurer-table__state--error">
-                  {{ insuranceCompanyStatusError }}
-                </td>
-              </tr>
-              <template v-else>
-                <tr v-for="insurer in insuranceCompanyStatusRows" :key="insurer.insuranceCompanyName">
-                  <td>{{ insurer.insuranceCompanyName }}</td>
-                  <td>{{ formatCount(insurer.totalContractCount) }}</td>
-                  <td>{{ formatHundredMillion(insurer.totalMonthlyPremiumAmount) }}</td>
-                  <td>{{ formatPercent(insurer.retentionRate) }}</td>
-                </tr>
-              </template>
-              <tr v-if="!isInsuranceCompanyStatusLoading && !insuranceCompanyStatusError && insuranceCompanyStatusRows.length === 0">
-                <td colspan="4" class="contract-insurer-table__state">보험사 계약 현황이 없습니다.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
   </section>
 </template>
 
 <script setup>
-import {
-  BarElement,
-  BarController,
-  CategoryScale,
-  Chart as ChartJS,
-  Legend,
-  LinearScale,
-  LineController,
-  LineElement,
-  PointElement,
-  Tooltip,
-} from 'chart.js'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Bar } from 'vue-chartjs'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
   getContractSummary,
   getContracts,
-  getInsuranceCompanyContractStatuses,
-  getMonthlyContractTrend,
 } from '../../api/contracts'
 import {
   CONTRACT_BRANCH_OPTIONS,
   CONTRACT_INSURER_OPTIONS,
-  CONTRACT_MONTH_OPTIONS,
 } from '../../data/contractMocks'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarController,
-  BarElement,
-  LineController,
-  LineElement,
-  PointElement,
-  Tooltip,
-  Legend,
-)
 
 const props = defineProps({
   pageTitle: {
@@ -294,7 +196,6 @@ const props = defineProps({
 
 const branchOptions = CONTRACT_BRANCH_OPTIONS
 const insurerOptions = CONTRACT_INSURER_OPTIONS
-const monthOptions = CONTRACT_MONTH_OPTIONS
 const route = useRoute()
 const router = useRouter()
 
@@ -315,7 +216,6 @@ const sortOptions = [
 const filters = reactive({
   branch: 'ALL',
   insurer: 'ALL',
-  month: '2026-05',
   status: 'ALL',
 })
 
@@ -330,12 +230,6 @@ const contractListError = ref('')
 const contractSummary = ref(createEmptyContractSummary())
 const isContractSummaryLoading = ref(false)
 const contractSummaryError = ref('')
-const insuranceCompanyStatusRows = ref([])
-const isInsuranceCompanyStatusLoading = ref(false)
-const insuranceCompanyStatusError = ref('')
-const monthlyTrendRows = ref([])
-const isMonthlyTrendLoading = ref(false)
-const monthlyTrendError = ref('')
 
 const summaryCards = computed(() => [
   {
@@ -383,131 +277,9 @@ const rangeLabel = computed(() => {
   return `총 ${totalElements.value.toLocaleString('ko-KR')}건 중 ${start}-${end}건 표시`
 })
 
-const monthlyTrendChartData = computed(() => ({
-  labels: monthlyTrendRows.value.map((row) => formatMonth(row.month)),
-  datasets: [
-    {
-      type: 'bar',
-      label: '계약 건수(건)',
-      data: monthlyTrendRows.value.map((row) => Number(row.contractCount ?? 0)),
-      yAxisID: 'y',
-      backgroundColor: '#3b82f6',
-      borderColor: '#2563eb',
-      borderRadius: 4,
-      barThickness: 28,
-      order: 2,
-    },
-    {
-      type: 'line',
-      label: '월납 보험료(억원)',
-      data: monthlyTrendRows.value.map((row) => toHundredMillion(row.totalMonthlyPremiumAmount)),
-      yAxisID: 'y1',
-      borderColor: '#34d399',
-      backgroundColor: '#34d399',
-      pointBackgroundColor: '#ffffff',
-      pointBorderColor: '#34d399',
-      pointBorderWidth: 4,
-      pointRadius: 6,
-      pointHoverRadius: 7,
-      tension: 0.35,
-      borderWidth: 3,
-      order: 1,
-    },
-  ],
-}))
-
-const monthlyTrendChartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: {
-    mode: 'index',
-    intersect: false,
-  },
-  plugins: {
-    legend: {
-      position: 'top',
-      align: 'center',
-      labels: {
-        color: '#334155',
-        boxWidth: 18,
-        boxHeight: 8,
-        usePointStyle: false,
-        padding: 20,
-        font: {
-          family: 'Pretendard, Noto Sans KR, sans-serif',
-          size: 13,
-          weight: 700,
-        },
-      },
-    },
-    tooltip: {
-      callbacks: {
-        label(context) {
-          if (context.dataset.yAxisID === 'y') {
-            return `${context.dataset.label}: ${formatCount(context.raw)}건`
-          }
-
-          return `${context.dataset.label}: ${formatCompactNumber(context.raw)}억`
-        },
-      },
-    },
-  },
-  scales: {
-    x: {
-      grid: {
-        display: false,
-      },
-      ticks: {
-        color: '#475569',
-        font: {
-          family: 'Pretendard, Noto Sans KR, sans-serif',
-          size: 12,
-          weight: 700,
-        },
-      },
-    },
-    y: {
-      beginAtZero: true,
-      grace: '10%',
-      grid: {
-        color: '#e5e7eb',
-      },
-      ticks: {
-        color: '#64748b',
-        callback(value) {
-          return formatCount(value)
-        },
-        font: {
-          family: 'Pretendard, Noto Sans KR, sans-serif',
-          size: 12,
-          weight: 700,
-        },
-      },
-    },
-    y1: {
-      beginAtZero: true,
-      position: 'right',
-      grace: '10%',
-      grid: {
-        drawOnChartArea: false,
-      },
-      ticks: {
-        color: '#64748b',
-        callback(value) {
-          return formatCompactNumber(value)
-        },
-        font: {
-          family: 'Pretendard, Noto Sans KR, sans-serif',
-          size: 12,
-          weight: 700,
-        },
-      },
-    },
-  },
-}))
 
 watch(
-  () => [filters.branch, filters.insurer, filters.month, filters.status],
+  () => [filters.branch, filters.insurer, filters.status],
   () => {
     currentPage.value = 1
     loadContractList()
@@ -515,19 +287,15 @@ watch(
 )
 
 watch(
-  () => [filters.branch, filters.insurer, filters.month],
+  () => [filters.branch, filters.insurer],
   () => {
     loadContractSummary()
-    loadInsuranceCompanyStatus()
-    loadMonthlyTrend()
   },
 )
 
 onMounted(() => {
   loadContractList()
   loadContractSummary()
-  loadInsuranceCompanyStatus()
-  loadMonthlyTrend()
 })
 
 function changeStatus(status) {
@@ -616,45 +384,9 @@ async function loadContractSummary() {
   }
 }
 
-async function loadInsuranceCompanyStatus() {
-  insuranceCompanyStatusError.value = ''
-  isInsuranceCompanyStatusLoading.value = true
-
-  try {
-    const response = await getInsuranceCompanyContractStatuses(buildInsuranceCompanyStatusParams())
-    insuranceCompanyStatusRows.value = Array.isArray(response?.result) ? response.result : []
-  } catch (error) {
-    insuranceCompanyStatusRows.value = []
-    insuranceCompanyStatusError.value =
-      error.response?.data?.message ||
-      error.message ||
-      '보험사 계약 현황을 불러오지 못했습니다.'
-  } finally {
-    isInsuranceCompanyStatusLoading.value = false
-  }
-}
-
-async function loadMonthlyTrend() {
-  monthlyTrendError.value = ''
-  isMonthlyTrendLoading.value = true
-
-  try {
-    const response = await getMonthlyContractTrend(buildMonthlyTrendParams())
-    monthlyTrendRows.value = Array.isArray(response?.result) ? response.result : []
-  } catch (error) {
-    monthlyTrendRows.value = []
-    monthlyTrendError.value =
-      error.response?.data?.message ||
-      error.message ||
-      '월별 계약 추이를 불러오지 못했습니다.'
-  } finally {
-    isMonthlyTrendLoading.value = false
-  }
-}
 
 function buildContractListParams() {
   const params = {
-    closingMonth: filters.month,
     sort: contractSort.value,
     page: Math.max(currentPage.value, 1),
     size: pageSize.value,
@@ -676,9 +408,7 @@ function buildContractListParams() {
 }
 
 function buildContractSummaryParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
+  const params = {}
 
   if (props.showOrganizationFilter && filters.branch !== 'ALL') {
     params.organizationCode = filters.branch
@@ -691,37 +421,6 @@ function buildContractSummaryParams() {
   return params
 }
 
-function buildInsuranceCompanyStatusParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
-
-  if (props.showOrganizationFilter && filters.branch !== 'ALL') {
-    params.organizationCode = filters.branch
-  }
-
-  if (filters.insurer !== 'ALL') {
-    params.insuranceCompanyId = filters.insurer
-  }
-
-  return params
-}
-
-function buildMonthlyTrendParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
-
-  if (props.showOrganizationFilter && filters.branch !== 'ALL') {
-    params.organizationCode = filters.branch
-  }
-
-  if (filters.insurer !== 'ALL') {
-    params.insuranceCompanyId = filters.insurer
-  }
-
-  return params
-}
 
 function normalizeContractSummary(summary) {
   return {
@@ -747,46 +446,6 @@ function formatCount(value) {
   return Number(value ?? 0).toLocaleString('ko-KR')
 }
 
-function formatHundredMillion(value) {
-  const amount = toHundredMillion(value)
-
-  if (!Number.isFinite(amount)) {
-    return '-'
-  }
-
-  return `${amount.toLocaleString('ko-KR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  })}억`
-}
-
-function formatPercent(value) {
-  const percentage = Number(value ?? 0)
-
-  if (!Number.isFinite(percentage)) {
-    return '-'
-  }
-
-  return `${percentage.toLocaleString('ko-KR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  })}%`
-}
-
-function formatMonth(value) {
-  return value ? String(value).replace('-', '.') : '-'
-}
-
-function formatCompactNumber(value) {
-  return Number(value ?? 0).toLocaleString('ko-KR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  })
-}
-
-function toHundredMillion(value) {
-  return Number(value ?? 0) / 100000000
-}
 
 function formatPremium(value) {
   return `${Number(value ?? 0).toLocaleString('ko-KR')}원`
@@ -844,10 +503,6 @@ function isNearMaturityContract(status) {
 .contract-page__filter {
   width: 160px;
   flex: 0 0 auto;
-}
-
-.contract-page__filter--month {
-  width: 210px;
 }
 
 .contract-page__create-button {
@@ -923,9 +578,7 @@ function isNearMaturityContract(status) {
   font-size: 12px;
 }
 
-.contract-panel,
-.contract-chart-panel,
-.contract-insurer-panel {
+.contract-panel {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
@@ -935,9 +588,7 @@ function isNearMaturityContract(status) {
   padding: 18px 20px 20px;
 }
 
-.contract-panel h2,
-.contract-chart-panel h2,
-.contract-insurer-panel h2 {
+.contract-panel h2 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
@@ -1030,8 +681,7 @@ function isNearMaturityContract(status) {
   color: #ffffff;
 }
 
-.contract-table,
-.contract-insurer-table {
+.contract-table {
   overflow-x: auto;
 }
 
@@ -1039,8 +689,7 @@ function isNearMaturityContract(status) {
   margin-top: 28px;
 }
 
-.contract-table table,
-.contract-insurer-table table {
+.contract-table table {
   width: 100%;
   border-collapse: collapse;
 }
@@ -1155,98 +804,12 @@ td span + .contract-badge {
   gap: 16px;
 }
 
-.contract-page__bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.95fr);
-  gap: 18px;
-  margin-top: 70px;
-}
-
-.contract-chart-panel,
-.contract-insurer-panel {
-  min-height: 360px;
-  padding: 24px 28px;
-}
-
-.contract-chart {
-  margin-top: 28px;
-}
-
-.contract-chart__state {
-  min-height: 250px;
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  color: #64748b;
-}
-
-.contract-chart__state span {
-  display: block;
-  margin-top: 10px;
-}
-
-.contract-chart__state--error {
-  color: #ef4444;
-}
-
-.contract-chart__canvas {
-  position: relative;
-  width: 100%;
-  height: 280px;
-}
-
-.contract-insurer-table {
-  margin-top: 24px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-}
-
-.contract-insurer-table th,
-.contract-insurer-table td {
-  padding: 14px 16px;
-  border-right: 1px solid #d1d5db;
-  border-bottom: 1px solid #d1d5db;
-  text-align: left;
-}
-
-.contract-insurer-table th:last-child,
-.contract-insurer-table td:last-child {
-  border-right: 0;
-}
-
-.contract-insurer-table tr:last-child td {
-  border-bottom: 0;
-}
-
-.contract-insurer-table th {
-  background: #f3f4f6;
-  font-weight: 700;
-}
-
-.contract-insurer-table__state {
-  height: 140px;
-  text-align: center;
-  color: #64748b;
-}
-
-.contract-insurer-table__state span {
-  display: block;
-  margin-top: 10px;
-}
-
-.contract-insurer-table__state--error {
-  color: #ef4444;
-}
 
 @media (max-width: 1180px) {
   .contract-page__summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .contract-page__bottom {
-    grid-template-columns: 1fr;
-    margin-top: 24px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1259,8 +822,7 @@ td span + .contract-badge {
     grid-template-columns: 1fr;
   }
 
-  .contract-page__filter,
-  .contract-page__filter--month {
+  .contract-page__filter {
     width: 100%;
   }
 
@@ -1292,13 +854,5 @@ td span + .contract-badge {
     grid-template-columns: 1fr;
   }
 
-  .contract-chart-panel,
-  .contract-insurer-panel {
-    padding: 18px;
-  }
-
-  .contract-chart__canvas {
-    min-width: 360px;
-  }
 }
 </style>
