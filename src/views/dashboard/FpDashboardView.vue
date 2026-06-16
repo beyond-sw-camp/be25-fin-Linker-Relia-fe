@@ -45,21 +45,23 @@
           <RouterLink class="panel__link" :to="{ name: 'fp-contracts' }">계약 목록 전체 보기</RouterLink>
         </div>
 
-        <div class="contract-overview__cards">
-          <article class="status-card status-card--normal">
-            <span>수금</span>
-            <strong>24<small>건</small></strong>
-            <p>정상 수금된 계약</p>
-          </article>
-          <article class="status-card status-card--unpaid">
-            <span>미수금</span>
-            <strong>8<small>건</small></strong>
-            <p>수금이 필요한 계약</p>
-          </article>
-          <article class="status-card status-card--expiring">
-            <span>만기</span>
-            <strong>12<small>건</small></strong>
-            <p>만기 예정 계약</p>
+        <div v-if="isContractSummaryLoading" class="contract-overview__state">
+          <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
+          <span>계약 요약을 불러오는 중입니다.</span>
+        </div>
+        <div v-else-if="contractSummaryError" class="contract-overview__state contract-overview__state--error">
+          {{ contractSummaryError }}
+        </div>
+        <div v-else class="contract-overview__cards">
+          <article
+            v-for="card in contractStatusCards"
+            :key="card.label"
+            class="status-card"
+            :class="card.className"
+          >
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}<small>건</small></strong>
+            <p>{{ card.caption }}</p>
           </article>
         </div>
       </section>
@@ -183,11 +185,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import { getContractSummary } from '../../api/contracts'
 import { getFpDashboardSummary } from '../../api/dashboard'
 
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
 const summaryError = ref('')
+const contractSummary = ref(createEmptyContractSummary())
+const isContractSummaryLoading = ref(false)
+const contractSummaryError = ref('')
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
 const referenceDateLabel = computed(() => formatDate(summary.value.referenceDate))
@@ -255,9 +261,30 @@ const metrics = computed(() => [
   },
 ])
 
+const contractStatusCards = computed(() => [
+  {
+    label: '수금',
+    value: formatCount(contractSummary.value.normalPaymentCount),
+    caption: '정상 수금된 계약',
+    className: 'status-card--normal',
+  },
+  {
+    label: '미수금',
+    value: formatCount(contractSummary.value.unpaidCount),
+    caption: '수금이 필요한 계약',
+    className: 'status-card--unpaid',
+  },
+  {
+    label: '만기',
+    value: formatCount(contractSummary.value.expiringSoonCount),
+    caption: '만기 예정 계약',
+    className: 'status-card--expiring',
+  },
+])
 
 onMounted(() => {
   loadDashboardSummary()
+  loadContractSummary()
 })
 
 const insurerBars = [
@@ -348,6 +375,24 @@ async function loadDashboardSummary() {
   }
 }
 
+async function loadContractSummary() {
+  contractSummaryError.value = ''
+  isContractSummaryLoading.value = true
+
+  try {
+    const response = await getContractSummary()
+    contractSummary.value = normalizeContractSummary(response?.result)
+  } catch (error) {
+    contractSummary.value = createEmptyContractSummary()
+    contractSummaryError.value =
+      error.response?.data?.message ||
+      error.message ||
+      '계약 요약 정보를 불러오지 못했습니다.'
+  } finally {
+    isContractSummaryLoading.value = false
+  }
+}
+
 function normalizeSummary(payload) {
   const fallback = createEmptySummary()
 
@@ -366,6 +411,16 @@ function normalizeSummary(payload) {
     handoverDiff: toNumber(payload?.handoverDiff),
     expectedCommissionAmount: toNumber(payload?.expectedCommissionAmount),
     commissionDiffAmount: toNumber(payload?.commissionDiffAmount),
+  }
+}
+
+function normalizeContractSummary(payload) {
+  return {
+    totalContractCount: toNumber(payload?.totalContractCount),
+    normalPaymentCount: toNumber(payload?.normalPaymentCount),
+    unpaidCount: toNumber(payload?.unpaidCount),
+    lapseExpectedCount: toNumber(payload?.lapseExpectedCount),
+    expiringSoonCount: toNumber(payload?.expiringSoonCount),
   }
 }
 
@@ -388,6 +443,16 @@ function createEmptySummary() {
     handoverDiff: 0,
     expectedCommissionAmount: 0,
     commissionDiffAmount: 0,
+  }
+}
+
+function createEmptyContractSummary() {
+  return {
+    totalContractCount: 0,
+    normalPaymentCount: 0,
+    unpaidCount: 0,
+    lapseExpectedCount: 0,
+    expiringSoonCount: 0,
   }
 }
 
@@ -660,6 +725,24 @@ function toDateInputValue(date) {
   gap: 10px;
 }
 
+.contract-overview__state {
+  min-height: 98px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contract-overview__state--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
 
 .status-card {
   min-height: 98px;
