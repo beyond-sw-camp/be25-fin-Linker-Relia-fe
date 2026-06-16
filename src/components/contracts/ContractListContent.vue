@@ -23,16 +23,6 @@
           hide-details
           class="contract-page__filter"
         />
-        <v-select
-          v-model="filters.month"
-          :items="monthOptions"
-          item-title="title"
-          item-value="value"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          class="contract-page__filter contract-page__filter--month"
-        />
       </div>
 
       <v-btn
@@ -262,7 +252,6 @@ import {
 import {
   CONTRACT_BRANCH_OPTIONS,
   CONTRACT_INSURER_OPTIONS,
-  CONTRACT_MONTH_OPTIONS,
 } from '../../data/contractMocks'
 
 ChartJS.register(
@@ -294,7 +283,6 @@ const props = defineProps({
 
 const branchOptions = CONTRACT_BRANCH_OPTIONS
 const insurerOptions = CONTRACT_INSURER_OPTIONS
-const monthOptions = CONTRACT_MONTH_OPTIONS
 const route = useRoute()
 const router = useRouter()
 
@@ -315,7 +303,6 @@ const sortOptions = [
 const filters = reactive({
   branch: 'ALL',
   insurer: 'ALL',
-  month: '2026-05',
   status: 'ALL',
 })
 
@@ -507,7 +494,7 @@ const monthlyTrendChartOptions = computed(() => ({
 }))
 
 watch(
-  () => [filters.branch, filters.insurer, filters.month, filters.status],
+  () => [filters.branch, filters.insurer, filters.status],
   () => {
     currentPage.value = 1
     loadContractList()
@@ -515,7 +502,7 @@ watch(
 )
 
 watch(
-  () => [filters.branch, filters.insurer, filters.month],
+  () => [filters.branch, filters.insurer],
   () => {
     loadContractSummary()
     loadInsuranceCompanyStatus()
@@ -654,7 +641,6 @@ async function loadMonthlyTrend() {
 
 function buildContractListParams() {
   const params = {
-    closingMonth: filters.month,
     sort: contractSort.value,
     page: Math.max(currentPage.value, 1),
     size: pageSize.value,
@@ -676,9 +662,7 @@ function buildContractListParams() {
 }
 
 function buildContractSummaryParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
+  const params = {}
 
   if (props.showOrganizationFilter && filters.branch !== 'ALL') {
     params.organizationCode = filters.branch
@@ -692,9 +676,7 @@ function buildContractSummaryParams() {
 }
 
 function buildInsuranceCompanyStatusParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
+  const params = {}
 
   if (props.showOrganizationFilter && filters.branch !== 'ALL') {
     params.organizationCode = filters.branch
@@ -708,9 +690,7 @@ function buildInsuranceCompanyStatusParams() {
 }
 
 function buildMonthlyTrendParams() {
-  const params = {
-    closingMonth: filters.month,
-  }
+  const params = {}
 
   if (props.showOrganizationFilter && filters.branch !== 'ALL') {
     params.organizationCode = filters.branch
@@ -844,10 +824,6 @@ function isNearMaturityContract(status) {
 .contract-page__filter {
   width: 160px;
   flex: 0 0 auto;
-}
-
-.contract-page__filter--month {
-  width: 210px;
 }
 
 .contract-page__create-button {
@@ -1259,8 +1235,7 @@ td span + .contract-badge {
     grid-template-columns: 1fr;
   }
 
-  .contract-page__filter,
-  .contract-page__filter--month {
+  .contract-page__filter {
     width: 100%;
   }
 
