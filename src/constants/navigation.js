@@ -4,8 +4,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/fp',
     name: 'fp-dashboard',
-    title: '내 대시보드',
-    description: 'FP 사용자의 기본 진입 화면입니다.',
+    title: '한화금융서비스 보험 설계사 대시보드',
+    description: '설계사가 로그인하면 최초로 보이는 내 대시보드 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -26,7 +26,7 @@ export const APP_PAGE_SPECS = [
     path: 'consultations/fp',
     name: 'fp-consultations',
     title: '고객별 상담 목록',
-    description: '설계사 관점의 상담 목록 화면입니다.',
+    description: '설계사 고객의 상담 목록 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -88,7 +88,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'contracts/branch',
     name: 'branch-contracts',
-    title: '전체 계약',
+    title: '지점 계약 목록',
     description: '지점 계약을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
@@ -208,21 +208,21 @@ export const APP_PAGE_SPECS = [
     path: 'admin/users',
     name: 'admin-users',
     title: '사용자 관리',
-    description: '시스템 관리자용 사용자 관리 화면입니다.',
+    description: '시스템 관리자의 사용자 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
   },
   {
     path: 'admin/organizations',
     name: 'admin-organizations',
     title: '조직 관리',
-    description: '시스템 관리자용 조직 관리 화면입니다.',
+    description: '시스템 관리자의 조직 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
   },
   {
     path: 'admin/roles',
     name: 'admin-roles',
     title: '권한 관리',
-    description: '시스템 관리자용 권한 관리 화면입니다.',
+    description: '시스템 관리자의 권한 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
   },
 ]
@@ -239,12 +239,11 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
-        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '고객별 상담 목록', to: { name: 'fp-consultations' } },
         { title: '상담 등록', to: { name: 'consultation-create' } },
@@ -252,25 +251,16 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
-        { title: '계약 등록', to: { name: 'contract-create' } },
       ],
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
-      ],
-    },
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
       ],
     },
   ],
@@ -285,21 +275,20 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
-        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '지점 상담 목록', to: { name: 'branch-consultations' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
-        { title: '전체 계약', to: { name: 'branch-contracts' } },
+        { title: '지점 계약 목록', to: { name: 'branch-contracts' } },
       ],
     },
     {
@@ -320,17 +309,9 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
-      ],
-    },
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
       ],
     },
   ],
@@ -345,19 +326,18 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
-        { title: '전사 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
         { title: '전체 계약 목록', to: { name: 'hq-contracts' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '전체 상담 목록', to: { name: 'hq-consultations' } },
       ],
@@ -387,7 +367,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '수수료 대시보드', to: { name: 'hq-commissions' } },
       ],
