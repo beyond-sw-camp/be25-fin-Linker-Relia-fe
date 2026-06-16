@@ -14,7 +14,6 @@
           <v-icon icon="mdi-information-outline" size="16" />
           {{ comparisonLabel }} 마감 기준으로 집계된 데이터입니다.
         </span>
-        <strong>기준일: {{ referenceDateLabel }}</strong>
       </div>
 
       <div v-if="summaryError" class="fp-dashboard__error">
@@ -196,7 +195,6 @@ const isContractSummaryLoading = ref(false)
 const contractSummaryError = ref('')
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
-const referenceDateLabel = computed(() => formatDate(summary.value.referenceDate))
 
 const metrics = computed(() => [
   {
@@ -220,7 +218,7 @@ const metrics = computed(() => [
     tone: '#eafaf0',
   },
   {
-    icon: 'mdi-message-outline',
+    icon: 'mdi-podium-gold',
     value: formatNullableCount(summary.value.branchRank),
     unit: '위',
     label: '지점 내 자신의 순위',
@@ -253,7 +251,7 @@ const metrics = computed(() => [
     icon: 'mdi-cash-multiple',
     value: formatCurrencyNumber(summary.value.expectedCommissionAmount),
     unit: '원',
-    label: '예상 수수료',
+    label: '수수료',
     change: `${formatSignedCurrency(summary.value.commissionDiffAmount)} 전월 대비`,
     isDown: Number(summary.value.commissionDiffAmount) < 0,
     color: '#f97316',
@@ -520,14 +518,6 @@ function formatSignedCurrency(value) {
   const sign = numberValue > 0 ? '+' : ''
 
   return `${sign}${numberValue.toLocaleString('ko-KR')}원`
-}
-
-function formatDate(value) {
-  if (!value) {
-    return '-'
-  }
-
-  return String(value).replaceAll('-', '.')
 }
 
 function formatClosingMonth(value) {
