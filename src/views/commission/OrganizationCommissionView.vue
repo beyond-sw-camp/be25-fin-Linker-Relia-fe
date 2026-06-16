@@ -81,7 +81,7 @@
               <Bar :data="companyChartData" :options="companyChartOptions" />
             </div>
             <div class="insurance-overview__chart-caption">
-              <strong>보험사별 총 수수료 기여도와 환수 현황을 함께 확인할 수 있도록 상위 5개 보험사를 총 수수료 기준으로 비교합니다.</strong>
+              <strong>보험사별 총 수수료 기여도를 상위 5개 보험사 기준으로 비교합니다.</strong>
             </div>
           </div>
 
@@ -101,8 +101,6 @@
                 </div>
                 <div class="insurance-company-row__details">
                   <span>계약 건수 {{ formatCount(item.contractCount) }}건</span>
-                  <span>설계사 지급 {{ formatCurrency(item.paymentAmount) }}</span>
-                  <span>환수 회수액 {{ formatCurrency(item.clawbackAmount) }}</span>
                 </div>
               </div>
               <div class="insurance-company-row__metrics">
@@ -226,7 +224,7 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section v-if="props.scope === 'hq'" class="panel">
         <div class="panel__header">
           <div>
             <h3>지점별 월 수수료 현황</h3>
@@ -648,7 +646,7 @@ async function loadDashboard() {
     loadPaymentTypes(),
     loadInsuranceCompanies(),
     loadFpCommissionList(),
-    loadOrganizationCommissionList(),
+    ...(props.scope === 'hq' ? [loadOrganizationCommissionList()] : []),
   ])
 }
 
@@ -739,6 +737,13 @@ async function loadFpCommissionList() {
 }
 
 async function loadOrganizationCommissionList() {
+  if (props.scope !== 'hq') {
+    organizationCommissionPage.value = createEmptyPage()
+    organizationListErrorMessage.value = ''
+    isOrganizationListLoading.value = false
+    return
+  }
+
   organizationListErrorMessage.value = ''
   isOrganizationListLoading.value = true
 
@@ -765,6 +770,10 @@ function handleFpPageChange(page) {
 }
 
 function handleOrganizationPageChange(page) {
+  if (props.scope !== 'hq') {
+    return
+  }
+
   organizationListPagination.page = page
   loadOrganizationCommissionList()
 }

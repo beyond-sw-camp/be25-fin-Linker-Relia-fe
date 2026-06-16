@@ -46,7 +46,7 @@
         <div class="panel__header">
           <div>
             <h3>보험사별 수수료 기여도 Top5</h3>
-            <p>상위 5개 보험사의 총 수수료 규모와 환수 흐름을 비교합니다.</p>
+            <p>상위 5개 보험사의 총 수수료 규모를 비교합니다.</p>
           </div>
           <span class="panel__chip">{{ closingMonthLabel }}</span>
         </div>
@@ -67,7 +67,7 @@
               <Bar :data="companyChartData" :options="companyChartOptions" />
             </div>
             <div class="insurance-overview__chart-caption">
-              <strong>보험사별 총 수수료 기여도와 설계사 지급 흐름을 상위 5개 기준으로 비교합니다.</strong>
+              <strong>보험사별 총 수수료 기여도를 상위 5개 기준으로 비교합니다.</strong>
             </div>
           </div>
 
@@ -84,8 +84,6 @@
                 </div>
                 <div class="insurance-company-row__details">
                   <span>계약 건수 {{ formatCount(item.contractCount) }}건</span>
-                  <span>설계사 지급 {{ formatCurrency(item.paymentAmount) }}</span>
-                  <span>환수 회수액 {{ formatCurrency(item.clawbackAmount) }}</span>
                 </div>
               </div>
               <div class="insurance-company-row__metrics">
