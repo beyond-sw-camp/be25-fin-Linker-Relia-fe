@@ -33,8 +33,8 @@ export const CUSTOMER_GRADE_LABELS = Object.freeze({
 })
 
 export const CONSULTATION_TYPE_LABELS = Object.freeze({
-  NEW_CONTRACT: '신계약',
-  CLAIM: '보상',
+  NEW_CONTRACT: '신규',
+  CLAIM: '보험금 청구',
   TERMINATION: '해지',
   RENEWAL: '갱신',
 })
@@ -43,10 +43,11 @@ export const CONSULTATION_CHANNEL_LABELS = Object.freeze({
   VISIT: '방문',
   PHONE: '전화',
   MESSAGE: '메시지',
+  ONLINE: '온라인',
 })
 
 export const CONTRACT_STATUS_LABELS = Object.freeze({
-  MAINTENANCE : '계약 유지',
+  MAINTENANCE: '계약 유지',
   MATURED: '만기',
   COMPLETED: '만기',
   LAPSED: '실효',
