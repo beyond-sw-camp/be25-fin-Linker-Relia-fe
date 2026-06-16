@@ -91,6 +91,7 @@
             <thead>
               <tr>
                 <th>고객명</th>
+                <th>지점명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
                 <th v-if="showLifecycleDateColumn">{{ lifecycleDateColumnLabel }}</th>
@@ -102,7 +103,6 @@
                 <th v-if="!showLifecycleDateColumn">다음 상담일시</th>
                 <th>고객 등급</th>
                 <th>고객 상태</th>
-                <th>조직명</th>
               </tr>
             </thead>
             <tbody>
@@ -112,6 +112,7 @@
                     {{ customer.customerName }}
                   </button>
                 </td>
+                <td>{{ customer.organizationName || '-' }}</td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
                 <td v-if="showLifecycleDateColumn">{{ formatDate(getLifecycleDateValue(customer)) }}</td>
@@ -123,7 +124,6 @@
                 <td v-if="!showLifecycleDateColumn">{{ formatDateTime(customer.nextConsultedAt) }}</td>
                 <td>{{ getCustomerGradeLabel(customer.customerGrade) }}</td>
                 <td>{{ getCustomerStatusLabel(customer.customerStatus) }}</td>
-                <td>{{ customer.organizationName || '-' }}</td>
               </tr>
             </tbody>
           </table>
