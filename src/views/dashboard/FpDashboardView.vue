@@ -44,12 +44,12 @@
           <RouterLink class="panel__link" :to="{ name: 'fp-contracts' }">계약 목록 전체 보기</RouterLink>
         </div>
 
-        <div v-if="isContractSummaryLoading" class="contract-overview__state">
+        <div v-if="isContractStatusLoading" class="contract-overview__state">
           <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
-          <span>계약 요약을 불러오는 중입니다.</span>
+          <span>계약 상태를 불러오는 중입니다.</span>
         </div>
-        <div v-else-if="contractSummaryError" class="contract-overview__state contract-overview__state--error">
-          {{ contractSummaryError }}
+        <div v-else-if="contractStatusError" class="contract-overview__state contract-overview__state--error">
+          {{ contractStatusError }}
         </div>
         <div v-else class="contract-overview__cards">
           <article
@@ -77,7 +77,7 @@
         </section>
 
         <section class="panel chart-panel chart-panel--donut">
-          <h3>보험별 계약 건수</h3>
+          <h3>보종별 계약 건수</h3>
           <div class="donut-summary">
             <div class="donut-summary__chart" aria-hidden="true"></div>
             <ul>
@@ -184,15 +184,17 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { getContractSummary } from '../../api/contracts'
-import { getFpDashboardSummary } from '../../api/dashboard'
+import {
+  getFpDashboardContractStatus,
+  getFpDashboardSummary,
+} from '../../api/dashboard'
 
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
 const summaryError = ref('')
-const contractSummary = ref(createEmptyContractSummary())
-const isContractSummaryLoading = ref(false)
-const contractSummaryError = ref('')
+const contractStatusSummary = ref(createEmptyContractStatusSummary())
+const isContractStatusLoading = ref(false)
+const contractStatusError = ref('')
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
 
@@ -261,28 +263,40 @@ const metrics = computed(() => [
 
 const contractStatusCards = computed(() => [
   {
-    label: '수금',
-    value: formatCount(contractSummary.value.normalPaymentCount),
-    caption: '정상 수금된 계약',
+    label: '전체 계약',
+    value: formatCount(contractStatusSummary.value.totalContractCount),
+    caption: '전월 마감 기준 전체 계약',
+    className: 'status-card--total',
+  },
+  {
+    label: '유지',
+    value: formatCount(contractStatusSummary.value.maintenanceContractCount),
+    caption: '정상 유지 중인 계약',
     className: 'status-card--normal',
   },
   {
-    label: '미수금',
-    value: formatCount(contractSummary.value.unpaidCount),
-    caption: '수금이 필요한 계약',
-    className: 'status-card--unpaid',
+    label: '실효',
+    value: formatCount(contractStatusSummary.value.lapsedContractCount),
+    caption: '실효 상태의 계약',
+    className: 'status-card--lapse',
   },
   {
-    label: '만기',
-    value: formatCount(contractSummary.value.expiringSoonCount),
-    caption: '만기 예정 계약',
-    className: 'status-card--expiring',
+    label: '해지',
+    value: formatCount(contractStatusSummary.value.terminatedContractCount),
+    caption: '해지 처리된 계약',
+    className: 'status-card--terminated',
+  },
+  {
+    label: '만기 완료',
+    value: formatCount(contractStatusSummary.value.completedContractCount),
+    caption: '만기 완료된 계약',
+    className: 'status-card--completed',
   },
 ])
 
 onMounted(() => {
   loadDashboardSummary()
-  loadContractSummary()
+  loadContractStatusSummary()
 })
 
 const insurerBars = [
@@ -373,21 +387,21 @@ async function loadDashboardSummary() {
   }
 }
 
-async function loadContractSummary() {
-  contractSummaryError.value = ''
-  isContractSummaryLoading.value = true
+async function loadContractStatusSummary() {
+  contractStatusError.value = ''
+  isContractStatusLoading.value = true
 
   try {
-    const response = await getContractSummary()
-    contractSummary.value = normalizeContractSummary(response?.result)
+    const response = await getFpDashboardContractStatus()
+    contractStatusSummary.value = normalizeContractStatusSummary(response?.result)
   } catch (error) {
-    contractSummary.value = createEmptyContractSummary()
-    contractSummaryError.value =
+    contractStatusSummary.value = createEmptyContractStatusSummary()
+    contractStatusError.value =
       error.response?.data?.message ||
       error.message ||
-      '계약 요약 정보를 불러오지 못했습니다.'
+      '계약 상태 정보를 불러오지 못했습니다.'
   } finally {
-    isContractSummaryLoading.value = false
+    isContractStatusLoading.value = false
   }
 }
 
@@ -412,13 +426,13 @@ function normalizeSummary(payload) {
   }
 }
 
-function normalizeContractSummary(payload) {
+function normalizeContractStatusSummary(payload) {
   return {
     totalContractCount: toNumber(payload?.totalContractCount),
-    normalPaymentCount: toNumber(payload?.normalPaymentCount),
-    unpaidCount: toNumber(payload?.unpaidCount),
-    lapseExpectedCount: toNumber(payload?.lapseExpectedCount),
-    expiringSoonCount: toNumber(payload?.expiringSoonCount),
+    maintenanceContractCount: toNumber(payload?.maintenanceContractCount),
+    lapsedContractCount: toNumber(payload?.lapsedContractCount),
+    terminatedContractCount: toNumber(payload?.terminatedContractCount),
+    completedContractCount: toNumber(payload?.completedContractCount),
   }
 }
 
@@ -444,13 +458,13 @@ function createEmptySummary() {
   }
 }
 
-function createEmptyContractSummary() {
+function createEmptyContractStatusSummary() {
   return {
     totalContractCount: 0,
-    normalPaymentCount: 0,
-    unpaidCount: 0,
-    lapseExpectedCount: 0,
-    expiringSoonCount: 0,
+    maintenanceContractCount: 0,
+    lapsedContractCount: 0,
+    terminatedContractCount: 0,
+    completedContractCount: 0,
   }
 }
 
@@ -711,7 +725,7 @@ function toDateInputValue(date) {
 
 .contract-overview__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -800,19 +814,19 @@ function toDateInputValue(date) {
   color: #16a34a;
 }
 
-.status-card--unpaid {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #f97316;
-}
-
 .status-card--lapse {
   border-color: #fecaca;
   background: #fef2f2;
   color: #dc2626;
 }
 
-.status-card--expiring {
+.status-card--terminated {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.status-card--completed {
   border-color: #fde68a;
   background: #fffbeb;
   color: #d97706;
