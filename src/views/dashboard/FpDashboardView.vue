@@ -113,21 +113,62 @@
 
         <section class="panel chart-panel">
           <h3>월별 계약/고객 건수</h3>
-          <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 계약 고객 건수 차트">
-            <g class="line-chart__grid">
-              <line v-for="y in [20, 60, 100, 140]" :key="`h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
-              <line v-for="x in [24, 119, 214, 309, 404, 499]" :key="`v-${x}`" :x1="x" y1="16" :x2="x" y2="145" />
-            </g>
-            <polyline points="24,96 119,72 214,88 309,48 404,80 499,40" fill="none" stroke="#2563eb" stroke-width="3" />
-            <polyline points="24,118 119,106 214,112 309,86 404,100 499,78" fill="none" stroke="#f97316" stroke-width="3" />
-            <g>
-              <circle v-for="point in customerLinePoints" :key="`c-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#2563eb" />
-              <circle v-for="point in contractLinePoints" :key="`p-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#f97316" />
-            </g>
-            <g class="line-chart__labels">
-              <text v-for="month in months" :key="month.label" :x="month.x" y="164">{{ month.label }}</text>
-            </g>
-          </svg>
+          <div v-if="isTrendLoading" class="chart-state">
+            <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
+            <span>월별 추이를 불러오는 중입니다.</span>
+          </div>
+          <div v-else-if="trendError" class="chart-state chart-state--error">
+            {{ trendError }}
+          </div>
+          <div v-else-if="monthlyTrendItems.length === 0" class="chart-state">
+            월별 계약/고객 데이터가 없습니다.
+          </div>
+          <div v-else class="line-chart-wrap" @mouseleave="hideTrendTooltip">
+            <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 계약 고객 건수 차트">
+              <g class="line-chart__grid">
+                <line v-for="y in [20, 60, 100, 140]" :key="`h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
+                <line v-for="point in monthlyTrendPoints.customers" :key="`v-${point.x}`" :x1="point.x" y1="16" :x2="point.x" y2="145" />
+              </g>
+              <polyline :points="monthlyTrendPolyline.customers" fill="none" stroke="#2563eb" stroke-width="3" />
+              <polyline :points="monthlyTrendPolyline.contracts" fill="none" stroke="#f97316" stroke-width="3" />
+              <g>
+                <circle
+                  v-for="point in monthlyTrendPoints.customers"
+                  :key="`c-${point.month}`"
+                  class="line-chart__point"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="5"
+                  fill="#2563eb"
+                  @mouseenter="showTrendTooltip(point)"
+                  @mousemove="showTrendTooltip(point)"
+                />
+                <circle
+                  v-for="point in monthlyTrendPoints.contracts"
+                  :key="`p-${point.month}`"
+                  class="line-chart__point"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="5"
+                  fill="#f97316"
+                  @mouseenter="showTrendTooltip(point)"
+                  @mousemove="showTrendTooltip(point)"
+                />
+              </g>
+              <g class="line-chart__labels">
+                <text v-for="point in monthlyTrendPoints.customers" :key="point.month" :x="point.x" y="164">{{ point.label }}</text>
+              </g>
+            </svg>
+            <div
+              v-if="trendTooltip.visible"
+              class="line-chart-tooltip"
+              :style="{ left: `${trendTooltip.x}%`, top: `${trendTooltip.y}%` }"
+            >
+              <strong>{{ trendTooltip.label }}</strong>
+              <span><i class="chart-legend__dot chart-legend__dot--orange"></i>계약 {{ trendTooltip.contracts }}건</span>
+              <span><i class="chart-legend__dot chart-legend__dot--blue"></i>신규 고객 {{ trendTooltip.customers }}명</span>
+            </div>
+          </div>
           <div class="chart-legend">
             <span><i class="chart-legend__dot chart-legend__dot--orange"></i>계약 건수</span>
             <span><i class="chart-legend__dot chart-legend__dot--blue"></i>신규 고객</span>
@@ -136,17 +177,47 @@
 
         <section class="panel chart-panel">
           <h3>월별 수수료 추이</h3>
-          <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 수수료 추이 차트">
-            <g class="line-chart__grid">
-              <line v-for="y in [20, 60, 100, 140]" :key="`fee-h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
-              <line v-for="x in [24, 119, 214, 309, 404, 499]" :key="`fee-v-${x}`" :x1="x" y1="16" :x2="x" y2="145" />
-            </g>
-            <polyline points="24,104 119,82 214,100 309,54 404,66 499,36" fill="none" stroke="#16a34a" stroke-width="3" />
-            <circle v-for="point in feeLinePoints" :key="`f-${point}`" :cx="point[0]" :cy="point[1]" r="4" fill="#16a34a" />
-            <g class="line-chart__labels">
-              <text v-for="month in months" :key="`fee-${month.label}`" :x="month.x" y="164">{{ month.label }}</text>
-            </g>
-          </svg>
+          <div v-if="isCommissionTrendLoading" class="chart-state">
+            <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
+            <span>월별 수수료 추이를 불러오는 중입니다.</span>
+          </div>
+          <div v-else-if="commissionTrendError" class="chart-state chart-state--error">
+            {{ commissionTrendError }}
+          </div>
+          <div v-else-if="commissionTrendItems.length === 0 || !hasCommissionTrendValue" class="chart-state">
+            월별 수수료 데이터가 없습니다.
+          </div>
+          <div v-else class="line-chart-wrap" @mouseleave="hideCommissionTooltip">
+            <svg class="line-chart" viewBox="0 0 520 170" role="img" aria-label="월별 수수료 추이 차트">
+              <g class="line-chart__grid">
+                <line v-for="y in [20, 60, 100, 140]" :key="`fee-h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
+                <line v-for="point in commissionTrendPoints" :key="`fee-v-${point.x}`" :x1="point.x" y1="16" :x2="point.x" y2="145" />
+              </g>
+              <polyline :points="commissionTrendPolyline" fill="none" stroke="#16a34a" stroke-width="3" />
+              <circle
+                v-for="point in commissionTrendPoints"
+                :key="`f-${point.month}`"
+                class="line-chart__point"
+                :cx="point.x"
+                :cy="point.y"
+                r="5"
+                fill="#16a34a"
+                @mouseenter="showCommissionTooltip(point)"
+                @mousemove="showCommissionTooltip(point)"
+              />
+              <g class="line-chart__labels">
+                <text v-for="point in commissionTrendPoints" :key="`fee-${point.month}`" :x="point.x" y="164">{{ point.label }}</text>
+              </g>
+            </svg>
+            <div
+              v-if="commissionTooltip.visible"
+              class="line-chart-tooltip"
+              :style="{ left: `${commissionTooltip.x}%`, top: `${commissionTooltip.y}%` }"
+            >
+              <strong>{{ commissionTooltip.label }}</strong>
+              <span><i class="chart-legend__dot chart-legend__dot--green"></i>수수료 {{ commissionTooltip.amount }}원</span>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -208,6 +279,8 @@ import { RouterLink } from 'vue-router'
 import {
   getFpDashboardContractStatus,
   getFpDashboardContractDistribution,
+  getFpDashboardMonthlyContractCustomerTrend,
+  getFpDashboardMonthlyCommissionTrend,
   getFpDashboardSummary,
 } from '../../api/dashboard'
 
@@ -221,6 +294,27 @@ const contractStatusError = ref('')
 const distribution = ref(createEmptyContractDistribution())
 const isDistributionLoading = ref(false)
 const distributionError = ref('')
+const monthlyTrend = ref(createEmptyMonthlyTrend())
+const isTrendLoading = ref(false)
+const trendError = ref('')
+const commissionTrend = ref(createEmptyCommissionTrend())
+const isCommissionTrendLoading = ref(false)
+const commissionTrendError = ref('')
+const trendTooltip = ref({
+  visible: false,
+  label: '',
+  contracts: '0',
+  customers: '0',
+  x: 0,
+  y: 0,
+})
+const commissionTooltip = ref({
+  visible: false,
+  label: '',
+  amount: '0',
+  x: 0,
+  y: 0,
+})
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
 
@@ -366,47 +460,52 @@ const donutGradient = computed(() => {
   return `conic-gradient(${stops.join(', ')})`
 })
 
+const monthlyTrendItems = computed(() => monthlyTrend.value.monthlyTrends)
+
+const monthlyTrendPoints = computed(() => {
+  const items = monthlyTrendItems.value
+  const maxValue = Math.max(
+    ...items.map((item) => item.newContractCount),
+    ...items.map((item) => item.customerCount),
+    1,
+  )
+
+  return {
+    contracts: items.map((item, index) => buildMonthlyTrendPoint(item, index, items.length, item.newContractCount, maxValue)),
+    customers: items.map((item, index) => buildMonthlyTrendPoint(item, index, items.length, item.customerCount, maxValue)),
+  }
+})
+
+const monthlyTrendPolyline = computed(() => ({
+  contracts: monthlyTrendPoints.value.contracts.map((point) => `${point.x},${point.y}`).join(' '),
+  customers: monthlyTrendPoints.value.customers.map((point) => `${point.x},${point.y}`).join(' '),
+}))
+
+const commissionTrendItems = computed(() => commissionTrend.value.monthlyTrends)
+const hasCommissionTrendValue = computed(() =>
+  commissionTrendItems.value.some((item) => item.netCommissionAmount > 0),
+)
+
+const commissionTrendPoints = computed(() => {
+  const items = commissionTrendItems.value
+  const maxValue = Math.max(...items.map((item) => item.netCommissionAmount), 1)
+
+  return items.map((item, index) =>
+    buildMonthlyTrendPoint(item, index, items.length, item.netCommissionAmount, maxValue),
+  )
+})
+
+const commissionTrendPolyline = computed(() =>
+  commissionTrendPoints.value.map((point) => `${point.x},${point.y}`).join(' '),
+)
+
 onMounted(() => {
   loadDashboardSummary()
   loadContractStatusSummary()
   loadContractDistribution()
+  loadMonthlyContractCustomerTrend()
+  loadMonthlyCommissionTrend()
 })
-
-const months = [
-  { label: '2월', x: 20 },
-  { label: '3월', x: 115 },
-  { label: '4월', x: 210 },
-  { label: '5월', x: 305 },
-  { label: '6월', x: 400 },
-  { label: '7월', x: 495 },
-]
-
-const customerLinePoints = [
-  [24, 96],
-  [119, 72],
-  [214, 88],
-  [309, 48],
-  [404, 80],
-  [499, 40],
-]
-
-const contractLinePoints = [
-  [24, 118],
-  [119, 106],
-  [214, 112],
-  [309, 86],
-  [404, 100],
-  [499, 78],
-]
-
-const feeLinePoints = [
-  [24, 104],
-  [119, 82],
-  [214, 100],
-  [309, 54],
-  [404, 66],
-  [499, 36],
-]
 
 const weekDays = ['일', '월', '화', '수', '목', '금', '토']
 const scheduleDates = new Set([1, 3, 5, 8, 12, 15, 18, 22, 25, 29])
@@ -480,6 +579,42 @@ async function loadContractDistribution() {
   }
 }
 
+async function loadMonthlyContractCustomerTrend() {
+  trendError.value = ''
+  isTrendLoading.value = true
+
+  try {
+    const response = await getFpDashboardMonthlyContractCustomerTrend()
+    monthlyTrend.value = normalizeMonthlyTrend(response?.result)
+  } catch (error) {
+    monthlyTrend.value = createEmptyMonthlyTrend()
+    trendError.value =
+      error.response?.data?.message ||
+      error.message ||
+      '월별 계약/고객 추이를 불러오지 못했습니다.'
+  } finally {
+    isTrendLoading.value = false
+  }
+}
+
+async function loadMonthlyCommissionTrend() {
+  commissionTrendError.value = ''
+  isCommissionTrendLoading.value = true
+
+  try {
+    const response = await getFpDashboardMonthlyCommissionTrend()
+    commissionTrend.value = normalizeCommissionTrend(response?.result)
+  } catch (error) {
+    commissionTrend.value = createEmptyCommissionTrend()
+    commissionTrendError.value =
+      error.response?.data?.message ||
+      error.message ||
+      '월별 수수료 추이를 불러오지 못했습니다.'
+  } finally {
+    isCommissionTrendLoading.value = false
+  }
+}
+
 function normalizeSummary(payload) {
   const fallback = createEmptySummary()
 
@@ -519,6 +654,49 @@ function normalizeContractDistribution(payload) {
     insuranceCompanies: normalizeDistributionItems(payload?.insuranceCompanies, 'insuranceCompanyName'),
     insuranceCategories: normalizeDistributionItems(payload?.insuranceCategories, 'insuranceCategoryName'),
   }
+}
+
+function normalizeMonthlyTrend(payload) {
+  return {
+    referenceDate: payload?.referenceDate ?? '',
+    startMonth: payload?.startMonth ?? '',
+    endMonth: payload?.endMonth ?? '',
+    monthlyTrends: normalizeMonthlyTrendItems(payload?.monthlyTrends),
+  }
+}
+
+function normalizeCommissionTrend(payload) {
+  return {
+    referenceDate: payload?.referenceDate ?? '',
+    startMonth: payload?.startMonth ?? '',
+    endMonth: payload?.endMonth ?? '',
+    monthlyTrends: normalizeCommissionTrendItems(payload?.monthlyTrends),
+  }
+}
+
+function normalizeMonthlyTrendItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items.map((item) => ({
+    month: item?.month ?? '',
+    label: formatMonthLabel(item?.month),
+    newContractCount: toNumber(item?.newContractCount),
+    customerCount: toNumber(item?.customerCount),
+  }))
+}
+
+function normalizeCommissionTrendItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items.map((item) => ({
+    month: item?.month ?? '',
+    label: formatMonthLabel(item?.month),
+    netCommissionAmount: toNumber(item?.netCommissionAmount),
+  }))
 }
 
 function normalizeDistributionItems(items, labelKey) {
@@ -575,6 +753,72 @@ function createEmptyContractDistribution() {
     insuranceCompanies: [],
     insuranceCategories: [],
   }
+}
+
+function createEmptyMonthlyTrend() {
+  return {
+    referenceDate: '',
+    startMonth: '',
+    endMonth: '',
+    monthlyTrends: [],
+  }
+}
+
+function createEmptyCommissionTrend() {
+  return {
+    referenceDate: '',
+    startMonth: '',
+    endMonth: '',
+    monthlyTrends: [],
+  }
+}
+
+function buildMonthlyTrendPoint(item, index, length, value, maxValue) {
+  const minX = 24
+  const maxX = 499
+  const minY = 20
+  const maxY = 140
+  const x = length <= 1 ? minX : minX + ((maxX - minX) / (length - 1)) * index
+  const y = maxY - (toNumber(value) / Math.max(maxValue, 1)) * (maxY - minY)
+
+  return {
+    month: item.month,
+    label: item.label,
+    contracts: item.newContractCount,
+    customers: item.customerCount,
+    value: toNumber(value),
+    x: Math.round(x),
+    y: Math.round(y),
+  }
+}
+
+function showTrendTooltip(point) {
+  trendTooltip.value = {
+    visible: true,
+    label: point.label,
+    contracts: formatCount(point.contracts),
+    customers: formatCount(point.customers),
+    x: Math.min(Math.max((point.x / 520) * 100, 12), 88),
+    y: Math.min(Math.max((point.y / 170) * 100, 18), 82),
+  }
+}
+
+function hideTrendTooltip() {
+  trendTooltip.value.visible = false
+}
+
+function showCommissionTooltip(point) {
+  commissionTooltip.value = {
+    visible: true,
+    label: point.label,
+    amount: formatCount(point.value),
+    x: Math.min(Math.max((point.x / 520) * 100, 12), 88),
+    y: Math.min(Math.max((point.y / 170) * 100, 18), 82),
+  }
+}
+
+function hideCommissionTooltip() {
+  commissionTooltip.value.visible = false
 }
 
 function buildTopItems(items, labelKey) {
@@ -683,6 +927,20 @@ function formatClosingMonth(value) {
   }
 
   return `${year}년 ${Number(month)}월`
+}
+
+function formatMonthLabel(value) {
+  if (!value) {
+    return '-'
+  }
+
+  const [, month] = String(value).split('-')
+
+  if (!month) {
+    return value
+  }
+
+  return `${Number(month)}월`
 }
 
 function toDateInputValue(date) {
@@ -1098,15 +1356,58 @@ function toDateInputValue(date) {
   margin-top: 8px;
 }
 
+.line-chart-wrap {
+  position: relative;
+  margin-top: 8px;
+}
+
 .line-chart__grid line {
   stroke: #e5e7eb;
   stroke-dasharray: 3 4;
+}
+
+.line-chart__point {
+  cursor: pointer;
+}
+
+.line-chart__point:hover {
+  stroke: #ffffff;
+  stroke-width: 2px;
 }
 
 .line-chart__labels text {
   fill: #6b7280;
   font-size: 11px;
   text-anchor: middle;
+}
+
+.line-chart-tooltip {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  min-width: 132px;
+  padding: 9px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+  color: #475569;
+  font-size: 11px;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.line-chart-tooltip strong,
+.line-chart-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.line-chart-tooltip strong {
+  color: #111827;
+  font-size: 12px;
 }
 
 .chart-legend {
@@ -1136,6 +1437,10 @@ function toDateInputValue(date) {
 
 .chart-legend__dot--blue {
   background: #2563eb;
+}
+
+.chart-legend__dot--green {
+  background: #16a34a;
 }
 
 .fp-dashboard__side {
