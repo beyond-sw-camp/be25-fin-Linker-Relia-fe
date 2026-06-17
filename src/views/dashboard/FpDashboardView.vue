@@ -345,7 +345,7 @@ const metrics = computed(() => [
     unit: '위',
     label: '지점 내 자신의 순위',
     change: formatRankChange(summary.value.branchRankChange),
-    isDown: Number(summary.value.branchRankChange) < 0,
+    isDown: Number(summary.value.branchRankChange) > 0,
     color: '#f97316',
     tone: '#fff1e8',
   },
