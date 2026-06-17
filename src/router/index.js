@@ -12,6 +12,10 @@ import PlaceholderView from '../views/common/PlaceholderView.vue'
 import BranchCommissionView from '../views/commission/BranchCommissionView.vue'
 import FpCommissionView from '../views/commission/FpCommissionView.vue'
 import HqCommissionView from '../views/commission/HqCommissionView.vue'
+import ConsultationCreateView from '../views/consultation/ConsultationCreateView.vue'
+import ConsultationDetailView from '../views/consultation/ConsultationDetailView.vue'
+import ConsultationDraftListView from '../views/consultation/ConsultationDraftListView.vue'
+import ConsultationListView from '../views/consultation/ConsultationListView.vue'
 import BranchContractListView from '../views/contract/BranchContractListView.vue'
 import ContractCreateView from '../views/contract/ContractCreateView.vue'
 import ContractDetailView from '../views/contract/ContractDetailView.vue'
@@ -29,6 +33,18 @@ function resolveProtectedComponent(page) {
 
   if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
     return InterestCustomerListView
+  }
+
+  if (['fp-consultations', 'branch-consultations', 'hq-consultations'].includes(page.name)) {
+    return ConsultationListView
+  }
+
+  if (page.name === 'consultation-drafts') {
+    return ConsultationDraftListView
+  }
+
+  if (page.name === 'consultation-create') {
+    return ConsultationCreateView
   }
 
   if (page.name === 'fp-contracts') {
@@ -77,6 +93,36 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
   },
 })).concat([
+  {
+    path: 'consultations/drafts/:draftId',
+    name: 'consultation-draft-detail',
+    component: ConsultationDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP'],
+      title: '임시저장 상담일지 상세',
+    },
+  },
+  {
+    path: 'consultations/drafts/:draftId/edit',
+    name: 'consultation-draft-edit',
+    component: ConsultationCreateView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP'],
+      title: '임시저장 상담일지 수정',
+    },
+  },
+  {
+    path: 'consultations/:consultationId',
+    name: 'consultation-detail',
+    component: ConsultationDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
+      title: '상담일지 상세',
+    },
+  },
   {
     path: 'customers/detail/:customerId',
     name: 'customer-detail',
