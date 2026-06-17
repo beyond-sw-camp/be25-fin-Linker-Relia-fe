@@ -91,6 +91,7 @@
             <thead>
               <tr>
                 <th>고객명</th>
+                <th>지점명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
                 <th>관심 고객 사유</th>
@@ -99,7 +100,6 @@
                 <th>미납 회차</th>
                 <th>갱신 D-Day</th>
                 <th>만기 D-Day</th>
-                <th>지점명</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +109,7 @@
                     {{ formatNullableText(customer.customerName) }}
                   </button>
                 </td>
+                <td>{{ formatNullableText(customer.organizationName) }}</td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
                 <td>{{ getInterestReasonLabel(customer.interestReason) }}</td>
@@ -117,7 +118,6 @@
                 <td>{{ formatNullableNumber(customer.unpaidInstallmentCount) }}</td>
                 <td>{{ formatDDay(customer.renewalDDay) }}</td>
                 <td>{{ formatDDay(customer.maturityDDay) }}</td>
-                <td>{{ formatNullableText(customer.organizationName) }}</td>
               </tr>
             </tbody>
           </table>
