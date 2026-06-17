@@ -360,9 +360,10 @@
             <p>STT 기능을 사용하면 상담 음성을 텍스트로 변환하여 상담일지 작성에 참고할 수 있습니다. 변환된 내용은 반드시 설계사가 검토한 후 최종 저장해야 합니다.</p>
           </div>
           <div class="stt-actions">
-            <button type="button">STT 녹음 시작</button>
-            <button type="button">변환 내용 불러오기</button>
-            <button type="button">텍스트 검토</button>
+            <button type="button" aria-label="녹취 파일 첨부">
+              <v-icon icon="mdi-file-upload-outline" size="16" />
+            </button>
+            <button type="button">텍스트로 추출하기</button>
           </div>
         </section>
 
@@ -407,7 +408,7 @@
                     type="button"
                     class="choice-button"
                     :class="{ 'is-active': newDetail.hasExistingInsurance === true }"
-                    @click="setExistingInsurance(toggleSingleSelection(newDetail.hasExistingInsurance, true))"
+                    @click="setExistingInsurancetrue(true)"
                   >
                     있음
                   </button>
@@ -415,7 +416,7 @@
                     type="button"
                     class="choice-button"
                     :class="{ 'is-active': newDetail.hasExistingInsurance === false }"
-                    @click="setExistingInsurance(toggleSingleSelection(newDetail.hasExistingInsurance, false))"
+                    @click="setExistingInsurancetrue(false)"
                   >
                     없음
                   </button>
@@ -486,12 +487,15 @@
             <div class="field">
               <span>제안 상품 선택</span>
               <div class="product-search-row">
-                <input
-                  v-model.trim="proposedProductKeyword"
-                  class="control"
-                  placeholder="상품명 검색 또는 선택..."
-                  @keyup.enter.prevent="loadProposedProducts"
-                />
+                <div class="product-search-input">
+                  <v-icon icon="mdi-magnify" size="15" />
+                  <input
+                    v-model.trim="proposedProductKeyword"
+                    class="control"
+                    placeholder="상품명 검색 또는 선택..."
+                    @keyup.enter.prevent="loadProposedProducts"
+                  />
+                </div>
                 <button type="button" class="add-button" @click="loadProposedProducts">추가</button>
               </div>
               <div v-if="showProductOptions" class="product-option-list">
@@ -927,19 +931,10 @@ import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
 import { getInsuranceProducts } from '../../api/insurance'
-import { USER_ROLES } from '../../constants/auth'
-import { useAuthStore } from '../../stores/auth'
 import { getConsultationDraft, saveConsultationDraft } from '../../utils/consultationDrafts'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
-
-const consultationListRouteByRole = {
-  [USER_ROLES.FP]: 'fp-consultations',
-  [USER_ROLES.BRANCH_MANAGER]: 'branch-consultations',
-  [USER_ROLES.HQ_MANAGER]: 'hq-consultations',
-}
 
 const typeOptions = [
   { label: '신규', value: 'NEW_CONTRACT' },
@@ -1112,7 +1107,6 @@ const emailLocalPart = ref('')
 const emailDomainSelected = ref(emailDomainOptions[0])
 const emailDomainCustom = ref('')
 const emailDomainMode = ref('selected')
-let contractsRequestId = 0
 
 const form = reactive({
   consultationType: 'NEW_CONTRACT',
@@ -1271,7 +1265,8 @@ watch(
   () => form.consultationType,
   () => {
     if (!isNewContract.value) customerMode.value = 'EXISTING'
-    clearContracts()
+    form.contractId = ''
+    contracts.value = []
   },
 )
 
@@ -1279,7 +1274,8 @@ watch(customerMode, () => {
   customers.value = []
   customerSearchTouched.value = false
   selectedCustomer.value = null
-  clearContracts()
+  form.contractId = ''
+  contracts.value = []
   resetCustomerInfo()
 })
 
@@ -1296,13 +1292,15 @@ watch(
 watch(
   () => selectedCustomer.value?.customerId,
   async (customerId) => {
-    clearContracts()
+    form.contractId = ''
+    contracts.value = []
     if (customerId && needsContract.value) await loadContracts(customerId)
   },
 )
 
 watch(needsContract, async (value) => {
-  clearContracts()
+  form.contractId = ''
+  contracts.value = []
   if (value && selectedCustomer.value?.customerId) await loadContracts(selectedCustomer.value.customerId)
 })
 
@@ -1366,30 +1364,12 @@ async function selectCustomer(customer) {
 }
 
 async function loadContracts(customerId) {
-  const requestId = ++contractsRequestId
-
   try {
     const response = await getCustomerContracts(customerId)
-    if (!isCurrentContractsRequest(requestId, customerId)) return
     contracts.value = Array.isArray(response?.result) ? response.result : []
   } catch {
-    if (!isCurrentContractsRequest(requestId, customerId)) return
     contracts.value = []
   }
-}
-
-function clearContracts() {
-  contractsRequestId += 1
-  form.contractId = ''
-  contracts.value = []
-}
-
-function isCurrentContractsRequest(requestId, customerId) {
-  return (
-    requestId === contractsRequestId &&
-    needsContract.value &&
-    selectedCustomer.value?.customerId === customerId
-  )
 }
 
 function hydrateDraft() {
@@ -1421,7 +1401,7 @@ function hydrateDraft() {
   if (!Array.isArray(newDetail.coverageTypes)) {
     newDetail.coverageTypes = splitCommaList(draft.newDetail?.coverageTypesText)
   }
-  selectedProposedProducts.value = draft.selectedProposedProducts || []
+  selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
   Object.assign(claimDetail, draft.claimDetail || {})
   if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
   if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
@@ -1497,7 +1477,7 @@ async function submitConsultation() {
     await createConsultation(buildSubmitPayload())
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
-    window.setTimeout(() => router.push({ name: getConsultationListRouteName() }), 500)
+    window.setTimeout(() => router.push({ name: 'fp-consultations' }), 500)
   } catch (error) {
     messageType.value = 'error'
     message.value = error.response?.data?.message || error.message || '상담일지 저장에 실패했습니다.'
@@ -1798,11 +1778,7 @@ function selectAddress(address) {
 }
 
 function goBack() {
-  router.push(isEditMode.value ? { name: 'consultation-drafts' } : { name: getConsultationListRouteName() })
-}
-
-function getConsultationListRouteName() {
-  return consultationListRouteByRole[authStore.userRole] ?? 'fp-consultations'
+  router.push(isEditMode.value ? { name: 'consultation-drafts' } : { name: 'fp-consultations' })
 }
 
 function parseMoneyOrNull(value) {
@@ -2096,6 +2072,26 @@ function toApiDateTime(value) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 72px;
   gap: 8px;
+}
+
+.product-search-input {
+  position: relative;
+  min-width: 0;
+}
+
+.product-search-input .v-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  z-index: 1;
+  color: #94a3b8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.product-search-input .control {
+  width: 100%;
+  padding-left: 32px;
 }
 
 .add-button {
