@@ -24,9 +24,14 @@ import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
 import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
+import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
+  if (page.name === 'fp-dashboard') {
+    return FpDashboardView
+  }
+
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
   }
