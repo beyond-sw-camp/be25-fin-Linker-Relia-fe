@@ -557,6 +557,50 @@
                 <span>발생일 또는 진단일</span>
                 <input v-model="claimDetail.incidentDate" class="control" type="date" />
               </label>
+              <label class="field">
+                <span>병원명</span>
+                <input v-model.trim="claimDetail.hospitalName" class="control" />
+              </label>
+              <label class="field field--wide">
+                <span>진단/치료 내용</span>
+                <textarea
+                  v-model.trim="claimDetail.diagnosisOrTreatment"
+                  class="control textarea"
+                  placeholder="진단명 또는 치료 내용을 입력하세요."
+                ></textarea>
+              </label>
+              <div class="claim-status-grid field--wide">
+                <div class="field">
+                  <span>입원/통원 여부</span>
+                  <div class="option-chip-row option-chip-row--balanced">
+                    <button
+                      v-for="option in hospitalizationStatusOptions"
+                      :key="option"
+                      type="button"
+                      class="option-chip"
+                      :class="{ 'is-active': claimDetail.hospitalizationStatus === option }"
+                      @click="claimDetail.hospitalizationStatus = toggleSingleSelection(claimDetail.hospitalizationStatus, option)"
+                    >
+                      {{ option }}
+                    </button>
+                  </div>
+                </div>
+                <div class="field">
+                  <span>수술 여부</span>
+                  <div class="option-chip-row option-chip-row--balanced">
+                    <button
+                      v-for="option in surgeryStatusOptions"
+                      :key="option"
+                      type="button"
+                      class="option-chip"
+                      :class="{ 'is-active': claimDetail.surgeryStatus === option }"
+                      @click="claimDetail.surgeryStatus = toggleSingleSelection(claimDetail.surgeryStatus, option)"
+                    >
+                      {{ option }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -1021,6 +1065,10 @@ const claimResultOptions = ['청구 가능', '추가 확인 필요', '서류 보
 
 const claimNextActionOptions = ['고객 서류 준비', '설계사 서류 확인', '보험사 접수', '진행 상태 확인', '부지급 사유 확인', '추가 상담 예정']
 
+const hospitalizationStatusOptions = ['입원', '통원', '입원+통원', '해당 없음', '확인 필요']
+
+const surgeryStatusOptions = ['수술함', '수술 안함', '수술 예정', '해당 없음', '확인 필요']
+
 const renewalChangeTypeOptions = ['변경 없음', '보장 확대', '보장 축소', '특약 변경']
 
 const renewalPremiumReasonOptions = ['연령 증가', '위험률 변경', '손해율 변경', '보장 변경', '보험사 정책 변경', '기타']
@@ -1153,6 +1201,10 @@ const claimDetail = reactive({
   claimType: '',
   claimReason: '',
   incidentDate: '',
+  hospitalName: '',
+  diagnosisOrTreatment: '',
+  hospitalizationStatus: '',
+  surgeryStatus: '',
   claimAmount: '',
   reviewItems: [],
   result: '',
@@ -1520,6 +1572,10 @@ function buildSubmitPayload() {
       claimType: claimDetail.claimType || null,
       claimReason: claimDetail.claimReason || null,
       incidentDate: claimDetail.incidentDate || null,
+      hospitalName: claimDetail.hospitalName || null,
+      diagnosisOrTreatment: claimDetail.diagnosisOrTreatment || null,
+      hospitalizationStatus: claimDetail.hospitalizationStatus || null,
+      surgeryStatus: claimDetail.surgeryStatus || null,
       claimAmount: parseMoneyOrNull(claimDetail.claimAmount),
       reviewItems: claimDetail.reviewItems,
       result: claimDetail.result || null,
@@ -1590,11 +1646,9 @@ function buildCustomerInfoPayload() {
 function validateForm() {
   if (!form.consultedAt) return '상담 일시를 입력해주세요.'
   if (needsExistingCustomer.value && !selectedCustomer.value) return '고객을 선택해주세요.'
-  if (!needsExistingCustomer.value && (!customerInfo.customerName || !customerInfo.customerPhone)) {
-    return '신규 고객의 이름과 연락처를 입력해주세요.'
-  }
-  if (!needsExistingCustomer.value && (!customerInfo.customerZipcode || !customerInfo.customerAddressRoad)) {
-    return '주소 검색 후 주소를 선택해주세요.'
+  if (!needsExistingCustomer.value) {
+    const customerValidationMessage = validateNewCustomerInfo()
+    if (customerValidationMessage) return customerValidationMessage
   }
   if (needsContract.value && !form.contractId) return '계약을 선택해주세요.'
   if (form.consultationType === 'NEW_CONTRACT' && newDetail.hasExistingInsurance) {
@@ -1622,6 +1676,33 @@ function validateForm() {
     if (!cancelDetail.result) return '상담 결과를 선택해주세요.'
   }
   return ''
+}
+
+function validateNewCustomerInfo() {
+  const requiredFields = [
+    { value: customerInfo.customerName, label: '고객명' },
+    { value: customerInfo.customerGender, label: '성별' },
+    { value: customerInfo.customerBirthDate, label: '생년월일' },
+    { value: customerInfo.customerPhone, label: '연락처' },
+    { value: customerInfo.customerEmail, label: '이메일' },
+    { value: customerInfo.customerZipcode, label: '우편번호' },
+    { value: customerInfo.customerAddressRoad, label: '도로명주소' },
+    { value: customerInfo.customerAddressDetail, label: '상세주소' },
+    { value: customerInfo.customerJob, label: '직업' },
+    { value: customerInfo.customerCompanyName, label: '회사명' },
+    { value: customerInfo.customerAnnualIncome, label: '연 소득' },
+    { value: customerInfo.customerAssetSize, label: '자산 규모' },
+    { value: customerInfo.customerDebtStatus, label: '부채 현황' },
+    { value: customerInfo.customerMaritalStatus, label: '혼인 상태' },
+    { value: customerInfo.customerDependentsCount, label: '부양가족 수' },
+  ]
+
+  if (customerInfo.customerJob === '기타/직접입력') {
+    requiredFields.push({ value: customerInfo.customerJobCustom, label: '직업 직접 입력' })
+  }
+
+  const emptyField = requiredFields.find((field) => String(field.value ?? '').trim() === '')
+  return emptyField ? `신규 고객의 ${emptyField.label}을(를) 입력해주세요.` : ''
 }
 
 function setExistingInsurance(value) {
@@ -1812,6 +1893,69 @@ function toApiDateTime(value) {
 </script>
 
 <style scoped>
+.journal-page button {
+  border-radius: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.journal-page button:not(:disabled) {
+  cursor: pointer;
+}
+
+.journal-page button:disabled {
+  cursor: not-allowed;
+}
+
+.journal-breadcrumb button,
+.segmented button,
+.pill,
+.search-control button,
+.stt-actions button,
+.choice-button,
+.option-chip,
+.claim-type-button,
+.checkbox-chip,
+.claim-result-button,
+.address-box__button,
+.add-button,
+.product-option-list button,
+.address-results__item,
+.journal-actions button {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pill.is-active,
+.segmented button.is-active,
+.choice-button.is-active,
+.option-chip.is-active,
+.claim-type-button.is-active,
+.checkbox-chip.is-active,
+.claim-result-button.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.stt-actions button:first-child,
+.subtle-button,
+.outline-button {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #475569;
+}
+
+.save-button,
+.add-button {
+  border-color: #f97316;
+  background: #f97316;
+  color: #ffffff;
+}
+
 .prospect-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1859,6 +2003,10 @@ function toApiDateTime(value) {
   gap: 8px;
 }
 
+.option-chip-row--balanced {
+  flex-wrap: nowrap;
+}
+
 .section-help {
   margin: 0 0 14px;
   color: #64748b;
@@ -1874,9 +2022,9 @@ function toApiDateTime(value) {
   min-height: 32px;
   padding: 0 14px;
   border: 1px solid #e5e7eb;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #ffffff;
-  color: #374151;
+  color: #475569;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -1903,6 +2051,21 @@ function toApiDateTime(value) {
 
 .field.is-disabled .control {
   cursor: not-allowed;
+}
+
+.claim-status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.claim-status-grid .field {
+  min-width: 0;
+}
+
+.claim-status-grid .option-chip {
+  flex: 1 1 0;
+  min-width: max-content;
 }
 
 .control--locked {
@@ -1969,7 +2132,7 @@ function toApiDateTime(value) {
 .claim-type-button.is-active {
   border-color: #fb923c;
   background: #fff7ed;
-  color: #f97316;
+  color: #ea580c;
   box-shadow: inset 0 0 0 1px #fb923c;
 }
 
@@ -2002,7 +2165,7 @@ function toApiDateTime(value) {
 }
 
 .checkbox-chip.is-active {
-  border-color: #fed7aa;
+  border-color: #fb923c;
   background: #fff7ed;
   color: #ea580c;
 }
@@ -2020,7 +2183,7 @@ function toApiDateTime(value) {
 }
 
 .claim-result-button.is-active {
-  border-color: #fed7aa;
+  border-color: #fb923c;
   background: #fff7ed;
   color: #ea580c;
 }
@@ -2101,7 +2264,7 @@ function toApiDateTime(value) {
   background: #f97316;
   color: #ffffff;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -2161,7 +2324,7 @@ function toApiDateTime(value) {
   min-height: 28px;
   padding: 0 10px;
   border: 1px solid #fed7aa;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #fff7ed;
   color: #ea580c;
   font-size: 11px;
@@ -2169,11 +2332,12 @@ function toApiDateTime(value) {
 }
 
 .selected-product-tags button {
+  border-radius: 6px;
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -2293,7 +2457,7 @@ function toApiDateTime(value) {
   gap: 6px;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #fff7ed;
   color: #f97316;
   font-size: 11px;
@@ -2301,13 +2465,20 @@ function toApiDateTime(value) {
 }
 
 .selected-disease-chip button {
+  border-radius: 6px;
   border: 0;
   background: transparent;
   color: inherit;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
 }
 
 @media (max-width: 900px) {
+  .option-chip-row--balanced {
+    flex-wrap: wrap;
+  }
+
   .prospect-grid,
   .email-row,
   .address-box__search,
@@ -2315,6 +2486,7 @@ function toApiDateTime(value) {
   .disease-picker,
   .product-search-row,
   .claim-type-grid,
+  .claim-status-grid,
   .renewal-info-grid,
   .renewal-change-layout,
   .renewal-two-column {
