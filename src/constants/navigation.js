@@ -65,6 +65,13 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
+    path: 'handovers/received',
+    name: 'handover-received',
+    title: '인수받은 고객 목록',
+    description: 'FP가 본인이 인수받은 고객 목록을 조회하는 화면입니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
     path: 'dashboard/branch',
     name: 'branch-dashboard',
     title: '지점 대시보드',
@@ -104,20 +111,6 @@ export const APP_PAGE_SPECS = [
     name: 'handover-requests',
     title: '인수인계 요청 목록',
     description: '지점 인수인계 요청을 관리하는 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/pending',
-    name: 'handover-pending',
-    title: '결재 대기',
-    description: '처리 대기 중인 인수인계 결재 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/history',
-    name: 'handover-history',
-    title: '인수인계 이력',
-    description: '인수인계 이력을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -246,7 +239,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
-        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
@@ -266,8 +258,17 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
+      title: '인수인계',
+      icon: 'mdi-swap-horizontal',
       title: '수수료 관리',
       icon: 'mdi-trending-up',
+      children: [
+        { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
+      ],
+    },
+    {
+      title: '수수료 관리',
+      icon: 'mdi-cash-multiple',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
@@ -284,7 +285,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
-        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
@@ -306,8 +306,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-swap-horizontal',
       children: [
         { title: '인수인계 요청 목록', to: { name: 'handover-requests' } },
-        { title: '결재 대기', to: { name: 'handover-pending' } },
-        { title: '인수인계 이력', to: { name: 'handover-history' } },
       ],
     },
     {
@@ -336,7 +334,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
-        { title: '전사 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {
@@ -354,7 +351,7 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '인수인계 모니터링',
+      title: '인수인계 관리',
       icon: 'mdi-monitor-eye',
       children: [
         { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
