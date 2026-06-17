@@ -15,6 +15,11 @@ export async function getContractDetail(contractId) {
   return response.data
 }
 
+export async function getCustomerContracts(customerId) {
+  const response = await authApi.get(`/customers/${customerId}/contracts`)
+  return response.data
+}
+
 export async function getContractSummary(params) {
   const response = await authApi.get('/contracts/summary', { params })
   return response.data
