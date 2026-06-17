@@ -91,6 +91,7 @@
             <thead>
               <tr>
                 <th>고객명</th>
+                <th>지점명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
                 <th>관심 고객 사유</th>
@@ -99,7 +100,6 @@
                 <th>미납 회차</th>
                 <th>갱신 D-Day</th>
                 <th>만기 D-Day</th>
-                <th>지점명</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +109,7 @@
                     {{ formatNullableText(customer.customerName) }}
                   </button>
                 </td>
+                <td>{{ formatNullableText(customer.organizationName) }}</td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
                 <td>{{ getInterestReasonLabel(customer.interestReason) }}</td>
@@ -117,7 +118,6 @@
                 <td>{{ formatNullableNumber(customer.unpaidInstallmentCount) }}</td>
                 <td>{{ formatDDay(customer.renewalDDay) }}</td>
                 <td>{{ formatDDay(customer.maturityDDay) }}</td>
-                <td>{{ formatNullableText(customer.organizationName) }}</td>
               </tr>
             </tbody>
           </table>
@@ -255,11 +255,13 @@ function formatDDay(value) {
 .customer-page {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .customer-page__toolbar {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .customer-page__filters {
@@ -274,6 +276,8 @@ function formatDDay(value) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .customer-page__organization-filter,
@@ -288,6 +292,8 @@ function formatDDay(value) {
   align-items: center;
   gap: 2px;
   overflow-x: auto;
+  flex: 1 1 420px;
+  min-width: 0;
 }
 
 .status-tabs__button {
@@ -312,12 +318,16 @@ function formatDDay(value) {
   align-items: center;
   gap: 12px;
   margin-left: auto;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .customer-page__name-filter {
   width: 240px;
-  flex: 0 0 auto;
+  max-width: 100%;
+  flex: 1 1 240px;
 }
 
 .customer-page__search-button {
@@ -339,7 +349,7 @@ function formatDDay(value) {
 .customer-page__summary {
   overflow-x: auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 18px;
 }
 
@@ -389,6 +399,7 @@ function formatDDay(value) {
   background: #ffffff;
   border: 1px solid #edf1f7;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+  min-width: 0;
 }
 
 .customer-panel__state {
@@ -403,12 +414,13 @@ function formatDDay(value) {
   overflow-x: auto;
   border: 1px solid #f0f3f8;
   border-radius: 16px;
+  min-width: 0;
 }
 
 .customer-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1360px;
+  min-width: 1180px;
 }
 
 .customer-table th,
@@ -454,6 +466,19 @@ function formatDDay(value) {
 
   .customer-page__search-group {
     margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 1280px) {
+  .customer-table table {
+    min-width: 1080px;
+  }
+
+  .customer-table th,
+  .customer-table td {
+    padding: 12px 10px;
+    font-size: 12px;
   }
 }
 

@@ -128,7 +128,7 @@ function toggleSection(title) {
 
 <style scoped>
 .app-sidebar {
-  width: 208px;
+  width: 232px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
