@@ -68,8 +68,19 @@
       <div class="chart-grid">
         <section class="panel chart-panel">
           <h3>보험사별 계약 건수</h3>
-          <div class="bar-chart" aria-label="보험사별 계약 건수 차트">
+          <div v-if="isDistributionLoading" class="chart-state">
+            <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
+            <span>계약 분포를 불러오는 중입니다.</span>
+          </div>
+          <div v-else-if="distributionError" class="chart-state chart-state--error">
+            {{ distributionError }}
+          </div>
+          <div v-else-if="insurerBars.length === 0" class="chart-state">
+            보험사별 계약 데이터가 없습니다.
+          </div>
+          <div v-else class="bar-chart" aria-label="보험사별 계약 건수 차트">
             <div v-for="bar in insurerBars" :key="bar.label" class="bar-chart__item">
+              <strong>{{ bar.value }}건</strong>
               <div class="bar-chart__bar" :style="{ height: `${bar.height}%` }"></div>
               <span>{{ bar.label }}</span>
             </div>
@@ -78,13 +89,23 @@
 
         <section class="panel chart-panel chart-panel--donut">
           <h3>보종별 계약 건수</h3>
-          <div class="donut-summary">
-            <div class="donut-summary__chart" aria-hidden="true"></div>
+          <div v-if="isDistributionLoading" class="chart-state">
+            <v-progress-circular indeterminate color="#f97316" size="22" width="2" />
+            <span>계약 분포를 불러오는 중입니다.</span>
+          </div>
+          <div v-else-if="distributionError" class="chart-state chart-state--error">
+            {{ distributionError }}
+          </div>
+          <div v-else-if="productSummary.length === 0" class="chart-state">
+            보종별 계약 데이터가 없습니다.
+          </div>
+          <div v-else class="donut-summary">
+            <div class="donut-summary__chart" :style="{ background: donutGradient }" aria-hidden="true"></div>
             <ul>
               <li v-for="item in productSummary" :key="item.label">
                 <span :style="{ backgroundColor: item.color }"></span>
                 {{ item.label }}
-                <strong>{{ item.value }}건</strong>
+                <strong>{{ item.value }}건 · {{ item.ratio }}%</strong>
               </li>
             </ul>
           </div>
@@ -186,15 +207,20 @@ import { RouterLink } from 'vue-router'
 
 import {
   getFpDashboardContractStatus,
+  getFpDashboardContractDistribution,
   getFpDashboardSummary,
 } from '../../api/dashboard'
 
+const chartColors = ['#2563eb', '#f97316', '#16a34a', '#f59e0b', '#7c3aed', '#0f766e']
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
 const summaryError = ref('')
 const contractStatusSummary = ref(createEmptyContractStatusSummary())
 const isContractStatusLoading = ref(false)
 const contractStatusError = ref('')
+const distribution = ref(createEmptyContractDistribution())
+const isDistributionLoading = ref(false)
+const distributionError = ref('')
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
 
@@ -294,26 +320,57 @@ const contractStatusCards = computed(() => [
   },
 ])
 
+const insurerBars = computed(() => {
+  const items = buildTopItems(distribution.value.insuranceCompanies, 'insuranceCompanyName')
+  const maxCount = Math.max(...items.map((item) => item.contractCount), 1)
+
+  return items.map((item) => ({
+    label: item.label,
+    value: item.contractCount,
+    height: Math.max((item.contractCount / maxCount) * 100, 8),
+  }))
+})
+
+const productSummary = computed(() => {
+  const items = distribution.value.insuranceCategories.map((item) => ({
+    label: item.label ?? item.insuranceCategoryName ?? '-',
+    contractCount: toNumber(item.contractCount),
+  }))
+  const total = items.reduce((sum, item) => sum + item.contractCount, 0)
+
+  return items.map((item, index) => ({
+    label: item.label,
+    value: item.contractCount.toLocaleString('ko-KR'),
+    ratio: total > 0 ? ((item.contractCount / total) * 100).toFixed(1) : '0.0',
+    rawValue: item.contractCount,
+    color: chartColors[index % chartColors.length],
+  }))
+})
+
+const donutGradient = computed(() => {
+  if (productSummary.value.length === 0) {
+    return '#f1f5f9'
+  }
+
+  const total = productSummary.value.reduce((sum, item) => sum + item.rawValue, 0)
+  let cursor = 0
+
+  const stops = productSummary.value.map((item) => {
+    const start = cursor
+    const end = total > 0 ? cursor + (item.rawValue / total) * 100 : cursor
+    cursor = end
+
+    return `${item.color} ${start}% ${end}%`
+  })
+
+  return `conic-gradient(${stops.join(', ')})`
+})
+
 onMounted(() => {
   loadDashboardSummary()
   loadContractStatusSummary()
+  loadContractDistribution()
 })
-
-const insurerBars = [
-  { label: '한화생명', height: 100 },
-  { label: '삼성화재', height: 66 },
-  { label: '현대해상', height: 50 },
-  { label: 'DB손보', height: 34 },
-  { label: '메리츠화재', height: 26 },
-]
-
-const productSummary = [
-  { label: '생명보험', value: 32, color: '#2563eb' },
-  { label: '손해보험', value: 24, color: '#f97316' },
-  { label: '자동차보험', value: 18, color: '#16a34a' },
-  { label: '실손보험', value: 14, color: '#f59e0b' },
-  { label: '건강보험', value: 12, color: '#7c3aed' },
-]
 
 const months = [
   { label: '2월', x: 20 },
@@ -405,6 +462,24 @@ async function loadContractStatusSummary() {
   }
 }
 
+async function loadContractDistribution() {
+  distributionError.value = ''
+  isDistributionLoading.value = true
+
+  try {
+    const response = await getFpDashboardContractDistribution()
+    distribution.value = normalizeContractDistribution(response?.result)
+  } catch (error) {
+    distribution.value = createEmptyContractDistribution()
+    distributionError.value =
+      error.response?.data?.message ||
+      error.message ||
+      '계약 분포 정보를 불러오지 못했습니다.'
+  } finally {
+    isDistributionLoading.value = false
+  }
+}
+
 function normalizeSummary(payload) {
   const fallback = createEmptySummary()
 
@@ -434,6 +509,30 @@ function normalizeContractStatusSummary(payload) {
     terminatedContractCount: toNumber(payload?.terminatedContractCount),
     completedContractCount: toNumber(payload?.completedContractCount),
   }
+}
+
+function normalizeContractDistribution(payload) {
+  return {
+    referenceDate: payload?.referenceDate ?? '',
+    closingMonth: payload?.closingMonth ?? '',
+    totalContractCount: toNumber(payload?.totalContractCount),
+    insuranceCompanies: normalizeDistributionItems(payload?.insuranceCompanies, 'insuranceCompanyName'),
+    insuranceCategories: normalizeDistributionItems(payload?.insuranceCategories, 'insuranceCategoryName'),
+  }
+}
+
+function normalizeDistributionItems(items, labelKey) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .map((item) => ({
+      ...item,
+      label: item?.[labelKey] ?? '-',
+      contractCount: toNumber(item?.contractCount),
+    }))
+    .filter((item) => item.contractCount > 0)
 }
 
 function createEmptySummary() {
@@ -466,6 +565,44 @@ function createEmptyContractStatusSummary() {
     terminatedContractCount: 0,
     completedContractCount: 0,
   }
+}
+
+function createEmptyContractDistribution() {
+  return {
+    referenceDate: '',
+    closingMonth: '',
+    totalContractCount: 0,
+    insuranceCompanies: [],
+    insuranceCategories: [],
+  }
+}
+
+function buildTopItems(items, labelKey) {
+  const normalizedItems = items.map((item) => ({
+    label: item.label ?? item?.[labelKey] ?? '-',
+    contractCount: toNumber(item.contractCount),
+  }))
+
+  if (normalizedItems.length <= 5) {
+    return normalizedItems
+  }
+
+  const visibleItems = normalizedItems.slice(0, 5)
+  const etcCount = normalizedItems
+    .slice(5)
+    .reduce((sum, item) => sum + item.contractCount, 0)
+
+  if (etcCount === 0) {
+    return visibleItems
+  }
+
+  return [
+    ...visibleItems,
+    {
+      label: '기타',
+      contractCount: etcCount,
+    },
+  ]
 }
 
 function toNumber(value) {
@@ -846,12 +983,32 @@ function toDateInputValue(date) {
   min-height: 205px;
 }
 
+.chart-state {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.chart-state--error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 .bar-chart {
   height: 160px;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   align-items: end;
-  gap: 20px;
+  gap: 14px;
   margin-top: 12px;
   padding: 0 16px 4px;
   background:
@@ -861,15 +1018,20 @@ function toDateInputValue(date) {
 .bar-chart__item {
   height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
   justify-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #6b7280;
   font-size: 11px;
 }
 
+.bar-chart__item strong {
+  color: #111827;
+  font-size: 11px;
+}
+
 .bar-chart__bar {
-  width: 76px;
+  width: min(54px, 100%);
   align-self: end;
   border-radius: 5px 5px 0 0;
   background: #f97316;
@@ -886,6 +1048,8 @@ function toDateInputValue(date) {
 .donut-summary__chart {
   width: 118px;
   height: 118px;
+  display: grid;
+  place-items: center;
   justify-self: center;
   border-radius: 999px;
   background: conic-gradient(#2563eb 0 32%, #f97316 32% 56%, #16a34a 56% 74%, #f59e0b 74% 88%, #7c3aed 88% 100%);
@@ -898,6 +1062,7 @@ function toDateInputValue(date) {
   inset: 32px;
   border-radius: 999px;
   background: #ffffff;
+  z-index: 0;
 }
 
 .donut-summary ul {
