@@ -41,7 +41,6 @@
       <section class="contract-overview panel">
         <div class="panel__title-row">
           <h3>계약 현황 및 건수 조회</h3>
-          <RouterLink class="panel__link" :to="{ name: 'fp-contracts' }">계약 목록 전체 보기</RouterLink>
         </div>
 
         <div v-if="isContractStatusLoading" class="contract-overview__state">
@@ -274,8 +273,6 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-
 import {
   getFpDashboardContractStatus,
   getFpDashboardContractDistribution,
@@ -407,9 +404,9 @@ const contractStatusCards = computed(() => [
     className: 'status-card--terminated',
   },
   {
-    label: '만기 완료',
+    label: '만기',
     value: formatCount(contractStatusSummary.value.completedContractCount),
-    caption: '만기 완료된 계약',
+    caption: '만기된 계약',
     className: 'status-card--completed',
   },
 ])
