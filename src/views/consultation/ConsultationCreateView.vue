@@ -927,10 +927,19 @@ import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
 import { getInsuranceProducts } from '../../api/insurance'
+import { USER_ROLES } from '../../constants/auth'
+import { useAuthStore } from '../../stores/auth'
 import { getConsultationDraft, saveConsultationDraft } from '../../utils/consultationDrafts'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+
+const consultationListRouteByRole = {
+  [USER_ROLES.FP]: 'fp-consultations',
+  [USER_ROLES.BRANCH_MANAGER]: 'branch-consultations',
+  [USER_ROLES.HQ_MANAGER]: 'hq-consultations',
+}
 
 const typeOptions = [
   { label: '신규', value: 'NEW_CONTRACT' },
@@ -1103,6 +1112,7 @@ const emailLocalPart = ref('')
 const emailDomainSelected = ref(emailDomainOptions[0])
 const emailDomainCustom = ref('')
 const emailDomainMode = ref('selected')
+let contractsRequestId = 0
 
 const form = reactive({
   consultationType: 'NEW_CONTRACT',
@@ -1261,8 +1271,7 @@ watch(
   () => form.consultationType,
   () => {
     if (!isNewContract.value) customerMode.value = 'EXISTING'
-    form.contractId = ''
-    contracts.value = []
+    clearContracts()
   },
 )
 
@@ -1270,8 +1279,7 @@ watch(customerMode, () => {
   customers.value = []
   customerSearchTouched.value = false
   selectedCustomer.value = null
-  form.contractId = ''
-  contracts.value = []
+  clearContracts()
   resetCustomerInfo()
 })
 
@@ -1288,15 +1296,13 @@ watch(
 watch(
   () => selectedCustomer.value?.customerId,
   async (customerId) => {
-    form.contractId = ''
-    contracts.value = []
+    clearContracts()
     if (customerId && needsContract.value) await loadContracts(customerId)
   },
 )
 
 watch(needsContract, async (value) => {
-  form.contractId = ''
-  contracts.value = []
+  clearContracts()
   if (value && selectedCustomer.value?.customerId) await loadContracts(selectedCustomer.value.customerId)
 })
 
@@ -1360,12 +1366,30 @@ async function selectCustomer(customer) {
 }
 
 async function loadContracts(customerId) {
+  const requestId = ++contractsRequestId
+
   try {
     const response = await getCustomerContracts(customerId)
+    if (!isCurrentContractsRequest(requestId, customerId)) return
     contracts.value = Array.isArray(response?.result) ? response.result : []
   } catch {
+    if (!isCurrentContractsRequest(requestId, customerId)) return
     contracts.value = []
   }
+}
+
+function clearContracts() {
+  contractsRequestId += 1
+  form.contractId = ''
+  contracts.value = []
+}
+
+function isCurrentContractsRequest(requestId, customerId) {
+  return (
+    requestId === contractsRequestId &&
+    needsContract.value &&
+    selectedCustomer.value?.customerId === customerId
+  )
 }
 
 function hydrateDraft() {
@@ -1473,7 +1497,7 @@ async function submitConsultation() {
     await createConsultation(buildSubmitPayload())
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
-    window.setTimeout(() => router.push({ name: 'fp-consultations' }), 500)
+    window.setTimeout(() => router.push({ name: getConsultationListRouteName() }), 500)
   } catch (error) {
     messageType.value = 'error'
     message.value = error.response?.data?.message || error.message || '상담일지 저장에 실패했습니다.'
@@ -1774,7 +1798,11 @@ function selectAddress(address) {
 }
 
 function goBack() {
-  router.push(isEditMode.value ? { name: 'consultation-drafts' } : { name: 'fp-consultations' })
+  router.push(isEditMode.value ? { name: 'consultation-drafts' } : { name: getConsultationListRouteName() })
+}
+
+function getConsultationListRouteName() {
+  return consultationListRouteByRole[authStore.userRole] ?? 'fp-consultations'
 }
 
 function parseMoneyOrNull(value) {

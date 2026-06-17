@@ -16,7 +16,7 @@ export function getConsultationDraft(draftId) {
 export function saveConsultationDraft(payload, draftId) {
   const now = new Date().toISOString()
   const drafts = getConsultationDrafts()
-  const id = draftId || `draft-${Date.now()}`
+  const id = draftId || (window.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
   const nextDraft = {
     id,
     ...payload,

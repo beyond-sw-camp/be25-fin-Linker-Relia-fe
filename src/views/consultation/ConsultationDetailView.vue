@@ -68,12 +68,21 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getConsultation } from '../../api/consultations'
+import { USER_ROLES } from '../../constants/auth'
 import { getConsultationChannelLabel, getConsultationTypeLabel } from '../../constants/customer'
+import { useAuthStore } from '../../stores/auth'
 import { getConsultationDraft } from '../../utils/consultationDrafts'
 import { formatDateTime } from '../../utils/formatters'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+
+const consultationListRouteByRole = {
+  [USER_ROLES.FP]: 'fp-consultations',
+  [USER_ROLES.BRANCH_MANAGER]: 'branch-consultations',
+  [USER_ROLES.HQ_MANAGER]: 'hq-consultations',
+}
 
 const detail = ref({})
 const errorMessage = ref('')
@@ -114,16 +123,10 @@ const typeDetailItems = computed(() => {
 
   const source = detail.value.cancelDetail || {}
   return [
-    { label: '보험료 부담', value: yesNo(source.premiumBurden) },
-    { label: '갱신 보험료 부담', value: yesNo(source.renewalPremiumBurden) },
-    { label: '납입 유지 어려움', value: yesNo(source.paymentDifficulty) },
-    { label: '보장 불만', value: yesNo(source.coverageDissatisfaction) },
-    { label: '중복 가입', value: yesNo(source.duplicateInsurance) },
-    { label: '상품 리모델링 검토', value: yesNo(source.productRemodelingReview) },
-    { label: '타사 상품 비교', value: yesNo(source.comparingOtherCompany) },
-    { label: '타사 이동 예정', value: yesNo(source.movingToOtherCompany) },
-    { label: '설계사 연락 불만', value: yesNo(source.plannerContactDissatisfaction) },
-    { label: '관리 부족 불만', value: yesNo(source.managementDissatisfaction) },
+    { label: '해지 검토 사유', value: arrayText(source.reviewReasons) },
++   { label: '유지 방안', value: arrayText(source.retentionPlans) },
++   { label: '고객 의사', value: source.customerIntent || '-' },
++   { label: '상담 결과', value: source.result || '-' },
     { label: '유지 가능성', value: retentionLabel(source.retentionPossibility) },
   ]
 })
@@ -148,7 +151,8 @@ onMounted(async () => {
 })
 
 function goList() {
-  router.push(isDraft.value ? { name: 'consultation-drafts' } : { name: 'fp-consultations' })
+  const routeName = consultationListRouteByRole[authStore.userRole] ?? 'fp-consultations'
+  router.push(isDraft.value ? { name: 'consultation-drafts' } : { name: routeName })
 }
 
 function goEdit() {
