@@ -117,6 +117,9 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
       requiresAuth: true,
       roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER', 'SYSTEM_ADMIN'],
       title: '인수인계 요청 상세',
+    },
+  },
+  {
     path: 'consultations/drafts/:draftId',
     name: 'consultation-draft-detail',
     component: ConsultationDetailView,
