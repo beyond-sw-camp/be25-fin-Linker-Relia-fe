@@ -179,16 +179,16 @@
 
               <div class="field field--wide">
                 <span>이메일 <b class="required-mark">*</b></span>
-                <div class="email-row">
+                <div class="email-row" :class="{ 'is-custom-domain': emailDomainSelected === 'custom' }">
                   <input v-model.trim="emailLocalPart" class="control" placeholder="email" />
                   <span>@</span>
                   <input
                     v-if="emailDomainSelected === 'custom'"
                     v-model.trim="emailDomainCustom"
-                    class="control"
+                    class="control email-domain-custom"
                     placeholder="domain.com"
                   />
-                  <select v-else v-model="emailDomainSelected" class="control">
+                  <select v-model="emailDomainSelected" class="control email-domain-select">
                     <option v-for="option in emailDomainOptions" :key="option" :value="option">
                       {{ option }}
                     </option>
@@ -1412,17 +1412,49 @@ async function loadCustomers() {
   customerSearchTouched.value = true
 
   try {
-    const response = await getCustomers({
-      page: 1,
-      size: 5,
-      ...(customerKeyword.value ? { customerName: customerKeyword.value } : {}),
-    })
-    const pageResult = response?.result?.customers ?? response?.result
-    const rows = Array.isArray(pageResult?.content) ? pageResult.content : pageResult
-    customers.value = Array.isArray(rows) ? rows : []
+    customers.value = await loadAllCustomers()
   } catch {
     customers.value = []
   }
+}
+
+async function loadAllCustomers() {
+  const baseParams = {
+    size: 100,
+    ...(customerKeyword.value ? { customerName: customerKeyword.value } : {}),
+  }
+  const allCustomers = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const response = await getCustomers({ ...baseParams, page })
+    const pageResult = response?.result?.customers ?? response?.result
+    const rows = extractCustomerRows(pageResult)
+    allCustomers.push(...rows)
+
+    totalPages = Number(pageResult?.totalPages ?? pageResult?.totalPage ?? totalPages)
+    if (!rows.length || page >= 50) break
+    page += 1
+  } while (page <= totalPages)
+
+  return dedupeCustomers(allCustomers)
+}
+
+function extractCustomerRows(pageResult) {
+  if (Array.isArray(pageResult?.content)) return pageResult.content
+  if (Array.isArray(pageResult?.customers)) return pageResult.customers
+  if (Array.isArray(pageResult)) return pageResult
+  return []
+}
+
+function dedupeCustomers(rows) {
+  const customerMap = new Map()
+  rows.forEach((customer) => {
+    const key = customer.customerId || customer.id || `${customer.customerName}-${customer.customerPhone || customer.phoneNumber || ''}`
+    if (key && !customerMap.has(key)) customerMap.set(key, customer)
+  })
+  return [...customerMap.values()]
 }
 
 async function selectCustomer(customer) {
@@ -2320,6 +2352,53 @@ function toDateOnly(value) {
   background: #fff7ed;
 }
 
+.customer-list {
+  display: grid;
+  gap: 6px;
+  max-height: 270px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.customer-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.customer-list button:hover,
+.customer-list button.is-selected {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.customer-list strong,
+.customer-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-list p {
+  margin: 0;
+  padding: 18px 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .selected-customer-panel dl {
   display: grid;
   gap: 8px;
@@ -2700,9 +2779,15 @@ function toDateOnly(value) {
 
 .email-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(240px, 280px);
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 5fr);
   gap: 8px;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.email-row.is-custom-domain {
+  grid-template-columns: minmax(0, 7fr) auto minmax(0, 3fr);
 }
 
 .email-row span {
