@@ -4,8 +4,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/fp',
     name: 'fp-dashboard',
-    title: '내 대시보드',
-    description: 'FP 사용자의 기본 진입 화면입니다.',
+    title: '한화금융서비스 보험 설계사 대시보드',
+    description: '설계사가 로그인하면 최초로 보이는 내 대시보드 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -65,6 +65,13 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
+    path: 'handovers/received',
+    name: 'handover-received',
+    title: '인수받은 고객 목록',
+    description: 'FP가 본인이 인수받은 고객 목록을 조회하는 화면입니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
     path: 'dashboard/branch',
     name: 'branch-dashboard',
     title: '지점 대시보드',
@@ -104,20 +111,6 @@ export const APP_PAGE_SPECS = [
     name: 'handover-requests',
     title: '인수인계 요청 목록',
     description: '지점 인수인계 요청을 관리하는 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/pending',
-    name: 'handover-pending',
-    title: '결재 대기',
-    description: '처리 대기 중인 인수인계 결재 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/history',
-    name: 'handover-history',
-    title: '인수인계 이력',
-    description: '인수인계 이력을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -246,12 +239,11 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
-        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '상담일지 작성', to: { name: 'consultation-create' } },
         { title: '상담일지 목록 조회', to: { name: 'fp-consultations' } },
@@ -259,10 +251,18 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
-        { title: '계약 등록', to: { name: 'contract-create' } },
+      ],
+    },
+    {
+      title: '인수인계',
+      icon: 'mdi-swap-horizontal',
+      title: '수수료 관리',
+      icon: 'mdi-trending-up',
+      children: [
+        { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
       ],
     },
     {
@@ -270,14 +270,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-cash-multiple',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
-      ],
-    },
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
       ],
     },
   ],
@@ -292,19 +284,18 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
-        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '지점 상담 목록', to: { name: 'branch-consultations' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
         { title: '지점 계약 목록', to: { name: 'branch-contracts' } },
       ],
@@ -314,8 +305,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-swap-horizontal',
       children: [
         { title: '인수인계 요청 목록', to: { name: 'handover-requests' } },
-        { title: '결재 대기', to: { name: 'handover-pending' } },
-        { title: '인수인계 이력', to: { name: 'handover-history' } },
       ],
     },
     {
@@ -327,7 +316,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
@@ -344,25 +333,24 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
-        { title: '전사 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-file-document-outline',
+      icon: 'mdi-briefcase-outline',
       children: [
         { title: '전체 계약 목록', to: { name: 'hq-contracts' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-clipboard-text-outline',
+      icon: 'mdi-calendar-text-outline',
       children: [
         { title: '전체 상담 목록', to: { name: 'hq-consultations' } },
       ],
     },
     {
-      title: '인수인계 모니터링',
+      title: '인수인계 관리',
       icon: 'mdi-monitor-eye',
       children: [
         { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
@@ -386,7 +374,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '수수료 대시보드', to: { name: 'hq-commissions' } },
       ],

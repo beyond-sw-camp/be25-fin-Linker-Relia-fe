@@ -24,9 +24,22 @@ import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
 import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
+import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
+import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
+import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
+import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
+import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
+  if (page.name === 'fp-dashboard') {
+    return FpDashboardView
+  }
+
+  if (['branch-dashboard', 'hq-dashboard'].includes(page.name)) {
+    return ManagerDashboardView
+  }
+
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
   }
@@ -63,6 +76,14 @@ function resolveProtectedComponent(page) {
     return HqContractListView
   }
 
+  if (['handover-requests', 'handover-monitoring'].includes(page.name)) {
+    return HandoverRequestListView
+  }
+
+  if (page.name === 'handover-received') {
+    return HandoverReceivedListView
+  }
+
   if (page.name === 'fp-commissions') {
     return FpCommissionView
   }
@@ -93,6 +114,16 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
   },
 })).concat([
+  {
+    path: 'handovers/:handoverRequestId',
+    name: 'handover-detail',
+    component: HandoverDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER', 'SYSTEM_ADMIN'],
+      title: '인수인계 요청 상세',
+    },
+  },
   {
     path: 'consultations/drafts/:draftId',
     name: 'consultation-draft-detail',
