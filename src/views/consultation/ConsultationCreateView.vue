@@ -967,6 +967,14 @@
               삭제
             </button>
             <button type="button" class="outline-button" :disabled="isSubmitting" @click="saveDraft">임시저장</button>
+            <button
+              type="button"
+              class="draft-count-button"
+              :disabled="isSubmitting"
+              @click="router.push({ name: 'consultation-drafts' })"
+            >
+              저장된 임시저장 일지 {{ draftCount }}
+            </button>
             <button type="submit" class="save-button" :disabled="isSubmitting">
               {{ isSubmitting ? '저장 중' : '저장' }}
             </button>
@@ -985,6 +993,7 @@ import {
   createConsultation,
   deleteConsultationDraftFromApi,
   getConsultationDraftFromApi,
+  getConsultationDraftsFromApi,
   saveConsultationDraftToApi,
 } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
@@ -1147,6 +1156,12 @@ const terminationPossibilityOptions = [
   { label: '높음', value: 'HIGH' },
 ]
 
+const cancelRetentionPossibilityCodeMap = {
+  '높음': 'HIGH',
+  '중간': 'MEDIUM',
+  '낮음': 'LOW',
+}
+
 const terminationResultOptions = ['유지', '해지 진행', '해지 보류', '재상담 예정']
 
 const terminationNextActionOptions = ['재상담 예약', '대체상품 제안', '해지 서류 안내', '가족 동반 상담', '없음']
@@ -1167,6 +1182,7 @@ const cancelBooleanFields = [
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
+const draftCount = ref(0)
 const customerMode = ref('EXISTING')
 const isHydratingDraft = ref(false)
 const customerKeyword = ref('')
@@ -1271,7 +1287,7 @@ const cancelDetail = reactive({
   movingToOtherCompany: false,
   plannerContactDissatisfaction: false,
   managementDissatisfaction: false,
-  retentionPossibility: 'MEDIUM',
+  retentionPossibility: '',
   reviewReasons: [],
   reasonDetail: '',
   retentionPlans: [],
@@ -1402,6 +1418,7 @@ watch(
 
 onMounted(async () => {
   if (isEditMode.value) await hydrateDraft()
+  await loadDraftCount()
 })
 
 function selectType(type) {
@@ -1635,6 +1652,7 @@ async function saveDraft() {
     })
     if (savedDraft) {
       saveConsultationDraft(savedDraft, savedDraft.id)
+      await loadDraftCount()
       messageType.value = 'success'
       message.value = '상담일지를 임시저장했습니다.'
       if (!isEditMode.value || route.params.draftId !== savedDraft.id) {
@@ -1651,6 +1669,20 @@ async function saveDraft() {
     })
     messageType.value = 'error'
     message.value = getApiErrorMessage(error) || '임시저장을 DB에 저장하지 못했습니다.'
+  }
+}
+
+async function loadDraftCount() {
+  try {
+    const response = await getConsultationDraftsFromApi()
+    const rawDrafts = Array.isArray(response?.result)
+      ? response.result
+      : Array.isArray(response)
+        ? response
+        : []
+    draftCount.value = rawDrafts.length
+  } catch {
+    draftCount.value = 0
   }
 }
 
@@ -1700,6 +1732,7 @@ async function deleteDraftAfterSubmit(draftId) {
   }
 
   deleteConsultationDraft(draftId)
+  await loadDraftCount()
   return true
 }
 
@@ -1857,14 +1890,17 @@ function buildSubmitPayload() {
 
   if (form.consultationType === 'TERMINATION') {
     payload.cancelDetail = {
-      ...cancelDetail,
-      reviewReasons: cancelDetail.reviewReasons,
-      reasonDetail: cancelDetail.reasonDetail || null,
-      retentionPlans: cancelDetail.retentionPlans,
-      customerIntent: cancelDetail.customerIntent || null,
-      result: cancelDetail.result || null,
-      nextActions: cancelDetail.nextActions,
-    }
+    ...cancelDetail,
+    reviewReasons: cancelDetail.reviewReasons,
+    reasonDetail: cancelDetail.reasonDetail || null,
+    retentionPlans: cancelDetail.retentionPlans,
+    customerIntent: cancelDetail.customerIntent || null,
+    result: cancelDetail.result || null,
+    retentionPossibility:
+      cancelRetentionPossibilityCodeMap[cancelDetail.retentionPossibility]
+      || cancelDetail.retentionPossibility,
+    nextActions: cancelDetail.nextActions,
+  }
   }
 
   return payload
@@ -2316,10 +2352,22 @@ function toDateOnly(value) {
 
 .stt-actions button:first-child,
 .subtle-button,
-.outline-button {
+.outline-button,
+.draft-count-button {
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #475569;
+}
+
+.draft-count-button {
+  min-width: 138px;
+  padding: 0 12px;
+}
+
+.draft-count-button:hover:not(:disabled) {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
 }
 
 .danger-button {

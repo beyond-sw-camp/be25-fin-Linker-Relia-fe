@@ -254,7 +254,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-clipboard-text-outline',
       children: [
         { title: '상담일지 작성', to: { name: 'consultation-create' } },
-        { title: '임시저장된 상담일지 조회', to: { name: 'consultation-drafts' } },
         { title: '상담일지 목록 조회', to: { name: 'fp-consultations' } },
       ],
     },
