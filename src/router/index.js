@@ -28,11 +28,16 @@ import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
 import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
 import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
 import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
+import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
   if (page.name === 'fp-dashboard') {
     return FpDashboardView
+  }
+
+  if (['branch-dashboard', 'hq-dashboard'].includes(page.name)) {
+    return ManagerDashboardView
   }
 
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
