@@ -11,17 +11,17 @@
     <section class="stt-preview-modal__panel">
       <header class="stt-preview-modal__header">
         <div>
-          <p>STT 미리보기</p>
-          <h2 id="stt-preview-modal-title">상담 음성 추출 테스트</h2>
+          <p>STT Preview</p>
+          <h2 id="stt-preview-modal-title">PCM capture and transport debug</h2>
         </div>
-        <button type="button" aria-label="닫기" @click="handleClose">×</button>
+        <button type="button" aria-label="Close" @click="handleClose">×</button>
       </header>
 
       <div class="stt-preview-modal__body">
         <section class="stt-preview-card">
           <div class="stt-preview-card__title">
-            <h3>세션 설정</h3>
-            <span>UI는 임시 디버그 패널입니다.</span>
+            <h3>Session</h3>
+            <span>REST and WebSocket</span>
           </div>
 
           <div class="stt-preview-form">
@@ -30,7 +30,7 @@
               <input
                 v-model.trim="sessionForm.customerId"
                 class="stt-input"
-                placeholder="없으면 비워두세요"
+                placeholder="nullable"
               />
             </label>
 
@@ -46,53 +46,23 @@
 
           <div class="stt-preview-actions">
             <button type="button" class="stt-button stt-button--primary" :disabled="!canStartSession" @click="startSession">
-              세션 시작
+              Start Session
             </button>
             <button type="button" class="stt-button" :disabled="!sessionId || isBusy" @click="refreshSession">
-              세션 조회
+              Refresh Session
             </button>
             <button type="button" class="stt-button" :disabled="!sessionId || isBusy" @click="reconnectSocket">
-              WS 재연결
+              Reconnect WS
             </button>
-          </div>
-        </section>
-
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>오디오 전송</h3>
-            <span>브라우저 MediaRecorder 기반</span>
-          </div>
-
-          <div class="stt-preview-actions">
-            <button type="button" class="stt-button stt-button--primary" :disabled="!canStartRecording" @click="startRecording">
-              녹음 시작
-            </button>
-            <button type="button" class="stt-button stt-button--danger" :disabled="!canStopRecording" @click="stopRecording">
-              녹음 종료
-            </button>
-          </div>
-
-          <p class="stt-preview-help">
-            현재 전송 포맷: <strong>{{ captureMimeType || '대기 중' }}</strong>
-          </p>
-          <p class="stt-preview-help">
-            이후 GPT 요약/개선 단계는 이 모달 다음 흐름으로 연결할 예정이며, 현재는 STT 추출 과정만 검증합니다.
-          </p>
-        </section>
-
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>세션 상태</h3>
-            <span>{{ statusSummary }}</span>
           </div>
 
           <dl class="stt-status-grid">
             <div>
-              <dt>WS 연결</dt>
+              <dt>WS state</dt>
               <dd>{{ wsConnectionState }}</dd>
             </div>
             <div>
-              <dt>녹음 상태</dt>
+              <dt>Recording state</dt>
               <dd>{{ recordingState }}</dd>
             </div>
             <div>
@@ -112,42 +82,143 @@
               <dd>{{ endedAt || '-' }}</dd>
             </div>
           </dl>
+        </section>
 
-          <v-alert v-if="errorMessage" type="error" density="comfortable" variant="tonal">
-            {{ errorMessage }}
+        <section class="stt-preview-card">
+          <div class="stt-preview-card__title">
+            <h3>Capture</h3>
+            <span>Microphone -> float32</span>
+          </div>
+
+          <div class="stt-preview-actions">
+            <button type="button" class="stt-button stt-button--primary" :disabled="!canStartRecording" @click="startRecording">
+              Start Recording
+            </button>
+            <button type="button" class="stt-button stt-button--danger" :disabled="!canStopRecording" @click="stopRecording">
+              Stop Recording
+            </button>
+          </div>
+
+          <dl class="stt-status-grid">
+            <div>
+              <dt>Capture mode</dt>
+              <dd>{{ audioDebug.capture.mode }}</dd>
+            </div>
+            <div>
+              <dt>Input sample rate</dt>
+              <dd>{{ formatSampleRate(audioDebug.capture.inputSampleRate) }}</dd>
+            </div>
+            <div>
+              <dt>Input channels</dt>
+              <dd>{{ audioDebug.capture.inputChannelCount || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Buffer size</dt>
+              <dd>{{ audioDebug.capture.bufferSize || '-' }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="stt-preview-card">
+          <div class="stt-preview-card__title">
+            <h3>Transform</h3>
+            <span>mono + resample + int16</span>
+          </div>
+
+          <dl class="stt-status-grid">
+            <div>
+              <dt>Format</dt>
+              <dd>{{ audioDebug.transform.format }}</dd>
+            </div>
+            <div>
+              <dt>Output sample rate</dt>
+              <dd>{{ formatSampleRate(audioDebug.transform.outputSampleRate) }}</dd>
+            </div>
+            <div>
+              <dt>Output channels</dt>
+              <dd>{{ audioDebug.transform.outputChannelCount }}</dd>
+            </div>
+            <div>
+              <dt>Bit depth</dt>
+              <dd>{{ audioDebug.transform.bitDepth }}-bit</dd>
+            </div>
+            <div>
+              <dt>Endian</dt>
+              <dd>{{ audioDebug.transform.endian }}</dd>
+            </div>
+            <div>
+              <dt>Last input frames</dt>
+              <dd>{{ audioDebug.transform.lastInputFrameCount || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Last output samples</dt>
+              <dd>{{ audioDebug.transform.lastOutputSampleCount || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Payload type</dt>
+              <dd>{{ audioDebug.capture.payloadType }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="stt-preview-card">
+          <div class="stt-preview-card__title">
+            <h3>Transport</h3>
+            <span>ArrayBuffer over raw WebSocket</span>
+          </div>
+
+          <dl class="stt-status-grid">
+            <div>
+              <dt>Payload type</dt>
+              <dd>{{ audioDebug.transport.payloadType }}</dd>
+            </div>
+            <div>
+              <dt>Chunk count</dt>
+              <dd>{{ audioDebug.transport.chunkCount }}</dd>
+            </div>
+            <div>
+              <dt>Total bytes</dt>
+              <dd>{{ formatByteCount(audioDebug.transport.totalBytes) }}</dd>
+            </div>
+            <div>
+              <dt>Last chunk bytes</dt>
+              <dd>{{ formatByteCount(audioDebug.transport.lastByteLength) }}</dd>
+            </div>
+          </dl>
+
+          <v-alert v-if="errorMessage || audioDebug.recentError" type="error" density="comfortable" variant="tonal">
+            {{ errorMessage || audioDebug.recentError }}
           </v-alert>
         </section>
 
-        <section class="stt-preview-card">
+        <section class="stt-preview-card stt-preview-card--wide stt-preview-card--caption">
           <div class="stt-preview-card__title">
-            <h3>인식 결과</h3>
-            <span>partial / final text</span>
+            <h3>Recognition</h3>
+            <span>real-time subtitle preview</span>
           </div>
 
-          <label class="stt-field">
-            <span>partialText</span>
-            <textarea :value="partialText" class="stt-textarea" rows="4" readonly></textarea>
-          </label>
-
-          <label class="stt-field">
-            <span>finalText</span>
-            <textarea :value="finalText" class="stt-textarea" rows="6" readonly></textarea>
-          </label>
+          <ConsultationSttLiveCaptionPanel
+            :partial-text="partialText"
+            :final-text="finalText"
+            :recording-state="recordingState"
+            :session-status="sessionStatus"
+          />
         </section>
 
-        <section class="stt-preview-card">
+        <section class="stt-preview-card stt-preview-card--wide stt-preview-card--fixed">
           <div class="stt-preview-card__title">
-            <h3>이벤트 로그</h3>
-            <span>최근 30개</span>
+            <h3>Debug Log</h3>
+            <span>Capture / Transform / Transport / Session</span>
           </div>
 
           <ul class="stt-log-list">
-            <li v-for="log in eventLogs" :key="log.id">
-              <strong>{{ log.at }}</strong>
+            <li v-for="log in audioDebug.logs" :key="log.id">
+              <strong>[{{ log.stage }}] {{ log.at }}</strong>
               <span>{{ log.message }}</span>
+              <code v-if="log.details">{{ stringifyDetails(log.details) }}</code>
             </li>
-            <li v-if="eventLogs.length === 0">
-              <span>아직 기록된 이벤트가 없습니다.</span>
+            <li v-if="audioDebug.logs.length === 0">
+              <span>No debug entries yet.</span>
             </li>
           </ul>
         </section>
@@ -157,8 +228,9 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { watch } from 'vue'
 
+import ConsultationSttLiveCaptionPanel from './ConsultationSttLiveCaptionPanel.vue'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -179,10 +251,10 @@ const props = defineProps({
 const emit = defineEmits(['update:open'])
 
 const consultationTypeOptions = [
-  { label: '신규 계약', value: 'NEW_CONTRACT' },
-  { label: '청구', value: 'CLAIM' },
-  { label: '해지', value: 'TERMINATION' },
-  { label: '갱신', value: 'RENEWAL' },
+  { label: 'NEW_CONTRACT', value: 'NEW_CONTRACT' },
+  { label: 'CLAIM', value: 'CLAIM' },
+  { label: 'TERMINATION', value: 'TERMINATION' },
+  { label: 'RENEWAL', value: 'RENEWAL' },
 ]
 
 const {
@@ -194,11 +266,10 @@ const {
   errorMessage,
   wsConnectionState,
   recordingState,
-  captureMimeType,
   startedAt,
   endedAt,
   isBusy,
-  eventLogs,
+  audioDebug,
   canStartSession,
   canStartRecording,
   canStopRecording,
@@ -211,29 +282,21 @@ const {
   resetRuntimeState,
 } = useConsultationSttPreview()
 
-const statusSummary = computed(() => {
-  if (!sessionId.value) {
-    return '세션이 아직 시작되지 않았습니다.'
-  }
-
-  if (recordingState.value === 'RECORDING') {
-    return '오디오 청크를 실시간으로 전송 중입니다.'
-  }
-
-  if (sessionStatus.value === 'PROCESSING') {
-    return 'COMPLETE 전송 후 서버 후처리를 기다리는 중입니다.'
-  }
-
-  if (sessionStatus.value === 'COMPLETED') {
-    return '최종 텍스트가 확정되었습니다.'
-  }
-
-  return '세션 상태를 확인할 수 있습니다.'
-})
-
 function syncInitialValues() {
   sessionForm.customerId = props.initialCustomerId || ''
   sessionForm.consultationType = props.initialConsultationType || 'NEW_CONTRACT'
+}
+
+function formatSampleRate(value) {
+  return value ? `${value} Hz` : '-'
+}
+
+function formatByteCount(value) {
+  return Number.isFinite(value) && value > 0 ? `${value.toLocaleString('ko-KR')} bytes` : '0 bytes'
+}
+
+function stringifyDetails(details) {
+  return JSON.stringify(details)
 }
 
 async function handleClose() {
@@ -294,7 +357,7 @@ watch(
 
 .stt-preview-modal__panel {
   position: relative;
-  width: min(1080px, 100%);
+  width: min(1120px, 100%);
   max-height: calc(100vh - 48px);
   overflow: hidden;
   border: 1px solid #dbe3ee;
@@ -356,6 +419,20 @@ watch(
   background: #ffffff;
 }
 
+.stt-preview-card--wide {
+  grid-column: 1 / -1;
+}
+
+.stt-preview-card--caption {
+  max-height: none;
+}
+
+.stt-preview-card--fixed {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  max-height: 280px;
+}
+
 .stt-preview-card__title {
   display: flex;
   align-items: baseline;
@@ -370,12 +447,9 @@ watch(
   font-weight: 800;
 }
 
-.stt-preview-card__title span,
-.stt-preview-help {
-  margin: 0;
+.stt-preview-card__title span {
   color: #64748b;
   font-size: 12px;
-  line-height: 1.5;
 }
 
 .stt-preview-form {
@@ -410,6 +484,7 @@ watch(
 
 .stt-textarea {
   min-height: 120px;
+  height: 100%;
   resize: vertical;
 }
 
@@ -475,6 +550,18 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.stt-preview-card--fixed .stt-field {
+  min-height: 0;
+}
+
+.stt-preview-card--fixed .stt-textarea {
+  min-height: 0;
+  resize: none;
 }
 
 .stt-log-list li {
@@ -494,6 +581,14 @@ watch(
   color: #334155;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.stt-log-list code {
+  overflow-x: auto;
+  color: #475569;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 @media (max-width: 900px) {

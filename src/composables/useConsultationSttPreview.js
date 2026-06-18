@@ -6,18 +6,23 @@ import {
   getConsultationSttSession,
 } from '../api/consultationStt'
 import { createConsultationSttSocket } from '../services/stt/consultationSttSocket'
-import { createMediaRecorderAudioCapture } from '../services/stt/mediaRecorderAudioCapture'
+import { createPcmAudioCapture } from '../services/stt/pcmAudioCapture'
+import {
+  appendSttDebugLog,
+  createInitialSttDebugState,
+  recordCaptureDebug,
+  recordSttDebugError,
+  recordTransformDebug,
+  recordTransportDebug,
+  resetSttDebugState,
+} from '../services/stt/sttDebug'
 import { useAuthStore } from '../stores/auth'
 
 const POLLING_INTERVAL_MS = 1500
 const MAX_POLLING_ATTEMPTS = 10
 
 function normalizeErrorMessage(error, fallbackMessage) {
-  return (
-    error?.response?.data?.message ||
-    error?.message ||
-    fallbackMessage
-  )
+  return error?.response?.data?.message || error?.message || fallbackMessage
 }
 
 export function useConsultationSttPreview() {
@@ -34,11 +39,10 @@ export function useConsultationSttPreview() {
   const errorMessage = ref('')
   const wsConnectionState = ref('DISCONNECTED')
   const recordingState = ref('IDLE')
-  const captureMimeType = ref('')
   const startedAt = ref('')
   const endedAt = ref('')
   const isBusy = ref(false)
-  const eventLogs = ref([])
+  const audioDebug = reactive(createInitialSttDebugState())
 
   const socketClient = ref(null)
   const audioCapture = ref(null)
@@ -58,15 +62,13 @@ export function useConsultationSttPreview() {
   })
   const canStopRecording = computed(() => recordingState.value === 'RECORDING')
 
-  function appendLog(message) {
-    eventLogs.value = [
-      {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        at: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
-        message,
-      },
-      ...eventLogs.value,
-    ].slice(0, 30)
+  function appendSessionLog(message, details = null) {
+    appendSttDebugLog(audioDebug, 'Session', message, details)
+  }
+
+  function setError(message, details = null) {
+    errorMessage.value = message
+    recordSttDebugError(audioDebug, message, details)
   }
 
   function applySessionSnapshot(snapshot) {
@@ -96,7 +98,7 @@ export function useConsultationSttPreview() {
 
     const response = await getConsultationSttSession(sessionId.value)
     applySessionSnapshot(response?.result)
-    appendLog(`세션 조회: ${response?.result?.sessionStatus || 'UNKNOWN'}`)
+    appendSessionLog(`session fetch -> ${response?.result?.sessionStatus || 'UNKNOWN'}`)
     return response?.result || null
   }
 
@@ -108,11 +110,12 @@ export function useConsultationSttPreview() {
     const latestSession = await refreshSession()
 
     if (['COMPLETED', 'FAILED'].includes(latestSession?.sessionStatus)) {
+      appendSessionLog(`skip rest complete -> ${latestSession.sessionStatus}`)
       return latestSession
     }
 
     hasRequestedRestCompletion.value = true
-    appendLog('REST complete 호출 시도')
+    appendSessionLog('rest complete request')
 
     try {
       const response = await completeConsultationSttSession(sessionId.value, {
@@ -120,7 +123,7 @@ export function useConsultationSttPreview() {
       })
 
       applySessionSnapshot(response?.result)
-      appendLog(`REST complete 성공: ${response?.result?.sessionStatus || 'UNKNOWN'}`)
+      appendSessionLog(`rest complete -> ${response?.result?.sessionStatus || 'UNKNOWN'}`)
       return response?.result || null
     } catch (error) {
       hasRequestedRestCompletion.value = false
@@ -145,19 +148,18 @@ export function useConsultationSttPreview() {
       }
 
       if (latestSession?.sessionStatus === 'COMPLETED') {
-        appendLog('세션이 COMPLETED 상태로 확정되었습니다.')
+        appendSessionLog('session completed')
         return
       }
 
       if (latestSession?.sessionStatus === 'FAILED') {
-        errorMessage.value = errorMessage.value || 'STT 세션이 실패 상태로 종료되었습니다.'
+        setError('STT session ended in FAILED state.')
         return
       }
 
       pollingTimerId.value = window.setTimeout(pollSessionUntilSettled, POLLING_INTERVAL_MS)
     } catch (error) {
-      errorMessage.value = normalizeErrorMessage(error, '세션 상태를 다시 확인하지 못했습니다.')
-      appendLog(errorMessage.value)
+      setError(normalizeErrorMessage(error, 'Failed to refresh STT session state.'))
     }
   }
 
@@ -170,66 +172,74 @@ export function useConsultationSttPreview() {
     }
   }
 
+  function handleCaptureDebug(debugEvent) {
+    if (debugEvent.stage === 'capture') {
+      recordCaptureDebug(audioDebug, debugEvent.details, debugEvent.message)
+      return
+    }
+
+    if (debugEvent.stage === 'transform') {
+      recordTransformDebug(audioDebug, debugEvent.details, debugEvent.message)
+    }
+  }
+
   async function connectSocket() {
     if (!sessionId.value) {
-      throw new Error('세션이 아직 생성되지 않았습니다.')
+      throw new Error('STT session has not been created yet.')
     }
 
     if (!authStore.accessToken) {
-      throw new Error('액세스 토큰이 없어 STT WebSocket을 연결할 수 없습니다.')
+      throw new Error('Missing access token for STT WebSocket.')
     }
 
     teardownSocket()
     wsConnectionState.value = 'CONNECTING'
-    appendLog('WebSocket 연결 시도')
+    appendSessionLog('ws connect')
 
     socketClient.value = createConsultationSttSocket({
       sessionId: sessionId.value,
       token: authStore.accessToken,
       onOpen: () => {
         wsConnectionState.value = 'OPEN'
-        appendLog('WebSocket 연결 완료')
+        appendSessionLog('ws open')
       },
       onClose: () => {
         if (wsConnectionState.value !== 'DISCONNECTED') {
           wsConnectionState.value = 'CLOSED'
-          appendLog('WebSocket 연결 종료')
+          appendSessionLog('ws close')
         }
       },
       onError: () => {
         wsConnectionState.value = 'ERROR'
-        errorMessage.value = 'STT WebSocket 연결 중 오류가 발생했습니다.'
-        appendLog(errorMessage.value)
+        setError('STT WebSocket connection error.')
       },
       onEvent: async (event) => {
         if (event.type === 'CONNECTED') {
-          appendLog(event.message || 'audio stream connected')
+          appendSessionLog(event.message || 'audio stream connected')
           return
         }
 
         if (event.type === 'PARTIAL_TEXT') {
           partialText.value = event.text || ''
-          appendLog('중간 인식 결과 수신')
+          appendSessionLog('partial text received')
           return
         }
 
         if (event.type === 'FINAL_TEXT') {
           finalText.value = event.text || ''
-          appendLog('최종 인식 결과 수신')
+          appendSessionLog('final text received')
 
           try {
             await completeSessionIfNeeded(finalText.value)
           } catch (error) {
-            errorMessage.value = normalizeErrorMessage(error, '최종 텍스트 저장에 실패했습니다.')
-            appendLog(errorMessage.value)
+            setError(normalizeErrorMessage(error, 'Failed to persist final STT text.'))
           }
 
           return
         }
 
         if (event.type === 'ERROR') {
-          errorMessage.value = event.message || 'STT 서버에서 오류 이벤트를 전송했습니다.'
-          appendLog(errorMessage.value)
+          setError(event.message || 'STT server returned an error event.')
         }
       },
     })
@@ -246,13 +256,12 @@ export function useConsultationSttPreview() {
     sessionStatus.value = 'IDLE'
     wsConnectionState.value = 'DISCONNECTED'
     recordingState.value = 'IDLE'
-    captureMimeType.value = ''
     startedAt.value = ''
     endedAt.value = ''
     hasSentCompleteSignal.value = false
     hasRequestedRestCompletion.value = false
     pollingAttempts.value = 0
-    eventLogs.value = []
+    resetSttDebugState(audioDebug)
   }
 
   async function startSession() {
@@ -265,7 +274,6 @@ export function useConsultationSttPreview() {
     try {
       await dispose()
       resetRuntimeState()
-      errorMessage.value = ''
 
       const response = await createConsultationSttSession({
         customerId: sessionForm.customerId || null,
@@ -273,11 +281,10 @@ export function useConsultationSttPreview() {
       })
 
       applySessionSnapshot(response?.result)
-      appendLog(`세션 시작: ${response?.result?.sessionId || 'UNKNOWN'}`)
+      appendSessionLog(`session created -> ${response?.result?.sessionId || 'UNKNOWN'}`)
       await connectSocket()
     } catch (error) {
-      errorMessage.value = normalizeErrorMessage(error, 'STT 세션을 시작하지 못했습니다.')
-      appendLog(errorMessage.value)
+      setError(normalizeErrorMessage(error, 'Failed to start STT session.'))
     } finally {
       isBusy.value = false
     }
@@ -294,8 +301,7 @@ export function useConsultationSttPreview() {
     try {
       await connectSocket()
     } catch (error) {
-      errorMessage.value = normalizeErrorMessage(error, 'STT WebSocket 재연결에 실패했습니다.')
-      appendLog(errorMessage.value)
+      setError(normalizeErrorMessage(error, 'Failed to reconnect STT WebSocket.'))
     } finally {
       isBusy.value = false
     }
@@ -309,23 +315,44 @@ export function useConsultationSttPreview() {
     errorMessage.value = ''
 
     try {
-      audioCapture.value = await createMediaRecorderAudioCapture({
-        onChunk: (buffer) => {
-          socketClient.value?.sendAudioChunk(buffer)
+      audioCapture.value = await createPcmAudioCapture({
+        onChunk: async (payload, meta) => {
+          socketClient.value?.sendAudioChunk(payload)
+          recordTransportDebug(
+            audioDebug,
+            {
+              payloadType: meta.payloadType,
+              byteLength: payload.byteLength,
+              incrementChunkCount: true,
+            },
+            `send ${payload.byteLength} bytes (${meta.outputSampleRate}Hz / ${meta.outputChannelCount}ch / ${meta.bitDepth}bit)`,
+          )
         },
+        onDebug: handleCaptureDebug,
         onError: (error) => {
-          errorMessage.value = normalizeErrorMessage(error, '녹음 중 오류가 발생했습니다.')
-          appendLog(errorMessage.value)
+          setError(normalizeErrorMessage(error, 'Audio capture failed.'))
         },
       })
 
-      captureMimeType.value = audioCapture.value.mimeType
+      recordCaptureDebug(
+        audioDebug,
+        {
+          mode: audioCapture.value.captureMode,
+          inputSampleRate: audioCapture.value.inputSampleRate,
+          inputChannelCount: audioCapture.value.inputChannelCount,
+          targetSampleRate: audioCapture.value.targetSampleRate,
+          targetChannelCount: audioCapture.value.targetChannelCount,
+          bitDepth: audioCapture.value.bitDepth,
+          payloadType: audioCapture.value.payloadType,
+        },
+        `capture start (${audioCapture.value.captureMode})`,
+      )
+
       await audioCapture.value.start()
       recordingState.value = 'RECORDING'
-      appendLog(`녹음 시작 (${captureMimeType.value})`)
+      appendSessionLog('recording start')
     } catch (error) {
-      errorMessage.value = normalizeErrorMessage(error, '녹음을 시작하지 못했습니다.')
-      appendLog(errorMessage.value)
+      setError(normalizeErrorMessage(error, 'Failed to start microphone capture.'))
     }
   }
 
@@ -344,17 +371,16 @@ export function useConsultationSttPreview() {
       if (socketClient.value && !hasSentCompleteSignal.value) {
         socketClient.value.sendComplete()
         hasSentCompleteSignal.value = true
-        appendLog('COMPLETE 신호 전송')
+        appendSessionLog('send COMPLETE')
       }
 
       recordingState.value = 'STOPPED'
       sessionStatus.value = 'PROCESSING'
       pollingAttempts.value = 0
-      pollSessionUntilSettled()
+      void pollSessionUntilSettled()
     } catch (error) {
       recordingState.value = 'IDLE'
-      errorMessage.value = normalizeErrorMessage(error, '녹음을 종료하지 못했습니다.')
-      appendLog(errorMessage.value)
+      setError(normalizeErrorMessage(error, 'Failed to stop microphone capture.'))
     }
   }
 
@@ -366,13 +392,13 @@ export function useConsultationSttPreview() {
         await stopRecording()
       }
     } catch {
-      // stopRecording 내부에서 화면에 오류를 노출한다.
+      // stopRecording already surfaces the error.
     }
 
     try {
-      audioCapture.value?.dispose()
+      await audioCapture.value?.dispose()
     } catch {
-      // 브라우저 리소스 정리 실패는 치명적이지 않다.
+      // ignore release failures
     }
 
     audioCapture.value = null
@@ -392,11 +418,10 @@ export function useConsultationSttPreview() {
     errorMessage,
     wsConnectionState,
     recordingState,
-    captureMimeType,
     startedAt,
     endedAt,
     isBusy,
-    eventLogs,
+    audioDebug,
     canStartSession,
     canStartRecording,
     canStopRecording,

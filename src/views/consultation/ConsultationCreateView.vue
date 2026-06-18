@@ -360,7 +360,7 @@
             <p>STT 기능을 사용하면 상담 음성을 텍스트로 변환하여 상담일지 작성에 참고할 수 있습니다. 변환된 내용은 반드시 설계사가 검토한 후 최종 저장해야 합니다.</p>
           </div>
           <div class="stt-actions">
-            <button type="button" @click="isSttPreviewOpen = true">STT 미리보기 열기</button>
+            <button type="button" :disabled="!canOpenSttPreview" @click="openSttPreview">STT 미리보기 열기</button>
             <button type="button">STT 녹음 시작</button>
             <button type="button">변환 내용 불러오기</button>
             <button type="button">텍스트 검토</button>
@@ -1203,6 +1203,7 @@ const cancelDetail = reactive({
 
 const isEditMode = computed(() => route.name === 'consultation-draft-edit')
 const sttPreviewCustomerId = computed(() => selectedCustomer.value?.customerId || '')
+const canOpenSttPreview = computed(() => Boolean(selectedCustomer.value?.customerId))
 const isNewContract = computed(() => form.consultationType === 'NEW_CONTRACT')
 const needsExistingCustomer = computed(() => !isNewContract.value || customerMode.value === 'EXISTING')
 const needsContract = computed(() => ['CLAIM', 'RENEWAL', 'TERMINATION'].includes(form.consultationType))
@@ -1298,6 +1299,10 @@ watch(
 watch(
   () => selectedCustomer.value?.customerId,
   async (customerId) => {
+    if (!customerId) {
+      isSttPreviewOpen.value = false
+    }
+
     form.contractId = ''
     contracts.value = []
     if (customerId && needsContract.value) await loadContracts(customerId)
@@ -1467,6 +1472,17 @@ function saveDraft() {
   if (!isEditMode.value) {
     router.replace({ name: 'consultation-draft-edit', params: { draftId: saved.id } })
   }
+}
+
+function openSttPreview() {
+  if (!canOpenSttPreview.value) {
+    messageType.value = 'error'
+    message.value = '좌측 패널에서 기존 고객을 먼저 선택해야 STT 미리보기를 사용할 수 있습니다.'
+    isSttPreviewOpen.value = false
+    return
+  }
+
+  isSttPreviewOpen.value = true
 }
 
 async function submitConsultation() {
