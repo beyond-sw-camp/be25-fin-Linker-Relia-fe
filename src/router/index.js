@@ -20,6 +20,7 @@ import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
 import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
+import OrganizationsView from '../views/organizations/OrganizationsView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
@@ -59,6 +60,10 @@ function resolveProtectedComponent(page) {
     return HqCommissionView
   }
 
+  if (['organization-chart', 'organization-branches', 'hq-advisors', 'admin-organizations'].includes(page.name)) {
+    return OrganizationsView
+  }
+
   return PlaceholderView
 }
 
@@ -70,6 +75,7 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
     description: page.description,
     roles: page.roles,
+    ...page.props,
   },
   meta: {
     requiresAuth: true,
@@ -77,6 +83,19 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
   },
 })).concat([
+  {
+    path: 'organizations/fps/:fpId',
+    name: 'organization-fp-detail',
+    component: OrganizationsView,
+    props: {
+      mode: 'fp-detail',
+    },
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER', 'SYSTEM_ADMIN'],
+      title: '설계사 상세 정보 조회',
+    },
+  },
   {
     path: 'customers/detail/:customerId',
     name: 'customer-detail',
