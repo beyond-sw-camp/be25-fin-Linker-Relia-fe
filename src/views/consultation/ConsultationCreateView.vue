@@ -360,6 +360,7 @@
             <p>STT 기능을 사용하면 상담 음성을 텍스트로 변환하여 상담일지 작성에 참고할 수 있습니다. 변환된 내용은 반드시 설계사가 검토한 후 최종 저장해야 합니다.</p>
           </div>
           <div class="stt-actions">
+            <button type="button" @click="isSttPreviewOpen = true">STT 미리보기 열기</button>
             <button type="button">STT 녹음 시작</button>
             <button type="button">변환 내용 불러오기</button>
             <button type="button">텍스트 검토</button>
@@ -916,6 +917,12 @@
         </div>
       </main>
     </form>
+
+    <ConsultationSttPreviewModal
+      v-model:open="isSttPreviewOpen"
+      :initial-customer-id="sttPreviewCustomerId"
+      :initial-consultation-type="form.consultationType"
+    />
   </section>
 </template>
 
@@ -923,6 +930,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import ConsultationSttPreviewModal from '../../components/consultation/ConsultationSttPreviewModal.vue'
 import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
@@ -931,6 +939,7 @@ import { getConsultationDraft, saveConsultationDraft } from '../../utils/consult
 
 const route = useRoute()
 const router = useRouter()
+const isSttPreviewOpen = ref(false)
 
 const typeOptions = [
   { label: '신규', value: 'NEW_CONTRACT' },
@@ -1193,6 +1202,7 @@ const cancelDetail = reactive({
 })
 
 const isEditMode = computed(() => route.name === 'consultation-draft-edit')
+const sttPreviewCustomerId = computed(() => selectedCustomer.value?.customerId || '')
 const isNewContract = computed(() => form.consultationType === 'NEW_CONTRACT')
 const needsExistingCustomer = computed(() => !isNewContract.value || customerMode.value === 'EXISTING')
 const needsContract = computed(() => ['CLAIM', 'RENEWAL', 'TERMINATION'].includes(form.consultationType))
