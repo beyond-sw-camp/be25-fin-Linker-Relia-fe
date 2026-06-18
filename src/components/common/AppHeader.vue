@@ -41,18 +41,82 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { getBranchOrganizations } from '../../api/organizations'
+import { USER_ROLES } from '../../constants/auth'
 import { ROLE_LABELS } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const resolvedOrganizationName = ref('')
 
-const pageTitle = computed(() => route.meta.title ?? '대시보드')
+const pageTitle = computed(() => {
+  if (isBranchScopedConsultationRoute.value) {
+    const organizationName = authStore.organizationName || resolvedOrganizationName.value
+    if (organizationName) return `${organizationName} 상담 목록`
+  }
+
+  return route.meta.title ?? '대시보드'
+})
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
+const isBranchScopedConsultationRoute = computed(() => (
+  ['branch-consultations', 'fp-consultations'].includes(route.name) &&
+  [USER_ROLES.BRANCH_MANAGER, USER_ROLES.FP].includes(authStore.userRole)
+))
+
+onMounted(resolveOrganizationName)
+
+watch(
+  () => [authStore.organizationName, authStore.accessToken, authStore.userRole, route.name],
+  resolveOrganizationName,
+)
+
+async function resolveOrganizationName() {
+  resolvedOrganizationName.value = ''
+  if (!isBranchScopedConsultationRoute.value || authStore.organizationName) return
+  const tokenProfile = parseTokenProfile(authStore.accessToken)
+  if (!tokenProfile.organizationId && !tokenProfile.organizationCode) return
+
+  try {
+    const response = await getBranchOrganizations()
+    const branches = Array.isArray(response?.result) ? response.result : []
+    const branch = branches.find((item) => (
+      item.organizationId === tokenProfile.organizationId ||
+      item.organizationCode === tokenProfile.organizationCode
+    ))
+    resolvedOrganizationName.value = branch?.organizationName ?? ''
+  } catch {
+    resolvedOrganizationName.value = ''
+  }
+}
+
+function parseTokenProfile(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) {
+    return { organizationId: '', organizationCode: '' }
+  }
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(token.split('.')[1]))
+    return {
+      organizationId: payload.organizationId ?? payload.orgId ?? '',
+      organizationCode: payload.organizationCode ?? payload.orgCode ?? '',
+    }
+  } catch {
+    return { organizationId: '', organizationCode: '' }
+  }
+}
+
+function decodeBase64Url(value) {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+  return decodeURIComponent(
+    Array.from(window.atob(padded), (char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''),
+  )
+}
 
 async function logout() {
   await authStore.logout()

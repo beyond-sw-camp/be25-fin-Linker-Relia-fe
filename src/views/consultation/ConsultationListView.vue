@@ -11,6 +11,19 @@
     <section class="filter-panel">
       <h3>검색 및 필터</h3>
       <div class="filter-grid">
+        <v-select
+          v-if="showBranchFilter"
+          v-model="filters.organizationCode"
+          :items="branches"
+          item-title="title"
+          item-value="value"
+          label="지점 선택"
+          variant="outlined"
+          density="compact"
+          hide-details
+          :loading="isLoadingBranches"
+          :disabled="isLoadingBranches"
+        />
         <v-text-field
           v-model="filters.customerName"
           label="고객명"
@@ -67,6 +80,9 @@
           hide-details
         />
       </div>
+      <v-alert v-if="branchErrorMessage" type="warning" variant="tonal" density="compact">
+        {{ branchErrorMessage }}
+      </v-alert>
       <div class="filter-actions">
         <v-btn class="search-button" @click="searchConsultations">
           <v-icon icon="mdi-magnify" size="16" />
@@ -170,11 +186,19 @@ import {
   getConsultationTypeLabel,
 } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
+import { useBranchFilter } from '../../composables/useBranchFilter'
 import { formatDateTime } from '../../utils/formatters'
 import { getSavedConsultations } from '../../utils/consultationDrafts'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const {
+  branches,
+  showBranchFilter,
+  isLoadingBranches,
+  branchErrorMessage,
+  initializeBranchFilter,
+} = useBranchFilter(authStore)
 
 const consultationTypeOptions = [
   { label: '전체', value: '' },
@@ -197,6 +221,7 @@ const sortOptions = [
 ]
 
 const filters = reactive({
+  organizationCode: '',
   consultationType: '',
   consultationChannel: '',
   customerName: '',
@@ -215,6 +240,7 @@ const errorMessage = ref('')
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
 const allRows = computed(() => mergeConsultationRows(consultationRows.value, localCompletedRows.value))
 const filteredRows = computed(() => sortRows(allRows.value.filter((row) => {
+  if (showBranchFilter.value && filters.organizationCode && !matchesOrganization(row, filters.organizationCode)) return false
   if (filters.consultationType && row.consultationType !== filters.consultationType) return false
   if (filters.consultationChannel && row.consultationChannel !== filters.consultationChannel) return false
   if (filters.customerName.trim() && !String(row.customerName || '').includes(filters.customerName.trim())) return false
@@ -244,6 +270,7 @@ const rangeLabel = computed(() => {
 watch(
   () => [
     filters.consultationType,
+    filters.organizationCode,
     filters.consultationChannel,
     filters.startedAt,
     filters.endedAt,
@@ -261,7 +288,16 @@ watch(
   },
 )
 
-onMounted(() => {
+watch(
+  () => filters.organizationCode,
+  async () => {
+    currentPage.value = 1
+    await loadConsultations()
+  },
+)
+
+onMounted(async () => {
+  await initializeBranchFilter()
   localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   loadConsultations()
 })
@@ -273,12 +309,14 @@ async function searchConsultations() {
 
 async function resetFilters() {
   filters.consultationType = ''
+  filters.organizationCode = ''
   filters.consultationChannel = ''
   filters.customerName = ''
   filters.startedAt = ''
   filters.endedAt = ''
   filters.sortOrder = 'latest'
   currentPage.value = 1
+  await loadConsultations()
 }
 
 async function changePage(page) {
@@ -310,10 +348,16 @@ async function loadConsultations() {
 }
 
 function buildParams() {
-  return {
+  const params = {
     page: 0,
     size: 1000,
   }
+
+  if (showBranchFilter.value && filters.organizationCode) {
+    params.organizationCode = filters.organizationCode
+  }
+
+  return params
 }
 
 function normalizeConsultation(consultation) {
@@ -338,6 +382,16 @@ function normalizeConsultation(consultation) {
     customerName: consultation.customerName ?? consultation.customer?.customerName,
     contractCode: consultation.contractCode ?? consultation.contract?.contractCode,
     fpName: consultation.fpName ?? consultation.fp?.userName,
+    organizationCode:
+      consultation.organizationCode ??
+      consultation.branchCode ??
+      consultation.fp?.organizationCode ??
+      consultation.organization?.organizationCode,
+    organizationName:
+      consultation.organizationName ??
+      consultation.branchName ??
+      consultation.fp?.organizationName ??
+      consultation.organization?.organizationName,
   }
 }
 
@@ -374,6 +428,12 @@ function getTime(value, fallback = 0) {
 
 function toDateOnly(value) {
   return value ? String(value).slice(0, 10) : ''
+}
+
+function matchesOrganization(row, organizationCode) {
+  if (!organizationCode) return true
+  if (!row.organizationCode && !row.organizationName) return true
+  return row.organizationCode === organizationCode
 }
 
 function mergeConsultationRows(serverRows, localRows) {
@@ -441,7 +501,7 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
 }
 
