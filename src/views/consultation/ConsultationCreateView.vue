@@ -147,12 +147,12 @@
           <template v-else>
             <div class="prospect-grid">
               <label class="field">
-                <span>고객명</span>
+                <span>고객명 <b class="required-mark">*</b></span>
                 <input v-model.trim="customerInfo.customerName" class="control" />
               </label>
 
               <label class="field">
-                <span>성별</span>
+                <span>성별 <b class="required-mark">*</b></span>
                 <select v-model="customerInfo.customerGender" class="control">
                   <option value="">선택</option>
                   <option value="MALE">남성</option>
@@ -161,12 +161,12 @@
               </label>
 
               <label class="field">
-                <span>생년월일</span>
+                <span>생년월일 <b class="required-mark">*</b></span>
                 <input v-model="customerInfo.customerBirthDate" class="control" type="date" />
               </label>
 
               <label class="field">
-                <span>연락처</span>
+                <span>연락처 <b class="required-mark">*</b></span>
                 <input
                   :value="customerInfo.customerPhone"
                   class="control"
@@ -178,12 +178,12 @@
               </label>
 
               <div class="field field--wide">
-                <span>이메일</span>
+                <span>이메일 <b class="required-mark">*</b></span>
                 <div class="email-row">
                   <input v-model.trim="emailLocalPart" class="control" placeholder="email" />
                   <span>@</span>
                   <input
-                    v-if="emailDomainMode === 'custom'"
+                    v-if="emailDomainSelected === 'custom'"
                     v-model.trim="emailDomainCustom"
                     class="control"
                     placeholder="domain.com"
@@ -192,16 +192,13 @@
                     <option v-for="option in emailDomainOptions" :key="option" :value="option">
                       {{ option }}
                     </option>
-                  </select>
-                  <select v-model="emailDomainMode" class="control email-row__mode">
-                    <option value="selected">도메인 선택</option>
                     <option value="custom">직접 입력</option>
                   </select>
                 </div>
               </div>
 
               <div class="field field--wide">
-                <span>주소</span>
+                <span>주소 <b class="required-mark">*</b></span>
                 <div class="address-box">
                   <div class="address-box__search">
                     <input
@@ -211,10 +208,11 @@
                       @focus="showAddressResults = true"
                       @input="showAddressResults = true"
                     />
-                    <button type="button" class="address-box__button" @click="showAddressResults = true">
+                    <button type="button" class="address-box__button" :disabled="isAddressSearchLoading" @click="openPostcodeSearch">
                       주소 검색
                     </button>
                   </div>
+                  <p v-if="addressSearchMessage" class="address-box__message">{{ addressSearchMessage }}</p>
                   <div v-if="showAddressResults" class="address-results">
                     <button
                       v-for="address in filteredAddressOptions"
@@ -251,7 +249,7 @@
               </div>
 
               <label class="field">
-                <span>직업</span>
+                <span>직업 <b class="required-mark">*</b></span>
                 <select v-model="customerInfo.customerJob" class="control">
                   <option value="">선택</option>
                   <option v-for="option in jobOptions" :key="option" :value="option">{{ option }}</option>
@@ -259,17 +257,17 @@
               </label>
 
               <label v-if="customerInfo.customerJob === '기타/직접입력'" class="field">
-                <span>직업 직접 입력</span>
+                <span>직업 직접 입력 <b class="required-mark">*</b></span>
                 <input v-model.trim="customerInfo.customerJobCustom" class="control" />
               </label>
 
               <label class="field">
-                <span>회사명</span>
+                <span>회사명 <em class="optional-mark">선택</em></span>
                 <input v-model.trim="customerInfo.customerCompanyName" class="control" />
               </label>
 
               <label class="field">
-                <span>연 소득</span>
+                <span>연 소득 <b class="required-mark">*</b></span>
                 <input
                   :value="formatMoneyDisplay(customerInfo.customerAnnualIncome)"
                   class="control"
@@ -280,7 +278,7 @@
               </label>
 
               <label class="field">
-                <span>자산 규모</span>
+                <span>자산 규모 <em class="optional-mark">선택</em></span>
                 <input
                   :value="formatMoneyDisplay(customerInfo.customerAssetSize)"
                   class="control"
@@ -291,12 +289,12 @@
               </label>
 
               <label class="field field--wide">
-                <span>부채 현황</span>
+                <span>부채 현황 <em class="optional-mark">선택</em></span>
                 <input v-model.trim="customerInfo.customerDebtStatus" class="control" />
               </label>
 
               <label class="field">
-                <span>혼인 상태</span>
+                <span>혼인 상태 <b class="required-mark">*</b></span>
                 <select v-model="customerInfo.customerMaritalStatus" class="control">
                   <option value="">선택</option>
                   <option value="SINGLE">미혼</option>
@@ -305,35 +303,38 @@
               </label>
 
               <label class="field">
-                <span>부양가족 수</span>
+                <span>부양가족 수 <em class="optional-mark">선택</em></span>
                 <input v-model="customerInfo.customerDependentsCount" class="control" inputmode="numeric" />
               </label>
 
               <label class="check-line">
                 <input v-model="customerInfo.customerIsSmoker" type="checkbox" />
-                흡연 여부
+                흡연 여부 <em class="optional-mark">선택</em>
               </label>
 
               <label class="check-line">
                 <input v-model="customerInfo.customerIsDrinker" type="checkbox" />
-                음주 여부
+                음주 여부 <em class="optional-mark">선택</em>
               </label>
 
               <div class="field field--wide">
-                <span>기저질환</span>
+                <span>기저질환 <em class="optional-mark">선택</em></span>
                 <div class="disease-picker">
                   <select v-model="selectedDisease" class="control">
                     <option value="">기저질환 선택</option>
-                    <option v-for="option in diseaseOptions" :key="option" :value="option">{{ option }}</option>
+                    <option value="없음">없음</option>
+                    <option v-for="option in diseaseOptions" :key="option.diseaseCode" :value="option.diseaseCode">
+                      {{ option.diseaseName }}
+                    </option>
                   </select>
                   <button type="button" class="address-box__button" @click="addDisease">
                     추가
                   </button>
                 </div>
                 <div class="selected-disease-list">
-                  <span v-for="disease in customerInfo.underlyingDiseases" :key="disease" class="selected-disease-chip">
-                    {{ disease }}
-                    <button type="button" @click="removeDisease(disease)">×</button>
+                  <span v-for="diseaseCode in customerInfo.underlyingDiseases" :key="diseaseCode" class="selected-disease-chip">
+                    {{ getDiseaseName(diseaseCode) }}
+                    <button type="button" @click="removeDisease(diseaseCode)">×</button>
                   </span>
                 </div>
               </div>
@@ -408,7 +409,7 @@
                     type="button"
                     class="choice-button"
                     :class="{ 'is-active': newDetail.hasExistingInsurance === true }"
-                    @click="setExistingInsurancetrue(true)"
+                    @click="setExistingInsurance(true)"
                   >
                     있음
                   </button>
@@ -416,7 +417,7 @@
                     type="button"
                     class="choice-button"
                     :class="{ 'is-active': newDetail.hasExistingInsurance === false }"
-                    @click="setExistingInsurancetrue(false)"
+                    @click="setExistingInsurance(false)"
                   >
                     없음
                   </button>
@@ -739,15 +740,15 @@
           <div class="renewal-two-column">
             <section class="form-card">
               <h3>5. 고객 반응</h3>
-              <p class="section-help">(복수 선택 가능)</p>
+              <p class="section-help">(단일 선택)</p>
               <div class="checkbox-chip-row">
                 <button
                   v-for="option in renewalCustomerResponseOptions"
                   :key="option"
                   type="button"
                   class="checkbox-chip"
-                  :class="{ 'is-active': renewalDetail.customerResponses.includes(option) }"
-                  @click="toggleArraySelection(renewalDetail.customerResponses, option)"
+                  :class="{ 'is-active': renewalDetail.customerReaction === option }"
+                  @click="renewalDetail.customerReaction = toggleSingleSelection(renewalDetail.customerReaction, option)"
                 >
                   {{ option }}
                 </button>
@@ -763,8 +764,8 @@
                   :key="option"
                   type="button"
                   class="checkbox-chip"
-                  :class="{ 'is-active': renewalDetail.customerInterests.includes(option) }"
-                  @click="toggleArraySelection(renewalDetail.customerInterests, option)"
+                  :class="{ 'is-active': renewalDetail.renewalInterests.includes(option) }"
+                  @click="toggleArraySelection(renewalDetail.renewalInterests, option)"
                 >
                   {{ option }}
                 </button>
@@ -956,6 +957,15 @@
           <span>입력 내용은 저장 또는 임시저장 전까지 서버에 전송되지 않습니다.</span>
           <div>
             <button type="button" class="subtle-button" @click="goBack">취소</button>
+            <button
+              v-if="isEditMode"
+              type="button"
+              class="danger-button"
+              :disabled="isSubmitting"
+              @click="deleteCurrentDraft"
+            >
+              삭제
+            </button>
             <button type="button" class="outline-button" :disabled="isSubmitting" @click="saveDraft">임시저장</button>
             <button type="submit" class="save-button" :disabled="isSubmitting">
               {{ isSubmitting ? '저장 중' : '저장' }}
@@ -968,14 +978,25 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { createConsultation } from '../../api/consultations'
+import {
+  createConsultation,
+  deleteConsultationDraftFromApi,
+  getConsultationDraftFromApi,
+  saveConsultationDraftToApi,
+} from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
 import { getInsuranceProducts } from '../../api/insurance'
-import { getConsultationDraft, saveConsultationDraft } from '../../utils/consultationDrafts'
+import {
+  deleteConsultationDraft,
+  getConsultationDraft,
+  normalizeDraftResponse,
+  saveCompletedConsultation,
+  saveConsultationDraft,
+} from '../../utils/consultationDrafts'
 
 const route = useRoute()
 const router = useRouter()
@@ -1007,43 +1028,27 @@ const jobOptions = [
   '기타/직접입력',
 ]
 
-const diseaseOptions = [
-  '고혈압',
-  '당뇨병',
-  '고지혈증',
-  '협심증',
-  '심근경색',
-  '뇌졸중',
-  '암',
-  '갑상선암',
-  '간질환',
-  '신장질환',
-  '우울증',
-  '불안장애',
-  '디스크',
-  '천식',
-  '갑상선질환',
+const fallbackDiseaseOptions = [
+  { diseaseCode: 'HYPERTENSION', diseaseName: '고혈압' },
+  { diseaseCode: 'DIABETES', diseaseName: '당뇨병' },
+  { diseaseCode: 'HYPERLIPIDEMIA', diseaseName: '고지혈증' },
+  { diseaseCode: 'ANGINA', diseaseName: '협심증' },
+  { diseaseCode: 'MYOCARDIAL_INFARCTION', diseaseName: '심근경색' },
+  { diseaseCode: 'STROKE', diseaseName: '뇌졸중' },
+  { diseaseCode: 'CANCER', diseaseName: '암' },
+  { diseaseCode: 'THYROID_CANCER', diseaseName: '갑상선암' },
+  { diseaseCode: 'LIVER_DISEASE', diseaseName: '간질환' },
+  { diseaseCode: 'KIDNEY_DISEASE', diseaseName: '신장질환' },
+  { diseaseCode: 'DEPRESSION', diseaseName: '우울증' },
+  { diseaseCode: 'ANXIETY_DISORDER', diseaseName: '불안장애' },
+  { diseaseCode: 'DISC_DISEASE', diseaseName: '디스크' },
+  { diseaseCode: 'ASTHMA', diseaseName: '천식' },
+  { diseaseCode: 'THYROID_DISEASE', diseaseName: '갑상선질환' },
 ]
 
-const diseaseCodeMap = {
-  고혈압: 'HYPERTENSION',
-  당뇨병: 'DIABETES',
-  고지혈증: 'HYPERLIPIDEMIA',
-  협심증: 'ANGINA',
-  심근경색: 'MYOCARDIAL_INFARCTION',
-  뇌졸중: 'STROKE',
-  암: 'CANCER',
-  갑상선암: 'THYROID_CANCER',
-  간질환: 'LIVER_DISEASE',
-  신장질환: 'KIDNEY_DISEASE',
-  우울증: 'DEPRESSION',
-  불안장애: 'ANXIETY_DISORDER',
-  디스크: 'DISC_DISEASE',
-  천식: 'ASTHMA',
-  갑상선질환: 'THYROID_DISEASE',
-}
-
 const emailDomainOptions = ['naver.com', 'gmail.com', 'daum.net', 'kakao.com', 'outlook.com']
+
+const POSTCODE_SCRIPT_URL = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
 
 const addressOptions = [
   { zipcode: '06236', road: '서울특별시 강남구 테헤란로 152', jibun: '역삼동 737' },
@@ -1054,6 +1059,14 @@ const addressOptions = [
 ]
 
 const coverageTypeOptions = ['진단비', '실손 의료비', '수술비', '사망보장', '기타']
+
+const coverageTypeCodeMap = {
+  진단비: 'CANCER',
+  '실손 의료비': 'MEDICAL',
+  수술비: 'SURGERY',
+  사망보장: 'DEATH',
+  기타: 'OTHER',
+}
 
 const insurancePriorityOptions = ['보험료 저렴한 곳', '보장 범위가 넓은 곳', '보험금 지급 신속성', '기타']
 
@@ -1138,6 +1151,7 @@ const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
 const customerMode = ref('EXISTING')
+const isHydratingDraft = ref(false)
 const customerKeyword = ref('')
 const customers = ref([])
 const customerSearchTouched = ref(false)
@@ -1151,10 +1165,12 @@ const isProductsLoading = ref(false)
 const selectedDisease = ref('')
 const addressSearchKeyword = ref('')
 const showAddressResults = ref(false)
+const isAddressSearchLoading = ref(false)
+const addressSearchMessage = ref('')
 const emailLocalPart = ref('')
 const emailDomainSelected = ref(emailDomainOptions[0])
 const emailDomainCustom = ref('')
-const emailDomainMode = ref('selected')
+const diseaseOptions = ref([...fallbackDiseaseOptions])
 
 const form = reactive({
   consultationType: 'NEW_CONTRACT',
@@ -1212,7 +1228,6 @@ const claimDetail = reactive({
 })
 
 const renewalDetail = reactive({
-  renewalReason: '',
   desiredRenewalDate: '',
   expectedPremium: '',
   renewalScheduledDate: '',
@@ -1221,8 +1236,8 @@ const renewalDetail = reactive({
   changeType: '변경 없음',
   changeDetail: '',
   premiumChangeReasons: [],
-  customerResponses: [],
-  customerInterests: [],
+  customerReaction: '',
+  renewalInterests: [],
   result: '',
   nextActions: [],
   decisionExpectedDate: '',
@@ -1250,6 +1265,7 @@ const cancelDetail = reactive({
 
 const isEditMode = computed(() => route.name === 'consultation-draft-edit')
 const isNewContract = computed(() => form.consultationType === 'NEW_CONTRACT')
+const isProspectNewContract = computed(() => isNewContract.value && customerMode.value === 'PROSPECT')
 const needsExistingCustomer = computed(() => !isNewContract.value || customerMode.value === 'EXISTING')
 const needsContract = computed(() => ['CLAIM', 'RENEWAL', 'TERMINATION'].includes(form.consultationType))
 const noteSectionNumber = computed(() => {
@@ -1322,7 +1338,10 @@ watch(
   },
 )
 
-watch(customerMode, () => {
+watch(customerMode, (nextMode, previousMode) => {
+  if (isHydratingDraft.value) return
+  if (nextMode === previousMode) return
+
   customers.value = []
   customerSearchTouched.value = false
   selectedCustomer.value = null
@@ -1357,15 +1376,15 @@ watch(needsContract, async (value) => {
 })
 
 watch(
-  () => [emailLocalPart.value, emailDomainSelected.value, emailDomainCustom.value, emailDomainMode.value],
+  () => [emailLocalPart.value, emailDomainSelected.value, emailDomainCustom.value],
   () => {
-    const domain = emailDomainMode.value === 'custom' ? emailDomainCustom.value.trim() : emailDomainSelected.value
+    const domain = emailDomainSelected.value === 'custom' ? emailDomainCustom.value.trim() : emailDomainSelected.value
     customerInfo.customerEmail = emailLocalPart.value && domain ? `${emailLocalPart.value.trim()}@${domain}` : ''
   },
 )
 
 onMounted(async () => {
-  if (isEditMode.value) hydrateDraft()
+  if (isEditMode.value) await hydrateDraft()
 })
 
 function selectType(type) {
@@ -1424,48 +1443,78 @@ async function loadContracts(customerId) {
   }
 }
 
-function hydrateDraft() {
-  const draft = getConsultationDraft(route.params.draftId)
+async function hydrateDraft() {
+  const draft = await loadDraft(route.params.draftId)
   if (!draft) {
     message.value = '임시저장 상담일지를 찾을 수 없습니다.'
     return
   }
 
-  Object.assign(form, {
-    consultationType: draft.consultationType || 'NEW_CONTRACT',
-    consultationChannel: draft.consultationChannel || 'VISIT',
-    consultedAt: draft.consultedAt || toLocalInputValue(new Date()),
-    consultationContent: draft.consultationContent || draft.specialNote || '',
-    specialNote: draft.specialNote || draft.consultationContent || '',
-    nextScheduledAt: draft.nextScheduledAt || '',
-    contractId: draft.contractId || '',
-  })
+  isHydratingDraft.value = true
 
-  customerMode.value = draft.customerMode || 'EXISTING'
-  selectedCustomer.value = draft.selectedCustomer || null
+  try {
+    Object.assign(form, {
+      consultationType: draft.consultationType || 'NEW_CONTRACT',
+      consultationChannel: draft.consultationChannel || 'VISIT',
+      consultedAt: draft.consultedAt || toLocalInputValue(new Date()),
+      consultationContent: draft.consultationContent || draft.specialNote || '',
+      specialNote: draft.specialNote || draft.consultationContent || '',
+      nextScheduledAt: draft.nextScheduledAt || '',
+      contractId: draft.contractId || '',
+    })
 
-  if (draft.customerInfo) {
-    Object.assign(customerInfo, draft.customerInfo)
-    hydrateEmailFields(draft.customerInfo.customerEmail)
+    customerMode.value = getDraftCustomerMode(draft)
+    selectedCustomer.value = draft.selectedCustomer || null
+
+    if (draft.customerInfo) {
+      Object.assign(customerInfo, draft.customerInfo)
+      customerInfo.customerGender = normalizeGender(customerInfo.customerGender)
+      customerInfo.underlyingDiseases = normalizeUnderlyingDiseaseCodes(draft.customerInfo.underlyingDiseases)
+      hydrateEmailFields(draft.customerInfo.customerEmail)
+    }
+
+    Object.assign(newDetail, draft.newDetail || {})
+    if (!Array.isArray(newDetail.coverageTypes)) {
+      newDetail.coverageTypes = splitCommaList(draft.newDetail?.coverageTypesText)
+    }
+    selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
+    Object.assign(claimDetail, draft.claimDetail || {})
+    if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
+    if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
+    Object.assign(renewalDetail, draft.renewalDetail || {})
+    renewalDetail.premiumChangeReasons = normalizeArrayField(renewalDetail.premiumChangeReasons)
+    renewalDetail.renewalInterests = normalizeArrayField(
+      renewalDetail.renewalInterests ??
+      draft.renewalDetail?.interests ??
+      draft.renewalDetail?.customerInterests,
+    )
+    renewalDetail.nextActions = normalizeArrayField(renewalDetail.nextActions)
+    Object.assign(cancelDetail, draft.cancelDetail || {})
+    if (!Array.isArray(cancelDetail.reviewReasons)) cancelDetail.reviewReasons = []
+    if (!Array.isArray(cancelDetail.retentionPlans)) cancelDetail.retentionPlans = []
+    if (!Array.isArray(cancelDetail.nextActions)) cancelDetail.nextActions = []
+  } finally {
+    await nextTick()
+    isHydratingDraft.value = false
+  }
+}
+
+async function loadDraft(draftId) {
+  try {
+    const response = await getConsultationDraftFromApi(draftId)
+    const draft = normalizeDraftResponse(response?.result ?? response)
+    if (draft) return draft
+  } catch {
+    // 서버 임시저장 조회 실패 시 로컬 임시저장을 사용합니다.
   }
 
-  Object.assign(newDetail, draft.newDetail || {})
-  if (!Array.isArray(newDetail.coverageTypes)) {
-    newDetail.coverageTypes = splitCommaList(draft.newDetail?.coverageTypesText)
-  }
-  selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
-  Object.assign(claimDetail, draft.claimDetail || {})
-  if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
-  if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
-  Object.assign(renewalDetail, draft.renewalDetail || {})
-  if (!Array.isArray(renewalDetail.premiumChangeReasons)) renewalDetail.premiumChangeReasons = []
-  if (!Array.isArray(renewalDetail.customerResponses)) renewalDetail.customerResponses = []
-  if (!Array.isArray(renewalDetail.customerInterests)) renewalDetail.customerInterests = []
-  if (!Array.isArray(renewalDetail.nextActions)) renewalDetail.nextActions = []
-  Object.assign(cancelDetail, draft.cancelDetail || {})
-  if (!Array.isArray(cancelDetail.reviewReasons)) cancelDetail.reviewReasons = []
-  if (!Array.isArray(cancelDetail.retentionPlans)) cancelDetail.retentionPlans = []
-  if (!Array.isArray(cancelDetail.nextActions)) cancelDetail.nextActions = []
+  return getConsultationDraft(draftId)
+}
+
+function getDraftCustomerMode(draft) {
+  if (draft.customerMode) return draft.customerMode
+  if (draft.consultationType === 'NEW_CONTRACT' && draft.customerInfo && !draft.selectedCustomer) return 'PROSPECT'
+  return 'EXISTING'
 }
 
 function hydrateEmailFields(emailValue) {
@@ -1474,11 +1523,10 @@ function hydrateEmailFields(emailValue) {
   const [localPart, domain] = email.split('@')
   emailLocalPart.value = localPart
   if (emailDomainOptions.includes(domain)) {
-    emailDomainMode.value = 'selected'
     emailDomainSelected.value = domain
     emailDomainCustom.value = ''
   } else {
-    emailDomainMode.value = 'custom'
+    emailDomainSelected.value = 'custom'
     emailDomainCustom.value = domain
   }
 }
@@ -1500,19 +1548,110 @@ function buildDraftPayload() {
     newDetail: { ...newDetail },
     selectedProposedProducts: selectedProposedProducts.value,
     claimDetail: { ...claimDetail },
-    renewalDetail: { ...renewalDetail },
+    renewalDetail: buildRenewalDraftDetail(),
     cancelDetail: { ...cancelDetail },
     customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
   }
 }
 
-function saveDraft() {
-  const saved = saveConsultationDraft(buildDraftPayload(), route.params.draftId)
-  messageType.value = 'success'
-  message.value = '상담일지를 임시저장했습니다.'
-  if (!isEditMode.value) {
-    router.replace({ name: 'consultation-draft-edit', params: { draftId: saved.id } })
+function buildRenewalDraftDetail() {
+  return {
+    renewalReason: getRenewalReason(),
+    desiredRenewalDate: renewalDetail.desiredRenewalDate,
+    expectedPremium: renewalDetail.expectedPremium,
+    renewalScheduledDate: renewalDetail.renewalScheduledDate,
+    currentPremium: renewalDetail.currentPremium,
+    renewalPremium: renewalDetail.renewalPremium,
+    changeType: renewalDetail.changeType,
+    changeDetail: renewalDetail.changeDetail,
+    premiumChangeReasons: renewalDetail.premiumChangeReasons,
+    customerReaction: renewalDetail.customerReaction,
+    renewalInterests: renewalDetail.renewalInterests,
+    result: renewalDetail.result,
+    nextActions: renewalDetail.nextActions,
+    decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate),
   }
+}
+
+async function saveDraft() {
+  const draftPayload = buildDraftPayload()
+
+  try {
+    const apiPayload = buildDraftApiPayload(draftPayload)
+    const response = await saveConsultationDraftToApi(apiPayload)
+    const savedDraft = normalizeDraftResponse({
+      ...draftPayload,
+      ...(response?.result ?? response),
+      draftData: (response?.result ?? response)?.draftData ?? draftPayload,
+    })
+    if (savedDraft) {
+      saveConsultationDraft(savedDraft, savedDraft.id)
+      messageType.value = 'success'
+      message.value = '상담일지를 임시저장했습니다.'
+      if (!isEditMode.value || route.params.draftId !== savedDraft.id) {
+        router.replace({ name: 'consultation-draft-edit', params: { draftId: savedDraft.id } })
+      }
+      return
+    }
+    throw new Error('임시저장 응답에 draftId가 없습니다.')
+  } catch (error) {
+    console.error('임시저장 실패', {
+      payload: buildDraftApiPayload(draftPayload),
+      response: error.response?.data,
+      status: error.response?.status,
+    })
+    messageType.value = 'error'
+    message.value = getApiErrorMessage(error) || '임시저장을 DB에 저장하지 못했습니다.'
+  }
+}
+
+function buildDraftApiPayload(draftPayload) {
+  const payload = {
+    customerId: draftPayload.selectedCustomer?.customerId || draftPayload.customerId || null,
+    contractId: draftPayload.contractId || null,
+    consultationType: draftPayload.consultationType,
+    consultationChannel: draftPayload.consultationChannel,
+    consultedAt: toApiDateTime(draftPayload.consultedAt),
+    specialNote: draftPayload.specialNote || null,
+    nextScheduledAt: draftPayload.nextScheduledAt ? toApiDateTime(draftPayload.nextScheduledAt) : null,
+    draftData: draftPayload,
+  }
+
+  return removeEmptyFields(payload)
+}
+
+async function deleteCurrentDraft() {
+  const shouldDelete = window.confirm('임시저장 상담일지를 삭제할까요?')
+  if (!shouldDelete) return
+
+  try {
+    await deleteConsultationDraftFromApi(route.params.draftId)
+  } catch {
+    // 로컬 삭제는 계속 진행합니다.
+  }
+
+  deleteConsultationDraft(route.params.draftId)
+  router.push({ name: 'consultation-drafts' })
+}
+
+async function deleteDraftAfterSubmit(draftId) {
+  if (!draftId) return true
+
+  try {
+    await deleteConsultationDraftFromApi(draftId)
+  } catch (error) {
+    if (error.response?.status !== 404) {
+      console.error('최종 저장 후 임시저장 삭제 실패', {
+        draftId,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
+      return false
+    }
+  }
+
+  deleteConsultationDraft(draftId)
+  return true
 }
 
 async function submitConsultation() {
@@ -1524,18 +1663,82 @@ async function submitConsultation() {
   }
 
   isSubmitting.value = true
+  const payload = buildSubmitPayload()
+  const draftIdToDelete = isEditMode.value ? route.params.draftId : null
 
   try {
-    await createConsultation(buildSubmitPayload())
+    const response = await createConsultation(payload)
+    saveCompletedConsultation(buildCompletedConsultationRecord(payload, response))
+    const isDraftDeleted = await deleteDraftAfterSubmit(draftIdToDelete)
+    if (!isDraftDeleted) {
+      messageType.value = 'error'
+      message.value = '상담일지는 저장됐지만 임시저장 데이터 삭제에 실패했습니다. 임시저장 목록에서 다시 삭제해주세요.'
+      return
+    }
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
     window.setTimeout(() => router.push({ name: 'fp-consultations' }), 500)
   } catch (error) {
+    console.error('상담일지 저장 실패', {
+      payload,
+      response: error.response?.data,
+      status: error.response?.status,
+    })
     messageType.value = 'error'
-    message.value = error.response?.data?.message || error.message || '상담일지 저장에 실패했습니다.'
+    message.value = getApiErrorMessage(error)
   } finally {
     isSubmitting.value = false
   }
+}
+
+function buildCompletedConsultationRecord(payload, response) {
+  const consultationId = response?.result?.consultationId ?? response?.consultationId
+  return {
+    consultationId,
+    customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
+    customerId: payload.customerId,
+    contractId: payload.contractId,
+    consultationType: payload.consultationType,
+    consultationChannel: payload.consultationChannel,
+    consultedAt: payload.consultedAt,
+    nextScheduledAt: payload.nextScheduledAt,
+    specialNote: payload.specialNote,
+    consultationContent: payload.specialNote,
+    newDetail: form.consultationType === 'NEW_CONTRACT' ? { ...newDetail } : undefined,
+    claimDetail: form.consultationType === 'CLAIM' ? { ...claimDetail } : undefined,
+    renewalDetail: form.consultationType === 'RENEWAL' ? buildRenewalDraftDetail() : undefined,
+    cancelDetail: form.consultationType === 'TERMINATION' ? { ...cancelDetail } : undefined,
+    fpName: '',
+  }
+}
+
+function getApiErrorMessage(error) {
+  const data = error.response?.data
+  const details = data?.result?.errors ?? data?.errors ?? data?.fieldErrors
+  const detailMessage = Array.isArray(details)
+    ? details.map((item) => item.defaultMessage || item.message || `${item.field}: ${item.reason || item.rejectedValue || ''}`).filter(Boolean).join(', ')
+    : ''
+
+  if (detailMessage) {
+    return data?.message ? `${data.message}: ${detailMessage}` : detailMessage
+  }
+
+  return [
+    data?.message,
+    error.message,
+    '상담일지 저장에 실패했습니다.',
+  ].filter(Boolean)[0]
+}
+
+function removeEmptyFields(source) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => {
+      if (value === null || value === undefined) return false
+      if (typeof value === 'string' && value.trim() === '') return false
+      if (Array.isArray(value) && value.length === 0) return false
+      return true
+    }),
+  )
 }
 
 function buildSubmitPayload() {
@@ -1544,27 +1747,25 @@ function buildSubmitPayload() {
     consultationType: form.consultationType,
     consultationChannel: form.consultationChannel,
     consultedAt: toApiDateTime(form.consultedAt),
-    consultationContent: specialNote,
     specialNote,
-    nextScheduledAt: form.nextScheduledAt ? toApiDateTime(form.nextScheduledAt) : null,
-    customerId: needsExistingCustomer.value ? selectedCustomer.value?.customerId : null,
-    contractId: needsContract.value ? form.contractId : null,
   }
 
-  if (!needsExistingCustomer.value) {
+  if (form.nextScheduledAt) {
+    payload.nextScheduledAt = toApiDateTime(form.nextScheduledAt)
+  }
+
+  if (needsContract.value && form.contractId) {
+    payload.contractId = form.contractId
+  }
+
+  if (isProspectNewContract.value) {
     payload.customerInfo = buildCustomerInfoPayload()
+  } else {
+    payload.customerId = selectedCustomer.value?.customerId
   }
 
   if (form.consultationType === 'NEW_CONTRACT') {
-    payload.newDetail = {
-      monthlyIncome: parseMoneyOrNull(newDetail.monthlyIncome),
-      hasExistingInsurance: Boolean(newDetail.hasExistingInsurance),
-      monthlyInsurancePremium: parseMoneyOrNull(newDetail.monthlyInsurancePremium),
-      existingInsuranceNote: newDetail.existingInsuranceNote || null,
-      insurancePriority: newDetail.insurancePriority || null,
-      coverageTypes: newDetail.coverageTypes,
-      proposedProductCodes: selectedProposedProducts.value.map(getProductKey).filter(Boolean),
-    }
+    payload.newDetail = buildNewContractDetailPayload()
   }
 
   if (form.consultationType === 'CLAIM') {
@@ -1585,21 +1786,19 @@ function buildSubmitPayload() {
 
   if (form.consultationType === 'RENEWAL') {
     payload.renewalDetail = {
-      renewalReason: renewalDetail.renewalReason || null,
-      desiredRenewalDate: renewalDetail.desiredRenewalDate || null,
-      expectedPremium: parseMoneyOrNull(renewalDetail.expectedPremium),
-      renewalScheduledDate: renewalDetail.renewalScheduledDate || null,
+      renewalReason: getRenewalReason(),
+      renewalScheduledDate: toDateOnly(renewalDetail.renewalScheduledDate),
       currentPremium: parseMoneyOrNull(renewalDetail.currentPremium),
       renewalPremium: parseMoneyOrNull(renewalDetail.renewalPremium),
-      premiumChangeRate: renewalPremiumChangeRate.value || null,
-      changeType: renewalDetail.changeType || null,
-      changeDetail: renewalDetail.changeDetail || null,
-      premiumChangeReasons: renewalDetail.premiumChangeReasons,
-      customerResponses: renewalDetail.customerResponses,
-      customerInterests: renewalDetail.customerInterests,
-      result: renewalDetail.result || null,
-      nextActions: renewalDetail.nextActions,
-      decisionExpectedDate: renewalDetail.decisionExpectedDate || null,
+      premiumChangeRate: parseMoneyOrNull(renewalDetail.premiumChangeRate),
+      coverageChangeType: renewalDetail.changeType || null,
+      coverageChangeDetail: renewalDetail.changeDetail || null,
+      premiumChangeReasonTypes: renewalDetail.premiumChangeReasons,
+      customerReaction: renewalDetail.customerReaction || null,
+      interestTypes: renewalDetail.renewalInterests,
+      consultationResult: renewalDetail.result || null,
+      nextActions: joinArrayField(renewalDetail.nextActions),
+      decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate)
     }
   }
 
@@ -1618,10 +1817,22 @@ function buildSubmitPayload() {
   return payload
 }
 
+function buildNewContractDetailPayload() {
+  const payload = {
+      monthlyIncome: parseMoneyOrNull(newDetail.monthlyIncome),
+      hasExistingInsurance: Boolean(newDetail.hasExistingInsurance),
+      monthlyInsurancePremium: parseMoneyOrNull(newDetail.monthlyInsurancePremium) ?? 0,
+      existingInsuranceNote: newDetail.existingInsuranceNote || null,
+      insurancePriority: newDetail.insurancePriority || null,
+    }
+
+  return removeEmptyFields(payload)
+}
+
 function buildCustomerInfoPayload() {
-  return {
+  return removeEmptyFields({
     customerName: customerInfo.customerName,
-    customerGender: customerInfo.customerGender || null,
+    customerGender: normalizeGender(customerInfo.customerGender) || null,
     customerBirthDate: customerInfo.customerBirthDate || null,
     customerPhone: customerInfo.customerPhone || null,
     customerEmail: customerInfo.customerEmail || null,
@@ -1631,16 +1842,15 @@ function buildCustomerInfoPayload() {
     customerJob: customerInfo.customerJob === '기타/직접입력'
       ? (customerInfo.customerJobCustom || null)
       : (customerInfo.customerJob || null),
-    customerCompanyName: customerInfo.customerCompanyName || null,
+    customerCompanyName: customerInfo.customerCompanyName || '미입력',
     customerAnnualIncome: parseMoneyOrNull(customerInfo.customerAnnualIncome),
-    customerAssetSize: parseMoneyOrNull(customerInfo.customerAssetSize),
-    customerDebtStatus: customerInfo.customerDebtStatus || null,
+    customerAssetSize: parseMoneyOrNull(customerInfo.customerAssetSize) ?? 0,
+    customerDebtStatus: customerInfo.customerDebtStatus || '없음',
     customerIsSmoker: Boolean(customerInfo.customerIsSmoker),
     customerIsDrinker: Boolean(customerInfo.customerIsDrinker),
     customerMaritalStatus: customerInfo.customerMaritalStatus || null,
-    customerDependentsCount: parseIntegerOrNull(customerInfo.customerDependentsCount),
-    underlyingDiseaseCodes: customerInfo.underlyingDiseases.map((item) => diseaseCodeMap[item] || item),
-  }
+    customerDependentsCount: parseIntegerOrNull(customerInfo.customerDependentsCount) ?? 0,
+  })
 }
 
 function validateForm() {
@@ -1689,12 +1899,8 @@ function validateNewCustomerInfo() {
     { value: customerInfo.customerAddressRoad, label: '도로명주소' },
     { value: customerInfo.customerAddressDetail, label: '상세주소' },
     { value: customerInfo.customerJob, label: '직업' },
-    { value: customerInfo.customerCompanyName, label: '회사명' },
     { value: customerInfo.customerAnnualIncome, label: '연 소득' },
-    { value: customerInfo.customerAssetSize, label: '자산 규모' },
-    { value: customerInfo.customerDebtStatus, label: '부채 현황' },
     { value: customerInfo.customerMaritalStatus, label: '혼인 상태' },
-    { value: customerInfo.customerDependentsCount, label: '부양가족 수' },
   ]
 
   if (customerInfo.customerJob === '기타/직접입력') {
@@ -1766,6 +1972,19 @@ function getProductKey(product) {
   )
 }
 
+function getProductCode(product) {
+  return String(
+    product?.insuranceProductCode ??
+    product?.productCode ??
+    product?.code ??
+    '',
+  )
+}
+
+function getCoverageTypeCode(coverageType) {
+  return coverageTypeCodeMap[coverageType] || coverageType
+}
+
 function applyCustomerToInfo(customer) {
   customerInfo.customerName = customer.customerName ?? customer.name ?? ''
   customerInfo.customerGender = customer.customerGender ?? customer.gender ?? ''
@@ -1816,9 +2035,17 @@ function resetCustomerInfo() {
 }
 
 function getGenderLabel(gender) {
-  if (gender === 'MALE') return '남성'
-  if (gender === 'FEMALE') return '여성'
+  const normalizedGender = normalizeGender(gender)
+  if (normalizedGender === 'MALE') return '남성'
+  if (normalizedGender === 'FEMALE') return '여성'
   return gender || '-'
+}
+
+function normalizeGender(gender) {
+  const value = String(gender || '').trim().toUpperCase()
+  if (['FEMALE', 'FEMAL', 'F', '여성', '여'].includes(value)) return 'FEMALE'
+  if (['MALE', 'M', '남성', '남'].includes(value)) return 'MALE'
+  return value
 }
 
 function updatePhone(rawValue) {
@@ -1841,7 +2068,27 @@ function formatMoneyDisplay(rawValue) {
   return digits ? Number(digits).toLocaleString('ko-KR') : ''
 }
 
+function getDiseaseName(diseaseCode) {
+  return diseaseOptions.value.find((item) => item.diseaseCode === diseaseCode)?.diseaseName || diseaseCode
+}
+
+function normalizeUnderlyingDiseaseCodes(value) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      const rawValue = String(item || '')
+      return diseaseOptions.value.find((option) => option.diseaseName === rawValue)?.diseaseCode || rawValue
+    })
+    .filter(Boolean)
+}
+
 function addDisease() {
+  if (selectedDisease.value === '없음') {
+    customerInfo.underlyingDiseases = []
+    selectedDisease.value = ''
+    return
+  }
   if (!selectedDisease.value || customerInfo.underlyingDiseases.includes(selectedDisease.value)) return
   customerInfo.underlyingDiseases = [...customerInfo.underlyingDiseases, selectedDisease.value]
   selectedDisease.value = ''
@@ -1856,6 +2103,51 @@ function selectAddress(address) {
   customerInfo.customerAddressRoad = address.road
   addressSearchKeyword.value = address.road
   showAddressResults.value = false
+}
+
+async function openPostcodeSearch() {
+  addressSearchMessage.value = ''
+  isAddressSearchLoading.value = true
+
+  try {
+    await loadPostcodeScript()
+    new window.daum.Postcode({
+      oncomplete(data) {
+        const roadAddress = data.roadAddress || data.address || data.jibunAddress || ''
+        customerInfo.customerZipcode = data.zonecode || ''
+        customerInfo.customerAddressRoad = roadAddress
+        addressSearchKeyword.value = roadAddress
+        customerInfo.customerAddressDetail = ''
+        showAddressResults.value = false
+        addressSearchMessage.value = ''
+      },
+    }).open()
+  } catch {
+    showAddressResults.value = true
+    addressSearchMessage.value = '실제 주소 검색을 불러오지 못했습니다. 현재는 샘플 주소 검색을 사용할 수 있습니다.'
+  } finally {
+    isAddressSearchLoading.value = false
+  }
+}
+
+function loadPostcodeScript() {
+  if (window.daum?.Postcode) return Promise.resolve()
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[src="${POSTCODE_SCRIPT_URL}"]`)
+    if (existingScript) {
+      existingScript.addEventListener('load', resolve, { once: true })
+      existingScript.addEventListener('error', reject, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = POSTCODE_SCRIPT_URL
+    script.async = true
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
 }
 
 function goBack() {
@@ -1881,6 +2173,19 @@ function splitCommaList(value) {
     .filter(Boolean)
 }
 
+function normalizeArrayField(value) {
+  if (Array.isArray(value)) return value
+  return splitCommaList(value)
+}
+
+function joinArrayField(value) {
+  return normalizeArrayField(value).join(',')
+}
+
+function getRenewalReason() {
+  return renewalDetail.premiumChangeReasons[0] || 'OTHER'
+}
+
 function toLocalInputValue(value) {
   const date = new Date(value)
   const offset = date.getTimezoneOffset() * 60000
@@ -1888,7 +2193,13 @@ function toLocalInputValue(value) {
 }
 
 function toApiDateTime(value) {
-  return value ? value.replace(' ', 'T') : value
+  if (!value) return value
+  const normalizedValue = value.replace(' ', 'T')
+  return normalizedValue.includes('T') ? normalizedValue : `${normalizedValue}T00:00:00`
+}
+
+function toDateOnly(value) {
+  return value ? String(value).slice(0, 10) : null
 }
 </script>
 
@@ -1947,6 +2258,16 @@ function toApiDateTime(value) {
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #475569;
+}
+
+.danger-button {
+  border: 1px solid #ef4444;
+  background: #ffffff;
+  color: #ef4444;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #fef2f2;
 }
 
 .save-button,
@@ -2349,7 +2670,7 @@ function toApiDateTime(value) {
 
 .email-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 128px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(240px, 280px);
   gap: 8px;
   align-items: center;
 }
@@ -2360,8 +2681,19 @@ function toApiDateTime(value) {
   font-weight: 700;
 }
 
-.email-row__mode {
-  min-width: 0;
+.required-mark {
+  color: #ef4444;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.optional-mark {
+  margin-left: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .address-box {
@@ -2389,6 +2721,17 @@ function toApiDateTime(value) {
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.address-box__button:disabled {
+  opacity: 0.55;
+}
+
+.address-box__message {
+  margin: 0;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .address-results {

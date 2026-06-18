@@ -56,6 +56,16 @@
           density="compact"
           hide-details
         />
+        <v-select
+          v-model="filters.sortOrder"
+          :items="sortOptions"
+          item-title="label"
+          item-value="value"
+          label="정렬"
+          variant="outlined"
+          density="compact"
+          hide-details
+        />
       </div>
       <div class="filter-actions">
         <v-btn class="search-button" @click="searchConsultations">
@@ -161,6 +171,7 @@ import {
 } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
 import { formatDateTime } from '../../utils/formatters'
+import { getSavedConsultations } from '../../utils/consultationDrafts'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -179,6 +190,11 @@ const channelOptions = [
   { label: '메시지', value: 'MESSAGE' },
   { label: '온라인', value: 'ONLINE' },
 ]
+const sortOptions = [
+  { label: '최신 상담일순', value: 'latest' },
+  { label: '오래된 상담일순', value: 'oldest' },
+  { label: '다음 상담 예정일순', value: 'nextSchedule' },
+]
 
 const filters = reactive({
   consultationType: '',
@@ -186,22 +202,32 @@ const filters = reactive({
   customerName: '',
   startedAt: '',
   endedAt: '',
+  sortOrder: 'latest',
 })
 
 const consultationRows = ref([])
+const localCompletedRows = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
-const totalElements = ref(0)
-const totalPages = ref(0)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
-const visibleRows = computed(() => consultationRows.value.filter((row) => {
+const allRows = computed(() => mergeConsultationRows(consultationRows.value, localCompletedRows.value))
+const filteredRows = computed(() => sortRows(allRows.value.filter((row) => {
   if (filters.consultationType && row.consultationType !== filters.consultationType) return false
   if (filters.consultationChannel && row.consultationChannel !== filters.consultationChannel) return false
+  if (filters.customerName.trim() && !String(row.customerName || '').includes(filters.customerName.trim())) return false
+  if (filters.startedAt && toDateOnly(row.consultedAt) < filters.startedAt) return false
+  if (filters.endedAt && toDateOnly(row.consultedAt) > filters.endedAt) return false
   return true
-}))
+})))
+const visibleRows = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredRows.value.slice(start, start + pageSize.value)
+})
+const totalElements = computed(() => filteredRows.value.length)
+const totalPages = computed(() => Math.ceil(totalElements.value / pageSize.value))
 const metrics = computed(() => [
   { icon: 'mdi-file-document-outline', value: totalElements.value.toLocaleString('ko-KR'), label: '전체 상담일지' },
   { icon: 'mdi-calendar-check-outline', value: visibleRows.value.length.toLocaleString('ko-KR'), label: '현재 표시' },
@@ -216,22 +242,27 @@ const rangeLabel = computed(() => {
 })
 
 watch(
-  () => filters.consultationType,
+  () => [
+    filters.consultationType,
+    filters.consultationChannel,
+    filters.startedAt,
+    filters.endedAt,
+    filters.sortOrder,
+  ],
   () => {
     currentPage.value = 1
-    loadConsultations()
   },
 )
 
 watch(
-  () => filters.consultationChannel,
+  () => filters.customerName,
   () => {
     currentPage.value = 1
-    loadConsultations()
   },
 )
 
 onMounted(() => {
+  localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   loadConsultations()
 })
 
@@ -246,8 +277,8 @@ async function resetFilters() {
   filters.customerName = ''
   filters.startedAt = ''
   filters.endedAt = ''
+  filters.sortOrder = 'latest'
   currentPage.value = 1
-  await loadConsultations()
 }
 
 async function changePage(page) {
@@ -266,14 +297,9 @@ async function loadConsultations() {
     const rows = Array.isArray(pageResult.content) ? pageResult.content : pageResult
 
     consultationRows.value = Array.isArray(rows) ? rows.map(normalizeConsultation) : []
-    currentPage.value = Number(pageResult.page ?? currentPage.value)
-    pageSize.value = Number(pageResult.size ?? pageSize.value)
-    totalElements.value = Number(pageResult.totalElements ?? consultationRows.value.length)
-    totalPages.value = Number(pageResult.totalPages ?? (consultationRows.value.length > 0 ? 1 : 0))
+    localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   } catch (error) {
     consultationRows.value = []
-    totalElements.value = 0
-    totalPages.value = 0
     errorMessage.value =
       error.response?.data?.message ||
       error.message ||
@@ -284,24 +310,10 @@ async function loadConsultations() {
 }
 
 function buildParams() {
-  const params = {
-    page: Math.max(currentPage.value, 1),
-    size: pageSize.value,
+  return {
+    page: 0,
+    size: 1000,
   }
-
-  if (filters.consultationType) {
-    params.consultationType = filters.consultationType
-    params.type = filters.consultationType
-  }
-  if (filters.consultationChannel) {
-    params.consultationChannel = filters.consultationChannel
-    params.channel = filters.consultationChannel
-  }
-  if (filters.customerName.trim()) params.customerName = filters.customerName.trim()
-  if (filters.startedAt) params.startedAt = filters.startedAt
-  if (filters.endedAt) params.endedAt = filters.endedAt
-
-  return params
 }
 
 function normalizeConsultation(consultation) {
@@ -341,6 +353,35 @@ function goToDetail(consultation) {
 
 function getConsultationKey(consultation) {
   return consultation.consultationId ?? `${consultation.customerId}-${consultation.consultedAt}`
+}
+
+function sortRows(rows) {
+  return [...rows].sort((a, b) => {
+    if (filters.sortOrder === 'oldest') {
+      return getTime(a.consultedAt) - getTime(b.consultedAt)
+    }
+    if (filters.sortOrder === 'nextSchedule') {
+      return getTime(a.nextScheduledAt, Number.MAX_SAFE_INTEGER) - getTime(b.nextScheduledAt, Number.MAX_SAFE_INTEGER)
+    }
+    return getTime(b.consultedAt) - getTime(a.consultedAt)
+  })
+}
+
+function getTime(value, fallback = 0) {
+  const time = new Date(value || '').getTime()
+  return Number.isNaN(time) ? fallback : time
+}
+
+function toDateOnly(value) {
+  return value ? String(value).slice(0, 10) : ''
+}
+
+function mergeConsultationRows(serverRows, localRows) {
+  const serverIds = new Set(serverRows.map((row) => row.consultationId).filter(Boolean))
+  return [
+    ...serverRows,
+    ...localRows.filter((row) => !serverIds.has(row.consultationId)),
+  ]
 }
 </script>
 
@@ -400,7 +441,7 @@ function getConsultationKey(consultation) {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr;
   gap: 10px;
 }
 

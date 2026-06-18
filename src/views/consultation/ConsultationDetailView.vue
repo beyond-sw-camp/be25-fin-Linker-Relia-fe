@@ -47,7 +47,7 @@
 
       <section class="detail-section">
         <h3>상담 내용</h3>
-        <p>{{ detail.consultationContent || '-' }}</p>
+        <p>{{ consultationContentText }}</p>
       </section>
 
       <section class="detail-section detail-section--blue">
@@ -67,11 +67,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getConsultation } from '../../api/consultations'
+import { getConsultation, getConsultationDraftFromApi } from '../../api/consultations'
 import { USER_ROLES } from '../../constants/auth'
 import { getConsultationChannelLabel, getConsultationTypeLabel } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
-import { getConsultationDraft } from '../../utils/consultationDrafts'
+import {
+  getConsultationDraft,
+  getSavedConsultation,
+  normalizeDraftResponse,
+} from '../../utils/consultationDrafts'
 import { formatDateTime } from '../../utils/formatters'
 
 const route = useRoute()
@@ -91,6 +95,11 @@ const customerName = computed(() => (
   detail.value.customerName ||
   detail.value.selectedCustomer?.customerName ||
   detail.value.customerInfo?.customerName ||
+  '-'
+))
+const consultationContentText = computed(() => (
+  detail.value.consultationContent ||
+  detail.value.specialNote ||
   '-'
 ))
 
@@ -116,6 +125,11 @@ const typeDetailItems = computed(() => {
     const source = detail.value.renewalDetail || {}
     return [
       { label: '갱신 사유', value: source.renewalReason || '-' },
+      { label: '보험료 변동 사유', value: arrayText(source.premiumChangeReasons) },
+      { label: '고객 반응', value: source.customerReaction || '-' },
+      { label: '고객 관심사항', value: arrayText(source.renewalInterests ?? source.interests ?? source.customerInterests) },
+      { label: '후속조치', value: arrayText(source.nextActions) },
+      { label: '결정 예정일', value: formatDate(source.decisionExpectedDate) },
       { label: '희망 갱신일', value: source.desiredRenewalDate || '-' },
       { label: '예상 보험료', value: source.expectedPremium || '-' },
     ]
@@ -124,16 +138,16 @@ const typeDetailItems = computed(() => {
   const source = detail.value.cancelDetail || {}
   return [
     { label: '해지 검토 사유', value: arrayText(source.reviewReasons) },
-+   { label: '유지 방안', value: arrayText(source.retentionPlans) },
-+   { label: '고객 의사', value: source.customerIntent || '-' },
-+   { label: '상담 결과', value: source.result || '-' },
+    { label: '유지 방안', value: arrayText(source.retentionPlans) },
+    { label: '고객 의사', value: source.customerIntent || '-' },
+    { label: '상담 결과', value: source.result || '-' },
     { label: '유지 가능성', value: retentionLabel(source.retentionPossibility) },
   ]
 })
 
 onMounted(async () => {
   if (isDraft.value) {
-    const draft = getConsultationDraft(route.params.draftId)
+    const draft = await loadDraftDetail(route.params.draftId)
     if (!draft) {
       errorMessage.value = '임시저장 상담일지를 찾을 수 없습니다.'
       return
@@ -144,11 +158,42 @@ onMounted(async () => {
 
   try {
     const response = await getConsultation(route.params.consultationId)
-    detail.value = response?.result ?? {}
+    detail.value = mergeSavedDetail(response?.result ?? {})
   } catch (error) {
+    const localDetail = getSavedConsultation(route.params.consultationId)
+    if (localDetail) {
+      detail.value = localDetail
+      return
+    }
     errorMessage.value = error.response?.data?.message || error.message || '상담일지를 불러오지 못했습니다.'
   }
 })
+
+async function loadDraftDetail(draftId) {
+  try {
+    const response = await getConsultationDraftFromApi(draftId)
+    const draft = normalizeDraftResponse(response?.result ?? response)
+    if (draft) return draft
+  } catch {
+    // 서버 임시저장 조회 실패 시 브라우저 임시저장을 사용합니다.
+  }
+
+  return getConsultationDraft(draftId)
+}
+
+function mergeSavedDetail(serverDetail) {
+  const localDetail = getSavedConsultation(route.params.consultationId) || {}
+  return {
+    ...localDetail,
+    ...serverDetail,
+    specialNote: serverDetail.specialNote || localDetail.specialNote || localDetail.consultationContent,
+    consultationContent: serverDetail.consultationContent || serverDetail.specialNote || localDetail.consultationContent || localDetail.specialNote,
+    newDetail: serverDetail.newDetail || localDetail.newDetail,
+    claimDetail: serverDetail.claimDetail || localDetail.claimDetail,
+    renewalDetail: serverDetail.renewalDetail || localDetail.renewalDetail,
+    cancelDetail: serverDetail.cancelDetail || localDetail.cancelDetail,
+  }
+}
 
 function goList() {
   const routeName = consultationListRouteByRole[authStore.userRole] ?? 'fp-consultations'
@@ -160,7 +205,14 @@ function goEdit() {
 }
 
 function arrayText(value) {
-  return Array.isArray(value) && value.length ? value.join(', ') : '-'
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+  return items.length ? items.join(', ') : '-'
+}
+
+function formatDate(value) {
+  return value ? String(value).slice(0, 10) : '-'
 }
 
 function yesNo(value) {
