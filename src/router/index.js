@@ -25,11 +25,16 @@ import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
 import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
 import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
+import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
   if (page.name === 'fp-dashboard') {
     return FpDashboardView
+  }
+
+  if (['branch-dashboard', 'hq-dashboard'].includes(page.name)) {
+    return ManagerDashboardView
   }
 
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
