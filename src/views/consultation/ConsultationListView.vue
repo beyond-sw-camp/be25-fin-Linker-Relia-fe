@@ -238,6 +238,7 @@ const branchFpErrorMessage = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const isLoading = ref(false)
+const isResettingFilters = ref(false)
 const errorMessage = ref('')
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
@@ -298,6 +299,7 @@ watch(
 watch(
   () => filters.organizationCode,
   async () => {
+    if (isResettingFilters.value) return
     currentPage.value = 1
     await loadBranchFpFilter()
     await loadConsultations()
@@ -318,16 +320,22 @@ async function searchConsultations() {
 }
 
 async function resetFilters() {
-  filters.consultationType = ''
-  filters.organizationCode = ''
-  filters.consultationChannel = ''
-  filters.customerName = ''
-  filters.startedAt = ''
-  filters.endedAt = ''
-  filters.sortOrder = 'latest'
-  branchFpFilter.value = null
-  currentPage.value = 1
-  await loadConsultations()
+  isResettingFilters.value = true
+
+  try {
+    filters.consultationType = ''
+    filters.organizationCode = ''
+    filters.consultationChannel = ''
+    filters.customerName = ''
+    filters.startedAt = ''
+    filters.endedAt = ''
+    filters.sortOrder = 'latest'
+    branchFpFilter.value = null
+    currentPage.value = 1
+    await loadConsultations()
+  } finally {
+    isResettingFilters.value = false
+  }
 }
 
 async function changePage(page) {

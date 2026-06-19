@@ -260,9 +260,17 @@ function arrayText(value) {
 
 function cancelGroupText(source, keys) {
   const items = keys
-    .filter(([key]) => source[key] === true)
+    .filter(([key]) => isPositiveFlag(source[key]))
     .map(([, label]) => label)
   return items.length ? items.join(', ') : '-'
+}
+
+function isPositiveFlag(value) {
+  if (value === true || value === 1) return true
+  if (typeof value === 'string') {
+    return ['true', 'y', 'yes', '1'].includes(value.trim().toLowerCase())
+  }
+  return false
 }
 
 function booleanText(value) {
