@@ -196,7 +196,9 @@
                 :key="column.key"
                 :class="column.cellClass"
               >
-                <span v-if="column.key === 'rank'" class="advisor-rank" :class="advisor.rankClass">{{ advisor.rank }}</span>
+                <span v-if="column.key === 'rank'" class="ranking-number" :class="{ 'is-first': advisor.rank === 1 }">
+                  #{{ advisor.rank }}
+                </span>
                 <template v-else>
                   {{ getAdvisorCellValue(advisor, column.key) }}
                 </template>
@@ -208,61 +210,25 @@
 
       <div class="ranking-panel__footer">
         <span>{{ footerText }}</span>
-        <div v-if="isBranchRankingView && branchRankingPageInfo.totalPages > 0" class="pagination">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            :disabled="!branchRankingPageInfo.hasPrevious || isBranchRankingLoading"
-            @click="changeBranchRankingPage(branchRankingPage - 1)"
-          >
-            <v-icon icon="mdi-chevron-left" size="16" />
-          </button>
-          <button
-            v-for="page in branchPaginationPages"
-            :key="page"
-            type="button"
-            :class="{ active: page === branchRankingPage }"
+        <div v-if="isBranchRankingView && branchRankingPageInfo.totalPages > 0" class="ranking-pagination">
+          <v-pagination
+            :model-value="branchRankingPage"
+            :length="Math.max(branchRankingPageInfo.totalPages, 1)"
             :disabled="isBranchRankingLoading"
-            @click="changeBranchRankingPage(page)"
-          >
-            {{ page }}
-          </button>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            :disabled="!branchRankingPageInfo.hasNext || isBranchRankingLoading"
-            @click="changeBranchRankingPage(branchRankingPage + 1)"
-          >
-            <v-icon icon="mdi-chevron-right" size="16" />
-          </button>
+            total-visible="7"
+            rounded="circle"
+            @update:model-value="changeBranchRankingPage"
+          />
         </div>
-        <div v-else-if="advisorRankingPageInfo.totalPages > 0" class="pagination">
-          <button
-            type="button"
-            aria-label="이전 페이지"
-            :disabled="!advisorRankingPageInfo.hasPrevious || isAdvisorRankingLoading"
-            @click="changeAdvisorRankingPage(advisorRankingPage - 1)"
-          >
-            <v-icon icon="mdi-chevron-left" size="16" />
-          </button>
-          <button
-            v-for="page in advisorPaginationPages"
-            :key="page"
-            type="button"
-            :class="{ active: page === advisorRankingPage }"
+        <div v-else-if="advisorRankingPageInfo.totalPages > 0" class="ranking-pagination">
+          <v-pagination
+            :model-value="advisorRankingPage"
+            :length="Math.max(advisorRankingPageInfo.totalPages, 1)"
             :disabled="isAdvisorRankingLoading"
-            @click="changeAdvisorRankingPage(page)"
-          >
-            {{ page }}
-          </button>
-          <button
-            type="button"
-            aria-label="다음 페이지"
-            :disabled="!advisorRankingPageInfo.hasNext || isAdvisorRankingLoading"
-            @click="changeAdvisorRankingPage(advisorRankingPage + 1)"
-          >
-            <v-icon icon="mdi-chevron-right" size="16" />
-          </button>
+            total-visible="7"
+            rounded="circle"
+            @update:model-value="changeAdvisorRankingPage"
+          />
         </div>
       </div>
     </section>
@@ -413,24 +379,6 @@ const footerText = computed(() => {
   const start = (advisorRankingPageInfo.value.page - 1) * advisorRankingPageInfo.value.size + 1
   const end = start + advisorRankingPageInfo.value.numberOfElements - 1
   return `총 ${formatNumber(advisorRankingPageInfo.value.totalElements)}명 중 ${start} - ${end} 표시`
-})
-
-const advisorPaginationPages = computed(() => {
-  const totalPages = advisorRankingPageInfo.value.totalPages
-  const currentPage = advisorRankingPage.value
-  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
-  const end = Math.min(totalPages, start + 4)
-
-  return Array.from({ length: Math.max(end - start + 1, 0) }, (_, index) => start + index)
-})
-
-const branchPaginationPages = computed(() => {
-  const totalPages = branchRankingPageInfo.value.totalPages
-  const currentPage = branchRankingPage.value
-  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
-  const end = Math.min(totalPages, start + 4)
-
-  return Array.from({ length: Math.max(end - start + 1, 0) }, (_, index) => start + index)
 })
 
 const metrics = computed(() => [
@@ -1125,24 +1073,7 @@ function normalizeAdvisorRankingItem(item, index) {
     customers: formatMetricValue(customersRaw, '명'),
     commissionAmountRaw,
     commissionAmount: formatMetricValue(commissionAmountRaw, '원'),
-    rankClass: getAdvisorRankClass(rank),
   }
-}
-
-function getAdvisorRankClass(rank) {
-  if (rank === 1) {
-    return 'is-gold'
-  }
-
-  if (rank === 2) {
-    return 'is-silver'
-  }
-
-  if (rank === 3) {
-    return 'is-bronze'
-  }
-
-  return 'is-default'
 }
 
 function toNullableNumber(value) {
@@ -1940,31 +1871,13 @@ function getAdvisorCellValue(advisor, key) {
   font-weight: 600;
 }
 
-.advisor-rank {
-  width: 22px;
-  height: 22px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 12px;
+.ranking-number {
+  color: #1f2937;
   font-weight: 900;
 }
 
-.advisor-rank.is-gold {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.advisor-rank.is-silver {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.advisor-rank.is-bronze {
-  background: #fed7aa;
-  color: #c2410c;
+.ranking-number.is-first {
+  color: #f97316;
 }
 
 .status-pill {
@@ -2022,32 +1935,10 @@ function getAdvisorCellValue(advisor, key) {
   font-size: 12px;
 }
 
-.pagination {
+.ranking-pagination {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.pagination button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.pagination button.active {
-  border-color: #f97316;
-  background: #f97316;
-  color: #ffffff;
-}
-
-.pagination button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  justify-content: flex-end;
 }
 
 @media (max-width: 1180px) {
