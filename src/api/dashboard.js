@@ -5,6 +5,11 @@ export async function getDashboardClosingMonths() {
   return response.data
 }
 
+export async function getOrganizationDashboardSummary(params) {
+  const response = await authApi.get('/dashboard/organization/summary', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data

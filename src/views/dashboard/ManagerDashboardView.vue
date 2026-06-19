@@ -25,7 +25,7 @@
     <section class="report-panel">
       <div class="report-panel__heading">
         <h2>종합 실적 보고서</h2>
-        <p>맞춤형 고객 관계 관리 솔루션을 만나보세요.</p>
+        <p :class="{ 'report-panel__message--error': summaryErrorMessage }">{{ reportDescription }}</p>
       </div>
 
       <div class="metric-grid">
@@ -34,6 +34,9 @@
           <strong :class="{ 'is-danger': metric.danger }">
             {{ metric.value }}<small>{{ metric.unit }}</small>
           </strong>
+          <p v-if="metric.secondaryLabel" class="metric-card__secondary">
+            {{ metric.secondaryLabel }} {{ metric.secondaryValue }}{{ metric.secondaryUnit }}
+          </p>
           <p :class="metric.trendClass">{{ metric.caption }}</p>
         </article>
       </div>
@@ -181,9 +184,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-import { getDashboardClosingMonths } from '../../api/dashboard'
+import { getDashboardClosingMonths, getOrganizationDashboardSummary } from '../../api/dashboard'
 import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
@@ -191,43 +194,46 @@ import { useAuthStore } from '../../stores/auth'
 const authStore = useAuthStore()
 
 const selectedBranch = ref('전체 지점')
-const selectedMonth = ref('2026년 5월')
+const selectedMonth = ref('')
 const advisorSortKey = ref('contracts')
 const rankingTab = ref('advisor')
 const isLoadingBranches = ref(false)
 const isLoadingMonths = ref(false)
+const isSummaryLoading = ref(false)
 const branchErrorMessage = ref('')
 const monthErrorMessage = ref('')
+const summaryErrorMessage = ref('')
+const summary = ref(createEmptyOrganizationSummary())
 
-const fallbackBranchNames = [
-  '강남본부 강남지점',
-  '서초 중앙 지점',
-  '해운대 마린 지점',
-  '잠실 에비뉴 지점',
-  '판교 테크노 지점',
+const fallbackBranchOptions = [
+  { label: '강남본부 강남지점', value: 'gangnam' },
+  { label: '서초 중앙 지점', value: 'seocho' },
+  { label: '해운대 마린 지점', value: 'haeundae' },
+  { label: '잠실 에비뉴 지점', value: 'jamsil' },
+  { label: '판교 테크노 지점', value: 'pangyo' },
 ]
 
 const branchOptions = ref([
   { label: '전체 지점', value: '전체 지점' },
-  ...fallbackBranchNames.map((branchName) => ({
-    label: branchName,
-    value: branchName,
-  })),
+  ...fallbackBranchOptions,
 ])
 
 const fallbackMonthOptions = [
-  { label: '2026년 5월', value: '2026년 5월' },
-  { label: '2026년 4월', value: '2026년 4월' },
-  { label: '2026년 3월', value: '2026년 3월' },
+  { label: '2026년 05월', value: '2026-05' },
+  { label: '2026년 04월', value: '2026-04' },
+  { label: '2026년 03월', value: '2026-03' },
 ]
 
 const monthOptions = ref(fallbackMonthOptions)
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const selectedBranchOption = computed(() =>
+  branchOptions.value.find((branch) => branch.value === selectedBranch.value) ?? null,
+)
 const currentBranchName = computed(() => {
   if (isHqManager.value) {
-    return selectedBranch.value
+    return selectedBranchOption.value?.label ?? '전체 지점'
   }
 
   return authStore.user.organizationName || '강남본부 강남지점'
@@ -259,6 +265,18 @@ const rankingHint = computed(() => {
   return '선택한 지점의 설계사 순위를 확인할 수 있습니다.'
 })
 
+const reportDescription = computed(() => {
+  if (summaryErrorMessage.value) {
+    return summaryErrorMessage.value
+  }
+
+  if (isSummaryLoading.value) {
+    return '종합 실적 보고서를 불러오는 중입니다.'
+  }
+
+  return '맞춤형 고객 관계 관리 솔루션을 만나보세요.'
+})
+
 const footerText = computed(() => {
   if (isBranchRankingView.value) {
     return '표시 항목: 1 - 5 / 총 152개 지점'
@@ -271,65 +289,68 @@ const footerText = computed(() => {
   return '총 156개 중 1 - 8 표시'
 })
 
-const metrics = [
+const metrics = computed(() => [
   {
     label: '설계사',
-    value: '12,540',
+    value: formatNumber(summary.value.advisorCount),
     unit: '명',
-    caption: '전월 대비 ▲ 148명',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.advisorCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.advisorCountDiff),
   },
   {
     label: '고객',
-    value: '421,910',
+    value: formatNumber(summary.value.customerCount),
     unit: '명',
-    caption: '전월 대비 ▲ 10,284명',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.customerCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.customerCountDiff),
   },
   {
     label: '계약',
-    value: '14,208',
+    value: formatNumber(summary.value.contractCount),
     unit: '건',
-    caption: '전월 대비 ▲ 113건',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.contractCountDiff, '건'),
+    trendClass: getCountTrendClass(summary.value.contractCountDiff),
   },
   {
     label: '관심 고객',
-    value: '28',
+    value: formatNumber(summary.value.interestCustomerCount),
     unit: '명',
-    caption: '전월 대비 ▲ 6명',
-    trendClass: 'is-up',
-    danger: true,
+    caption: formatCountDiffCaption(summary.value.interestCustomerCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.interestCustomerCountDiff),
+    danger: summary.value.interestCustomerCount > 0,
   },
   {
     label: '계약 성공률',
-    value: '68.4',
+    value: formatDecimal(summary.value.contractSuccessRate, 1),
     unit: '%',
-    caption: '전월 대비 ▼ 1.8%',
-    trendClass: 'is-down',
+    caption: formatPercentDiffCaption(summary.value.contractSuccessRateDiff),
+    trendClass: getRateTrendClass(summary.value.contractSuccessRateDiff),
   },
   {
     label: '계약 유지율',
-    value: '79.6',
+    value: formatDecimal(summary.value.retentionRate, 1),
     unit: '%',
-    caption: '전월 대비 ▲ 1.4%',
-    trendClass: 'is-goal',
+    caption: formatPercentDiffCaption(summary.value.retentionRateDiff),
+    trendClass: getRateTrendClass(summary.value.retentionRateDiff),
   },
   {
     label: '해지 계약 수',
-    value: '42',
+    value: formatNumber(summary.value.terminatedContractCount),
     unit: '건',
-    caption: '전월 대비 ▼ 2건',
-    trendClass: 'is-down',
+    caption: formatCountDiffCaption(summary.value.terminatedContractCountDiff, '건'),
+    trendClass: getCountTrendClass(summary.value.terminatedContractCountDiff),
   },
   {
     label: '수입 수수료',
-    value: '4억 2,500',
-    unit: '만원',
-    caption: '지급 수수료 4억 2,500만원',
+    value: formatNumber(summary.value.commissionAmount),
+    unit: '원',
+    caption: '',
     trendClass: 'is-muted',
+    secondaryLabel: '지급 수수료',
+    secondaryValue: formatNumber(summary.value.paymentCommissionAmount),
+    secondaryUnit: '원',
   },
-]
+])
 
 onMounted(() => {
   if (isHqManager.value) {
@@ -338,6 +359,18 @@ onMounted(() => {
 
   loadClosingMonthOptions()
 })
+
+watch(
+  [selectedBranch, selectedMonth],
+  () => {
+    if (!selectedMonth.value) {
+      return
+    }
+
+    loadOrganizationSummary()
+  },
+  { immediate: true },
+)
 
 async function loadBranchOptions() {
   branchErrorMessage.value = ''
@@ -350,10 +383,7 @@ async function loadBranchOptions() {
     if (organizations.length === 0) {
       branchOptions.value = [
         { label: '전체 지점', value: '전체 지점' },
-        ...fallbackBranchNames.map((branchName) => ({
-          label: branchName,
-          value: branchName,
-        })),
+        ...fallbackBranchOptions,
       ]
       return
     }
@@ -362,7 +392,7 @@ async function loadBranchOptions() {
       { label: '전체 지점', value: '전체 지점' },
       ...organizations.map((branch) => ({
         label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
-        value: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        value: branch.organizationCode ?? branch.organizationName ?? 'unknown',
       })),
     ]
 
@@ -390,6 +420,7 @@ async function loadClosingMonthOptions() {
 
     if (months.length === 0) {
       monthOptions.value = fallbackMonthOptions
+      selectedMonth.value = fallbackMonthOptions[0]?.value ?? ''
       return
     }
 
@@ -407,6 +438,7 @@ async function loadClosingMonthOptions() {
     }
   } catch (error) {
     monthOptions.value = fallbackMonthOptions
+    selectedMonth.value = fallbackMonthOptions[0]?.value ?? ''
     monthErrorMessage.value =
       error.response?.data?.message ||
       error.message ||
@@ -414,6 +446,38 @@ async function loadClosingMonthOptions() {
   } finally {
     isLoadingMonths.value = false
   }
+}
+
+async function loadOrganizationSummary() {
+  summaryErrorMessage.value = ''
+  isSummaryLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardSummary(buildOrganizationSummaryParams())
+    summary.value = normalizeOrganizationSummary(response?.result)
+  } catch (error) {
+    summary.value = createEmptyOrganizationSummary()
+    summaryErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '종합 실적 보고서를 불러오지 못했습니다.'
+  } finally {
+    isSummaryLoading.value = false
+  }
+}
+
+function buildOrganizationSummaryParams() {
+  const params = {}
+
+  if (selectedMonth.value) {
+    params.closingMonth = selectedMonth.value
+  }
+
+  if (isHqManager.value && !isAllBranchSelected.value && selectedBranch.value) {
+    params.organizationCode = selectedBranch.value
+  }
+
+  return params
 }
 
 function normalizeMonthOption(month) {
@@ -459,6 +523,140 @@ function formatClosingMonthLabel(monthValue) {
   }
 
   return source
+}
+
+function normalizeOrganizationSummary(payload) {
+  return {
+    advisorCount: toNumber(getValue(payload, ['advisorCount', 'fpCount', 'plannerCount', 'designerCount'])),
+    advisorCountDiff: toNumber(getValue(payload, ['advisorCountDiff', 'fpCountDiff', 'plannerCountDiff', 'designerCountDiff'])),
+    customerCount: toNumber(getValue(payload, ['customerCount', 'totalCustomerCount'])),
+    customerCountDiff: toNumber(getValue(payload, ['customerCountDiff', 'totalCustomerCountDiff', 'customerDiff'])),
+    contractCount: toNumber(getValue(payload, ['contractCount', 'totalContractCount'])),
+    contractCountDiff: toNumber(getValue(payload, ['contractCountDiff', 'totalContractCountDiff'])),
+    interestCustomerCount: toNumber(getValue(payload, ['interestCustomerCount', 'totalInterestCustomerCount'])),
+    interestCustomerCountDiff: toNumber(getValue(payload, ['interestCustomerCountDiff', 'totalInterestCustomerCountDiff'])),
+    contractSuccessRate: toNumber(getValue(payload, ['contractSuccessRate', 'contractAchievementRate', 'successRate'])),
+    contractSuccessRateDiff: toNumber(getValue(payload, ['contractSuccessRateDiff', 'contractAchievementRateDiff', 'successRateDiff'])),
+    retentionRate: toNumber(getValue(payload, ['retentionRate'])),
+    retentionRateDiff: toNumber(getValue(payload, ['retentionRateDiff'])),
+    terminatedContractCount: toNumber(getValue(payload, ['terminatedContractCount', 'cancelContractCount', 'lapseContractCount'])),
+    terminatedContractCountDiff: toNumber(getValue(payload, ['terminatedContractCountDiff', 'cancelContractCountDiff', 'lapseContractCountDiff'])),
+    commissionAmount: toNumber(getValue(payload, ['netIncomeCommissionAmount', 'commissionAmount', 'expectedCommissionAmount', 'totalCommissionAmount'])),
+    commissionAmountDiff: toNumber(getValue(payload, ['netIncomeCommissionDiffAmount', 'commissionAmountDiff', 'expectedCommissionAmountDiff', 'totalCommissionAmountDiff'])),
+    paymentCommissionAmount: toNumber(getValue(payload, ['totalPaymentCommissionAmount', 'paymentCommissionAmount'])),
+    paymentCommissionAmountDiff: toNumber(getValue(payload, ['totalPaymentCommissionDiffAmount', 'paymentCommissionAmountDiff'])),
+  }
+}
+
+function createEmptyOrganizationSummary() {
+  return {
+    advisorCount: 0,
+    advisorCountDiff: 0,
+    customerCount: 0,
+    customerCountDiff: 0,
+    contractCount: 0,
+    contractCountDiff: 0,
+    interestCustomerCount: 0,
+    interestCustomerCountDiff: 0,
+    contractSuccessRate: 0,
+    contractSuccessRateDiff: 0,
+    retentionRate: 0,
+    retentionRateDiff: 0,
+    terminatedContractCount: 0,
+    terminatedContractCountDiff: 0,
+    commissionAmount: 0,
+    commissionAmountDiff: 0,
+    paymentCommissionAmount: 0,
+    paymentCommissionAmountDiff: 0,
+  }
+}
+
+function getValue(source, keys) {
+  for (const key of keys) {
+    if (source?.[key] !== undefined && source?.[key] !== null) {
+      return source[key]
+    }
+  }
+
+  return null
+}
+
+function toNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  const normalized = Number(String(value).replace(/,/g, ''))
+  return Number.isFinite(normalized) ? normalized : 0
+}
+
+function formatNumber(value) {
+  return toNumber(value).toLocaleString('ko-KR')
+}
+
+function formatDecimal(value, fractionDigits = 1) {
+  return toNumber(value).toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+}
+
+function formatSignedNumber(value, fractionDigits = 0) {
+  const numericValue = toNumber(value)
+  const absoluteValue = Math.abs(numericValue).toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+
+  if (numericValue > 0) {
+    return `▲ ${absoluteValue}`
+  }
+
+  if (numericValue < 0) {
+    return `▼ ${absoluteValue}`
+  }
+
+  return absoluteValue
+}
+
+function formatCountDiffCaption(value, unit) {
+  return `전월 대비 ${formatSignedNumber(value)}${unit}`
+}
+
+function formatPercentDiffCaption(value) {
+  return `전월 대비 ${formatSignedNumber(value, 1)}%`
+}
+
+function formatCurrencyDiffCaption(value) {
+  return `전월 대비 ${formatSignedNumber(value)}원`
+}
+
+function getCountTrendClass(value, zeroClass = 'is-muted') {
+  const numericValue = toNumber(value)
+
+  if (numericValue > 0) {
+    return 'is-up'
+  }
+
+  if (numericValue < 0) {
+    return 'is-down'
+  }
+
+  return zeroClass
+}
+
+function getRateTrendClass(value) {
+  const numericValue = toNumber(value)
+
+  if (numericValue > 0) {
+    return 'is-goal'
+  }
+
+  if (numericValue < 0) {
+    return 'is-down'
+  }
+
+  return 'is-muted'
 }
 
 const donutCharts = [
@@ -761,6 +959,10 @@ const topPerformers = computed(() => {
   font-size: 13px;
 }
 
+.report-panel__message--error {
+  color: #dc2626;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -807,6 +1009,13 @@ const topPerformers = computed(() => {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
+}
+
+.metric-card__secondary {
+  margin: 0 0 9px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .is-up {
