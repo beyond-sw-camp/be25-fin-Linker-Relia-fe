@@ -13,11 +13,12 @@
 
       <label class="dashboard-filter__field">
         <span>기간 선택</span>
-        <select v-model="selectedMonth">
-          <option v-for="month in monthOptions" :key="month" :value="month">
-            {{ month }}
+        <select v-model="selectedMonth" :disabled="isLoadingMonths">
+          <option v-for="month in monthOptions" :key="month.value" :value="month.value">
+            {{ month.label }}
           </option>
         </select>
+        <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
       </label>
     </div>
 
@@ -182,6 +183,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
+import { getDashboardClosingMonths } from '../../api/dashboard'
 import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
@@ -193,7 +195,9 @@ const selectedMonth = ref('2026년 5월')
 const advisorSortKey = ref('contracts')
 const rankingTab = ref('advisor')
 const isLoadingBranches = ref(false)
+const isLoadingMonths = ref(false)
 const branchErrorMessage = ref('')
+const monthErrorMessage = ref('')
 
 const fallbackBranchNames = [
   '강남본부 강남지점',
@@ -211,7 +215,13 @@ const branchOptions = ref([
   })),
 ])
 
-const monthOptions = ['2026년 5월', '2026년 4월', '2026년 3월']
+const fallbackMonthOptions = [
+  { label: '2026년 5월', value: '2026년 5월' },
+  { label: '2026년 4월', value: '2026년 4월' },
+  { label: '2026년 3월', value: '2026년 3월' },
+]
+
+const monthOptions = ref(fallbackMonthOptions)
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
@@ -325,6 +335,8 @@ onMounted(() => {
   if (isHqManager.value) {
     loadBranchOptions()
   }
+
+  loadClosingMonthOptions()
 })
 
 async function loadBranchOptions() {
@@ -366,6 +378,87 @@ async function loadBranchOptions() {
   } finally {
     isLoadingBranches.value = false
   }
+}
+
+async function loadClosingMonthOptions() {
+  monthErrorMessage.value = ''
+  isLoadingMonths.value = true
+
+  try {
+    const response = await getDashboardClosingMonths()
+    const months = Array.isArray(response?.result) ? response.result : []
+
+    if (months.length === 0) {
+      monthOptions.value = fallbackMonthOptions
+      return
+    }
+
+    monthOptions.value = months
+      .map((month) => normalizeMonthOption(month))
+      .filter((month) => Boolean(month.value))
+
+    if (monthOptions.value.length === 0) {
+      monthOptions.value = fallbackMonthOptions
+    }
+
+    const hasSelectedMonth = monthOptions.value.some((month) => month.value === selectedMonth.value)
+    if (!hasSelectedMonth) {
+      selectedMonth.value = monthOptions.value[0]?.value ?? fallbackMonthOptions[0].value
+    }
+  } catch (error) {
+    monthOptions.value = fallbackMonthOptions
+    monthErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '기간 목록을 불러오지 못했습니다. 기본 목록을 표시합니다.'
+  } finally {
+    isLoadingMonths.value = false
+  }
+}
+
+function normalizeMonthOption(month) {
+  if (typeof month === 'string') {
+    return {
+      label: formatClosingMonthLabel(month),
+      value: month,
+    }
+  }
+
+  const value =
+    month?.closingMonth ??
+    month?.month ??
+    month?.value ??
+    month?.label ??
+    ''
+
+  const label =
+    month?.closingMonthLabel ??
+    month?.monthLabel ??
+    month?.label ??
+    value
+
+  return {
+    label: formatClosingMonthLabel(label || value),
+    value,
+  }
+}
+
+function formatClosingMonthLabel(monthValue) {
+  const source = String(monthValue ?? '').trim()
+  const digits = source.replace(/\D/g, '')
+
+  if (digits.length >= 6) {
+    const year = digits.slice(0, 4)
+    const month = digits.slice(4, 6).padStart(2, '0')
+    return `${year}년 ${month}월`
+  }
+
+  const matched = source.match(/^(\d{4})년\s*(\d{1,2})월$/)
+  if (matched) {
+    return `${matched[1]}년 ${matched[2].padStart(2, '0')}월`
+  }
+
+  return source
 }
 
 const donutCharts = [
