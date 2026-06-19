@@ -144,8 +144,8 @@ const typeDetailItems = computed(() => {
       { label: '기존 보험 보유', value: booleanText(source.hasExistingInsurance) },
       { label: '월 보험료', value: moneyText(source.monthlyInsurancePremium) },
       { label: '가입 기준', value: source.insurancePriority || '-' },
-      { label: '관심 보장', value: source.coverageTypesText || arrayText(source.coverageTypes) },
-      { label: '제안 상품', value: proposedProductsText(source.proposedProducts) },
+      { label: '관심 보장', value: source.coverageTypesText || coverageTypesText(source.coverageTypes ?? source.coverageTypeList) },
+      { label: '제안 상품', value: proposedProductsText(source.proposedProducts ?? detail.value.selectedProposedProducts) },
     ]
   }
   if (detail.value.consultationType === 'CLAIM') {
@@ -183,6 +183,19 @@ const typeDetailItems = computed(() => {
   }
 
   const source = detail.value.cancelDetail || {}
+  const currentItems = [
+    { label: '해지 검토 사유', value: arrayText(source.reviewReasons ?? source.terminationReasons) },
+    { label: '해지 사유 상세', value: source.reasonDetail || source.cancelReasonDetail || '-' },
+    { label: '유지 방안', value: arrayText(source.retentionPlans ?? source.retentionPlanTypes) },
+    { label: '고객 의사', value: source.customerIntent || '-' },
+    { label: '유지 가능성', value: retentionLabel(source.retentionPossibility) },
+    { label: '상담 결과', value: source.result || source.consultationResult || '-' },
+    { label: '후속조치', value: arrayText(source.nextActions) },
+  ]
+  const hasCurrentItems = currentItems.some((item) => item.value !== '-')
+
+  if (hasCurrentItems) return currentItems
+
   return [
     ...cancelBooleanGroups.map((group) => ({
       label: group.label,
@@ -235,10 +248,17 @@ function mergeSavedDetail(serverDetail) {
     ...serverDetail,
     specialNote: serverDetail.specialNote || localDetail.specialNote || localDetail.consultationContent,
     consultationContent: serverDetail.consultationContent || serverDetail.specialNote || localDetail.consultationContent || localDetail.specialNote,
-    newDetail: serverDetail.newDetail || localDetail.newDetail,
-    claimDetail: serverDetail.claimDetail || localDetail.claimDetail,
-    renewalDetail: serverDetail.renewalDetail || localDetail.renewalDetail,
-    cancelDetail: serverDetail.cancelDetail || localDetail.cancelDetail,
+    newDetail: mergeDetailObject(localDetail.newDetail, serverDetail.newDetail),
+    claimDetail: mergeDetailObject(localDetail.claimDetail, serverDetail.claimDetail),
+    renewalDetail: mergeDetailObject(localDetail.renewalDetail, serverDetail.renewalDetail),
+    cancelDetail: mergeDetailObject(localDetail.cancelDetail, serverDetail.cancelDetail),
+  }
+}
+
+function mergeDetailObject(localValue, serverValue) {
+  return {
+    ...(localValue || {}),
+    ...(serverValue || {}),
   }
 }
 
@@ -299,6 +319,21 @@ function proposedProductsText(value) {
     .map((product) => product.insuranceProductName || product.productName || product.name || product.insuranceProductId)
     .filter(Boolean)
     .join(', ') || '-'
+}
+
+function coverageTypesText(value) {
+  const labelMap = {
+    CANCER: '암',
+    HEART: '심장',
+    LIFE: '생명',
+    DEATH: '사망',
+    LONG_TERM_CARE: '장기요양',
+  }
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+
+  return items.length ? items.map((item) => labelMap[item] || item).join(', ') : '-'
 }
 
 function formatDate(value) {

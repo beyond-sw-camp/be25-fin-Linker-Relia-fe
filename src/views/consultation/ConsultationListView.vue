@@ -176,8 +176,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getConsultations } from '../../api/consultations'
 import { getOrganizationFps } from '../../api/organizations'
@@ -191,8 +191,10 @@ import { useBranchFilter } from '../../composables/useBranchFilter'
 import { formatDateTime } from '../../utils/formatters'
 import { getSavedConsultations } from '../../utils/consultationDrafts'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const LIST_STATE_STORAGE_KEY = 'consultation-list-state'
 const {
   branches,
   showBranchFilter,
@@ -239,6 +241,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const isLoading = ref(false)
 const isResettingFilters = ref(false)
+const isRestoringListState = ref(false)
 const errorMessage = ref('')
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
@@ -285,6 +288,7 @@ watch(
     filters.sortOrder,
   ],
   () => {
+    if (isRestoringListState.value) return
     currentPage.value = 1
   },
 )
@@ -292,6 +296,7 @@ watch(
 watch(
   () => filters.customerName,
   () => {
+    if (isRestoringListState.value) return
     currentPage.value = 1
   },
 )
@@ -299,6 +304,7 @@ watch(
 watch(
   () => filters.organizationCode,
   async () => {
+    if (isRestoringListState.value) return
     if (isResettingFilters.value) return
     currentPage.value = 1
     await loadBranchFpFilter()
@@ -308,6 +314,7 @@ watch(
 
 onMounted(async () => {
   await initializeBranchFilter()
+  await restoreListState()
   await loadBranchFpFilter()
   localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   loadConsultations()
@@ -332,6 +339,7 @@ async function resetFilters() {
     filters.sortOrder = 'latest'
     branchFpFilter.value = null
     currentPage.value = 1
+    clearListState()
     await loadConsultations()
   } finally {
     isResettingFilters.value = false
@@ -496,7 +504,40 @@ function goToCreate() {
 function goToDetail(consultation) {
   const consultationId = consultation.consultationId ?? consultation.id
   if (!consultationId) return
+  saveListState()
   router.push({ name: 'consultation-detail', params: { consultationId } })
+}
+
+function saveListState() {
+  window.sessionStorage.setItem(LIST_STATE_STORAGE_KEY, JSON.stringify({
+    routeName: route.name,
+    filters: { ...filters },
+    currentPage: currentPage.value,
+  }))
+}
+
+async function restoreListState() {
+  const rawState = window.sessionStorage.getItem(LIST_STATE_STORAGE_KEY)
+  if (!rawState) return
+
+  try {
+    const state = JSON.parse(rawState)
+    if (state?.routeName !== route.name) return
+
+    isRestoringListState.value = true
+    Object.assign(filters, state.filters || {})
+    currentPage.value = Number(state.currentPage) || 1
+    await nextTick()
+  } catch {
+    // 저장된 목록 상태가 깨져 있으면 무시하고 기본값으로 조회합니다.
+  } finally {
+    isRestoringListState.value = false
+    clearListState()
+  }
+}
+
+function clearListState() {
+  window.sessionStorage.removeItem(LIST_STATE_STORAGE_KEY)
 }
 
 function getConsultationKey(consultation) {
