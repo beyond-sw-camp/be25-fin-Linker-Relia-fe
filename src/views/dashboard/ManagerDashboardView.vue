@@ -3,11 +3,12 @@
     <div class="dashboard-filter">
       <label v-if="isHqManager" class="dashboard-filter__field">
         <span>지점 선택</span>
-        <select v-model="selectedBranch">
-          <option v-for="branch in branchOptions" :key="branch" :value="branch">
-            {{ branch }}
+        <select v-model="selectedBranch" :disabled="isLoadingBranches">
+          <option v-for="branch in branchOptions" :key="branch.value" :value="branch.value">
+            {{ branch.label }}
           </option>
         </select>
+        <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
       </label>
 
       <label class="dashboard-filter__field">
@@ -179,8 +180,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
+import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -190,15 +192,24 @@ const selectedBranch = ref('전체 지점')
 const selectedMonth = ref('2026년 5월')
 const advisorSortKey = ref('contracts')
 const rankingTab = ref('advisor')
+const isLoadingBranches = ref(false)
+const branchErrorMessage = ref('')
 
-const branchOptions = [
-  '전체 지점',
+const fallbackBranchNames = [
   '강남본부 강남지점',
   '서초 중앙 지점',
   '해운대 마린 지점',
   '잠실 에비뉴 지점',
   '판교 테크노 지점',
 ]
+
+const branchOptions = ref([
+  { label: '전체 지점', value: '전체 지점' },
+  ...fallbackBranchNames.map((branchName) => ({
+    label: branchName,
+    value: branchName,
+  })),
+])
 
 const monthOptions = ['2026년 5월', '2026년 4월', '2026년 3월']
 
@@ -309,6 +320,53 @@ const metrics = [
     trendClass: 'is-muted',
   },
 ]
+
+onMounted(() => {
+  if (isHqManager.value) {
+    loadBranchOptions()
+  }
+})
+
+async function loadBranchOptions() {
+  branchErrorMessage.value = ''
+  isLoadingBranches.value = true
+
+  try {
+    const response = await getBranchOrganizations()
+    const organizations = Array.isArray(response?.result) ? response.result : []
+
+    if (organizations.length === 0) {
+      branchOptions.value = [
+        { label: '전체 지점', value: '전체 지점' },
+        ...fallbackBranchNames.map((branchName) => ({
+          label: branchName,
+          value: branchName,
+        })),
+      ]
+      return
+    }
+
+    branchOptions.value = [
+      { label: '전체 지점', value: '전체 지점' },
+      ...organizations.map((branch) => ({
+        label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        value: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+      })),
+    ]
+
+    const hasSelectedBranch = branchOptions.value.some((branch) => branch.value === selectedBranch.value)
+    if (!hasSelectedBranch) {
+      selectedBranch.value = '전체 지점'
+    }
+  } catch (error) {
+    branchErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 목록을 불러오지 못했습니다. 기본 목록을 표시합니다.'
+  } finally {
+    isLoadingBranches.value = false
+  }
+}
 
 const donutCharts = [
   {
@@ -555,6 +613,11 @@ const topPerformers = computed(() => {
   color: #6b7280;
   font-size: 12px;
   font-weight: 800;
+}
+
+.dashboard-filter__error {
+  color: #dc2626;
+  font-size: 12px;
 }
 
 .dashboard-filter__field select,
