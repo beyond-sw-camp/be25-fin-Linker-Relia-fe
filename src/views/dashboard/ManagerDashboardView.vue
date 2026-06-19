@@ -3,27 +3,29 @@
     <div class="dashboard-filter">
       <label v-if="isHqManager" class="dashboard-filter__field">
         <span>지점 선택</span>
-        <select v-model="selectedBranch">
-          <option v-for="branch in branchOptions" :key="branch" :value="branch">
-            {{ branch }}
+        <select v-model="selectedBranch" :disabled="isLoadingBranches">
+          <option v-for="branch in branchOptions" :key="branch.value" :value="branch.value">
+            {{ branch.label }}
           </option>
         </select>
+        <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
       </label>
 
       <label class="dashboard-filter__field">
         <span>기간 선택</span>
-        <select v-model="selectedMonth">
-          <option v-for="month in monthOptions" :key="month" :value="month">
-            {{ month }}
+        <select v-model="selectedMonth" :disabled="isLoadingMonths">
+          <option v-for="month in monthOptions" :key="month.value" :value="month.value">
+            {{ month.label }}
           </option>
         </select>
+        <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
       </label>
     </div>
 
     <section class="report-panel">
       <div class="report-panel__heading">
         <h2>종합 실적 보고서</h2>
-        <p>맞춤형 고객 관계 관리 솔루션을 만나보세요.</p>
+        <p :class="{ 'report-panel__message--error': summaryErrorMessage }">{{ reportDescription }}</p>
       </div>
 
       <div class="metric-grid">
@@ -32,6 +34,9 @@
           <strong :class="{ 'is-danger': metric.danger }">
             {{ metric.value }}<small>{{ metric.unit }}</small>
           </strong>
+          <p v-if="metric.secondaryLabel" class="metric-card__secondary">
+            {{ metric.secondaryLabel }} {{ metric.secondaryValue }}{{ metric.secondaryUnit }}
+          </p>
           <p :class="metric.trendClass">{{ metric.caption }}</p>
         </article>
       </div>
@@ -46,16 +51,30 @@
 
     <div class="chart-grid">
       <section v-for="chart in donutCharts" :key="chart.title" class="chart-panel">
-        <h3>{{ chart.title }}</h3>
-        <div class="donut-summary">
+        <div class="chart-panel__header">
+          <h3>{{ chart.title }}</h3>
+          <div v-if="!isDistributionLoading && !distributionErrorMessage && chart.items.length > 0" class="chart-panel__total">
+            총 {{ chart.total }}건
+          </div>
+        </div>
+        <div v-if="isDistributionLoading" class="chart-panel__state">
+          <p>계약 비율 정보를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="distributionErrorMessage" class="chart-panel__state chart-panel__state--error">
+          <p>{{ distributionErrorMessage }}</p>
+        </div>
+        <div v-else-if="chart.items.length === 0" class="chart-panel__state">
+          <p>표시할 계약 비율 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="donut-summary">
           <div class="donut-chart" :style="{ background: chart.gradient }">
-            <strong>100</strong>
-            <span>전체 건</span>
           </div>
           <ul>
             <li v-for="item in chart.items" :key="item.label">
               <i :style="{ backgroundColor: item.color }"></i>
-              {{ item.label }}
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.ratio }}</em>
             </li>
           </ul>
         </div>
@@ -70,6 +89,7 @@
               type="button"
               class="ranking-panel__tab"
               :class="{ active: !isBranchRankingView }"
+              @click="rankingTab = 'advisor'"
             >
               설계사 순위
             </button>
@@ -77,6 +97,8 @@
               type="button"
               class="ranking-panel__tab"
               :class="{ active: isBranchRankingView }"
+              :disabled="!isAllBranchSelected"
+              @click="rankingTab = 'branch'"
             >
               지점 순위
             </button>
@@ -85,71 +107,101 @@
           <h2>{{ rankingTitle }}</h2>
         </div>
 
-        <div v-if="!isBranchRankingView" class="ranking-panel__controls">
-          <select v-model="advisorSortKey" class="ranking-panel__sort">
-            <option value="contracts">최신 계약순</option>
-            <option value="retention">계약 유지율순</option>
-            <option value="customers">담당 고객수순</option>
+        <div v-if="isBranchRankingView" class="ranking-panel__controls">
+          <select v-model="selectedBranchRankOrder" class="ranking-panel__sort" @change="handleBranchRankOrderChange">
+            <option value="TOP">상위 순위</option>
+            <option value="BOTTOM">하위 순위</option>
+          </select>
+        </div>
+        <div v-else class="ranking-panel__controls">
+          <select v-model="selectedAdvisorSortKey" class="ranking-panel__sort" @change="handleAdvisorSortChange">
+            <option value="TOP">상위 순위</option>
+            <option value="BOTTOM">하위 순위</option>
           </select>
         </div>
       </div>
 
       <div class="ranking-table-wrap">
-        <table v-if="isBranchRankingView" class="ranking-table">
+        <div v-if="isBranchRankingView && isBranchRankingLoading" class="ranking-table-state">
+          <p>지점 순위를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="isBranchRankingView && branchRankingErrorMessage" class="ranking-table-state ranking-table-state--error">
+          <p>{{ branchRankingErrorMessage }}</p>
+          <button type="button" class="ranking-table-state__retry" @click="loadOrganizationBranchRankings">
+            다시 시도
+          </button>
+        </div>
+        <div v-else-if="isBranchRankingView && branchRankingItems.length === 0" class="ranking-table-state">
+          <p>조회된 지점 순위가 없습니다.</p>
+        </div>
+        <table v-else-if="isBranchRankingView" class="ranking-table ranking-table--branch">
+          <colgroup>
+            <col class="branch-ranking-width--rank" />
+            <col class="branch-ranking-width--name" />
+            <col class="branch-ranking-width--amount" />
+            <col class="branch-ranking-width--change" />
+          </colgroup>
           <thead>
             <tr>
-              <th>순위</th>
-              <th>지점명</th>
-              <th>매출액</th>
-              <th>순위 변동</th>
+              <th class="branch-ranking-col--rank">순위</th>
+              <th class="branch-ranking-col--name">지점명</th>
+              <th class="branch-ranking-col--amount">최종 수입수수료</th>
+              <th class="branch-ranking-col--change">전월 대비</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="branch in rankingRows" :key="branch.rank">
-              <td :class="{ 'is-first': branch.rank === 1 }">#{{ branch.rank }}</td>
-              <td>
+            <tr v-for="branch in branchRankingItems" :key="branch.organizationId">
+              <td class="branch-ranking-col--rank" :class="{ 'is-first': branch.rank === 1 }">#{{ branch.rank }}</td>
+              <td class="branch-ranking-col--name">
                 <div class="branch-cell">
-                  <span :style="{ color: branch.color, backgroundColor: branch.tone }">{{ branch.badge }}</span>
                   <div>
-                    <strong>{{ branch.name }}</strong>
-                    <small>{{ branch.location }}</small>
+                    <strong>{{ branch.organizationName }}</strong>
+                    <small>{{ branch.organizationCode }}</small>
                   </div>
                 </div>
               </td>
-              <td><strong>{{ branch.revenue }}</strong></td>
-              <td :class="branch.changeType">{{ branch.change }}</td>
+              <td class="branch-ranking-col--amount"><strong>{{ branch.commissionAmount }}</strong></td>
+              <td class="branch-ranking-col--change" :class="branch.changeClass" :title="branch.previousRankTitle">
+                {{ branch.changeLabel }}
+              </td>
             </tr>
           </tbody>
         </table>
 
+        <div v-else-if="isAdvisorRankingLoading" class="ranking-table-state">
+          <p>설계사 순위를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="advisorRankingErrorMessage" class="ranking-table-state ranking-table-state--error">
+          <p>{{ advisorRankingErrorMessage }}</p>
+        </div>
+        <div v-else-if="advisorRows.length === 0" class="ranking-table-state">
+          <p>표시할 설계사 순위 데이터가 없습니다.</p>
+        </div>
         <table v-else class="ranking-table ranking-table--advisor">
           <thead>
             <tr>
-              <th>순위</th>
-              <th>설계사명</th>
-              <th>계약 건수</th>
-              <th>계약 유지율</th>
-              <th>담당 고객수</th>
-              <th>미관리 고객수</th>
-              <th>상태</th>
-              <th>상세 정보</th>
+              <th
+                v-for="column in advisorTableColumns"
+                :key="column.key"
+                :class="column.headerClass"
+              >
+                {{ column.label }}
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="advisor in advisorRows" :key="advisor.rank">
-              <td>
-                <span class="advisor-rank" :class="advisor.rankClass">{{ advisor.rank }}</span>
-              </td>
-              <td>{{ advisor.name }}</td>
-              <td>{{ advisor.contracts }}</td>
-              <td>{{ advisor.retention }}</td>
-              <td>{{ advisor.customers }}</td>
-              <td>{{ advisor.unmanaged }}</td>
-              <td>
-                <span class="status-pill" :class="advisor.statusClass">{{ advisor.status }}</span>
-              </td>
-              <td>
-                <button type="button" class="detail-button">보기</button>
+            <tr v-for="advisor in advisorRows" :key="advisor.rowKey">
+              <td
+                v-for="column in advisorTableColumns"
+                :key="column.key"
+                :class="column.cellClass"
+              >
+                <span v-if="column.key === 'rank'" class="ranking-number" :class="{ 'is-first': advisor.rank === 1 }">
+                  #{{ advisor.rank }}
+                </span>
+                <template v-else>
+                  {{ getAdvisorCellValue(advisor, column.key) }}
+                </template>
               </td>
             </tr>
           </tbody>
@@ -158,16 +210,25 @@
 
       <div class="ranking-panel__footer">
         <span>{{ footerText }}</span>
-        <div class="pagination">
-          <button type="button" aria-label="이전 페이지">
-            <v-icon icon="mdi-chevron-left" size="16" />
-          </button>
-          <button v-for="page in 5" :key="page" type="button" :class="{ active: page === 1 }">
-            {{ page }}
-          </button>
-          <button type="button" aria-label="다음 페이지">
-            <v-icon icon="mdi-chevron-right" size="16" />
-          </button>
+        <div v-if="isBranchRankingView && branchRankingPageInfo.totalPages > 0" class="ranking-pagination">
+          <v-pagination
+            :model-value="branchRankingPage"
+            :length="Math.max(branchRankingPageInfo.totalPages, 1)"
+            :disabled="isBranchRankingLoading"
+            total-visible="7"
+            rounded="circle"
+            @update:model-value="changeBranchRankingPage"
+          />
+        </div>
+        <div v-else-if="advisorRankingPageInfo.totalPages > 0" class="ranking-pagination">
+          <v-pagination
+            :model-value="advisorRankingPage"
+            :length="Math.max(advisorRankingPageInfo.totalPages, 1)"
+            :disabled="isAdvisorRankingLoading"
+            total-visible="7"
+            rounded="circle"
+            @update:model-value="changeAdvisorRankingPage"
+          />
         </div>
       </div>
     </section>
@@ -175,42 +236,95 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
+import {
+  getDashboardClosingMonths,
+  getOrganizationDashboardBranchRankings,
+  getOrganizationDashboardContractDistribution,
+  getOrganizationDashboardFpRankings,
+  getOrganizationDashboardSummary,
+} from '../../api/dashboard'
+import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 
 const selectedBranch = ref('전체 지점')
-const selectedMonth = ref('2026년 5월')
-const advisorSortKey = ref('contracts')
+const selectedMonth = ref('')
+const rankingTab = ref('advisor')
+const selectedAdvisorSortKey = ref('TOP')
+const advisorRankingPage = ref(1)
+const advisorRankingPageSize = 10
+const advisorRankingPageInfo = ref(createEmptyAdvisorRankingPage())
+const selectedBranchRankOrder = ref('TOP')
+const branchRankingPage = ref(1)
+const branchRankingPageSize = 10
+const branchRankingPageInfo = ref(createEmptyBranchRankingPage())
+const branchRankingItems = ref([])
+const branchRankingClosingMonth = ref('')
+const branchRankingComparisonMonth = ref('')
+const isLoadingBranches = ref(false)
+const isLoadingMonths = ref(false)
+const isSummaryLoading = ref(false)
+const isDistributionLoading = ref(false)
+const isAdvisorRankingLoading = ref(false)
+const isBranchRankingLoading = ref(false)
+const branchErrorMessage = ref('')
+const monthErrorMessage = ref('')
+const summaryErrorMessage = ref('')
+const distributionErrorMessage = ref('')
+const advisorRankingErrorMessage = ref('')
+const branchRankingErrorMessage = ref('')
+const summary = ref(createEmptyOrganizationSummary())
+const distribution = ref(createEmptyOrganizationDistribution())
 
-const branchOptions = [
-  '전체 지점',
-  '강남본부 강남지점',
-  '서초 중앙 지점',
-  '해운대 마린 지점',
-  '잠실 에비뉴 지점',
-  '판교 테크노 지점',
+const chartColors = ['#f97316', '#f59e0b', '#2563eb', '#0f766e', '#4f46e5', '#ec4899', '#14b8a6', '#64748b']
+
+const fallbackBranchOptions = [
+  { label: '강남본부 강남지점', value: 'gangnam' },
+  { label: '서초 중앙 지점', value: 'seocho' },
+  { label: '해운대 마린 지점', value: 'haeundae' },
+  { label: '잠실 에비뉴 지점', value: 'jamsil' },
+  { label: '판교 테크노 지점', value: 'pangyo' },
 ]
 
-const monthOptions = ['2026년 5월', '2026년 4월', '2026년 3월']
+const branchOptions = ref([
+  { label: '전체 지점', value: '전체 지점' },
+  ...fallbackBranchOptions,
+])
+
+const fallbackMonthOptions = [
+  { label: '2026년 05월', value: '2026-05' },
+  { label: '2026년 04월', value: '2026-04' },
+  { label: '2026년 03월', value: '2026-03' },
+]
+
+const monthOptions = ref(fallbackMonthOptions)
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
+const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const selectedBranchOption = computed(() =>
+  branchOptions.value.find((branch) => branch.value === selectedBranch.value) ?? null,
+)
 const currentBranchName = computed(() => {
   if (isHqManager.value) {
-    return selectedBranch.value
+    return selectedBranchOption.value?.label ?? '전체 지점'
   }
 
   return authStore.user.organizationName || '강남본부 강남지점'
 })
 
-const isBranchRankingView = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const isBranchRankingView = computed(() => isHqManager.value && rankingTab.value === 'branch')
 
 const rankingTitle = computed(() => {
   if (isBranchRankingView.value) {
     return '지점별 순위'
+  }
+
+  if (isAllBranchSelected.value) {
+    return '전체 지점 설계사 실적 순위'
   }
 
   return `${currentBranchName.value} 설계사 실적 순위`
@@ -218,160 +332,813 @@ const rankingTitle = computed(() => {
 
 const rankingHint = computed(() => {
   if (isBranchRankingView.value) {
-    return '전체 지점 선택 시 지점 순위로 전환'
+    if (branchRankingClosingMonth.value) {
+      const comparisonText = branchRankingComparisonMonth.value
+        ? ` · ${formatClosingMonthLabel(branchRankingComparisonMonth.value)} 대비`
+        : ''
+      return `${formatClosingMonthLabel(branchRankingClosingMonth.value)} 기준${comparisonText}`
+    }
+
+    return '지점별 수입수수료 순위를 확인할 수 있습니다.'
   }
 
-  return '특정 지점 선택 시 설계사 순위로 전환'
+  if (isAllBranchSelected.value) {
+    return '전체 지점의 설계사 실적을 통합해 보여줍니다.'
+  }
+
+  return '선택한 지점의 설계사 순위를 확인할 수 있습니다.'
+})
+
+const reportDescription = computed(() => {
+  if (summaryErrorMessage.value) {
+    return summaryErrorMessage.value
+  }
+
+  if (isSummaryLoading.value) {
+    return '종합 실적 보고서를 불러오는 중입니다.'
+  }
+
+  return '맞춤형 고객 관계 관리 솔루션을 만나보세요.'
 })
 
 const footerText = computed(() => {
   if (isBranchRankingView.value) {
-    return '표시 항목: 1 - 5 / 총 152개 지점'
+    if (branchRankingPageInfo.value.totalElements === 0) {
+      return '총 0개 지점'
+    }
+
+    const start = (branchRankingPageInfo.value.page - 1) * branchRankingPageInfo.value.size + 1
+    const end = start + branchRankingPageInfo.value.numberOfElements - 1
+    return `총 ${formatNumber(branchRankingPageInfo.value.totalElements)}개 지점 중 ${start} - ${end} 표시`
   }
 
-  return '총 156개 중 1 - 8 표시'
+  if (advisorRankingPageInfo.value.totalElements === 0) {
+    return '총 0명'
+  }
+
+  const start = (advisorRankingPageInfo.value.page - 1) * advisorRankingPageInfo.value.size + 1
+  const end = start + advisorRankingPageInfo.value.numberOfElements - 1
+  return `총 ${formatNumber(advisorRankingPageInfo.value.totalElements)}명 중 ${start} - ${end} 표시`
 })
 
-const metrics = [
+const metrics = computed(() => [
   {
     label: '설계사',
-    value: '12,540',
+    value: formatNumber(summary.value.advisorCount),
     unit: '명',
-    caption: '전월 대비 ▲ 1.2%',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.advisorCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.advisorCountDiff),
   },
   {
     label: '고객',
-    value: '421,910',
+    value: formatNumber(summary.value.customerCount),
     unit: '명',
-    caption: '전월 대비 ▲ 2.5%',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.customerCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.customerCountDiff),
   },
   {
     label: '계약',
-    value: '14,208',
+    value: formatNumber(summary.value.contractCount),
     unit: '건',
-    caption: '전월 대비 ▲ 0.8%',
-    trendClass: 'is-up',
+    caption: formatCountDiffCaption(summary.value.contractCountDiff, '건'),
+    trendClass: getCountTrendClass(summary.value.contractCountDiff),
   },
   {
     label: '관심 고객',
-    value: '28',
+    value: formatNumber(summary.value.interestCustomerCount),
     unit: '명',
-    caption: '즉시 관리 필요',
-    trendClass: 'is-up',
-    danger: true,
+    caption: formatCountDiffCaption(summary.value.interestCustomerCountDiff, '명'),
+    trendClass: getCountTrendClass(summary.value.interestCustomerCountDiff),
+    danger: summary.value.interestCustomerCount > 0,
   },
   {
     label: '계약 성공률',
-    value: '68.4',
+    value: formatDecimal(summary.value.contractSuccessRate, 1),
     unit: '%',
-    caption: '전월 대비 ▼ 1.8%',
-    trendClass: 'is-down',
+    caption: formatPercentDiffCaption(summary.value.contractSuccessRateDiff),
+    trendClass: getRateTrendClass(summary.value.contractSuccessRateDiff),
   },
   {
     label: '계약 유지율',
-    value: '79.6',
+    value: formatDecimal(summary.value.retentionRate, 1),
     unit: '%',
-    caption: '전월 대비 ▲ 1.4%',
-    trendClass: 'is-goal',
+    caption: formatPercentDiffCaption(summary.value.retentionRateDiff),
+    trendClass: getRateTrendClass(summary.value.retentionRateDiff),
   },
   {
     label: '해지 계약 수',
-    value: '42',
+    value: formatNumber(summary.value.terminatedContractCount),
     unit: '건',
-    caption: '전월 대비 ▼ 2건',
-    trendClass: 'is-down',
+    caption: formatCountDiffCaption(summary.value.terminatedContractCountDiff, '건'),
+    trendClass: getCountTrendClass(summary.value.terminatedContractCountDiff),
   },
   {
     label: '수입 수수료',
-    value: '4억 2,500',
-    unit: '만원',
-    caption: '지급 수수료 4억 2,500만원',
+    value: formatNumber(summary.value.commissionAmount),
+    unit: '원',
+    caption: '',
     trendClass: 'is-muted',
+    secondaryLabel: '지급 수수료',
+    secondaryValue: formatNumber(summary.value.paymentCommissionAmount),
+    secondaryUnit: '원',
   },
-]
+])
 
-const donutCharts = [
+onMounted(() => {
+  if (isHqManager.value) {
+    loadBranchOptions()
+  }
+
+  loadClosingMonthOptions()
+})
+
+watch(
+  [selectedBranch, selectedMonth],
+  () => {
+    if (!selectedMonth.value) {
+      return
+    }
+
+    loadOrganizationSummary()
+    loadOrganizationContractDistribution()
+    advisorRankingPage.value = 1
+    loadOrganizationAdvisorRankings()
+
+    if (isHqManager.value) {
+      branchRankingPage.value = 1
+      loadOrganizationBranchRankings()
+    }
+  },
+  { immediate: true },
+)
+
+watch(isAllBranchSelected, (isAllBranches) => {
+  if (!isAllBranches && rankingTab.value === 'branch') {
+    rankingTab.value = 'advisor'
+  }
+})
+
+async function loadBranchOptions() {
+  branchErrorMessage.value = ''
+  isLoadingBranches.value = true
+
+  try {
+    const response = await getBranchOrganizations()
+    const organizations = Array.isArray(response?.result) ? response.result : []
+
+    if (organizations.length === 0) {
+      branchOptions.value = [
+        { label: '전체 지점', value: '전체 지점' },
+        ...fallbackBranchOptions,
+      ]
+      return
+    }
+
+    branchOptions.value = [
+      { label: '전체 지점', value: '전체 지점' },
+      ...organizations.map((branch) => ({
+        label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        value: branch.organizationCode ?? branch.organizationName ?? 'unknown',
+      })),
+    ]
+
+    const hasSelectedBranch = branchOptions.value.some((branch) => branch.value === selectedBranch.value)
+    if (!hasSelectedBranch) {
+      selectedBranch.value = '전체 지점'
+    }
+  } catch (error) {
+    branchErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 목록을 불러오지 못했습니다. 기본 목록을 표시합니다.'
+  } finally {
+    isLoadingBranches.value = false
+  }
+}
+
+async function loadClosingMonthOptions() {
+  monthErrorMessage.value = ''
+  isLoadingMonths.value = true
+
+  try {
+    const response = await getDashboardClosingMonths()
+    const months = Array.isArray(response?.result) ? response.result : []
+
+    if (months.length === 0) {
+      monthOptions.value = fallbackMonthOptions
+      selectedMonth.value = fallbackMonthOptions[0]?.value ?? ''
+      return
+    }
+
+    monthOptions.value = months
+      .map((month) => normalizeMonthOption(month))
+      .filter((month) => Boolean(month.value))
+
+    if (monthOptions.value.length === 0) {
+      monthOptions.value = fallbackMonthOptions
+    }
+
+    const hasSelectedMonth = monthOptions.value.some((month) => month.value === selectedMonth.value)
+    if (!hasSelectedMonth) {
+      selectedMonth.value = monthOptions.value[0]?.value ?? fallbackMonthOptions[0].value
+    }
+  } catch (error) {
+    monthOptions.value = fallbackMonthOptions
+    selectedMonth.value = fallbackMonthOptions[0]?.value ?? ''
+    monthErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '기간 목록을 불러오지 못했습니다. 기본 목록을 표시합니다.'
+  } finally {
+    isLoadingMonths.value = false
+  }
+}
+
+async function loadOrganizationSummary() {
+  summaryErrorMessage.value = ''
+  isSummaryLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardSummary(buildOrganizationSummaryParams())
+    summary.value = normalizeOrganizationSummary(response?.result)
+  } catch (error) {
+    summary.value = createEmptyOrganizationSummary()
+    summaryErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '종합 실적 보고서를 불러오지 못했습니다.'
+  } finally {
+    isSummaryLoading.value = false
+  }
+}
+
+async function loadOrganizationContractDistribution() {
+  distributionErrorMessage.value = ''
+  isDistributionLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardContractDistribution(buildOrganizationSummaryParams())
+    distribution.value = normalizeOrganizationDistribution(response?.result)
+  } catch (error) {
+    distribution.value = createEmptyOrganizationDistribution()
+    distributionErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '계약 비율 정보를 불러오지 못했습니다.'
+  } finally {
+    isDistributionLoading.value = false
+  }
+}
+
+async function loadOrganizationAdvisorRankings() {
+  advisorRankingErrorMessage.value = ''
+  isAdvisorRankingLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardFpRankings(buildAdvisorRankingParams())
+    advisorRankingItems.value = normalizeAdvisorRankingItems(response?.result)
+    advisorRankingPageInfo.value = normalizeAdvisorRankingPage(response?.result?.rankings)
+    advisorRankingPage.value = advisorRankingPageInfo.value.page
+  } catch (error) {
+    advisorRankingItems.value = []
+    advisorRankingPageInfo.value = createEmptyAdvisorRankingPage()
+    advisorRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '설계사 순위를 불러오지 못했습니다.'
+  } finally {
+    isAdvisorRankingLoading.value = false
+  }
+}
+
+async function loadOrganizationBranchRankings() {
+  if (!isHqManager.value) {
+    return
+  }
+
+  branchRankingErrorMessage.value = ''
+  isBranchRankingLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardBranchRankings(buildBranchRankingParams())
+    const result = response?.result
+
+    branchRankingItems.value = normalizeBranchRankingItems(result?.rankings?.content)
+    branchRankingPageInfo.value = normalizeBranchRankingPage(result?.rankings)
+    branchRankingPage.value = branchRankingPageInfo.value.page
+    branchRankingClosingMonth.value = result?.closingMonth ?? selectedMonth.value
+    branchRankingComparisonMonth.value = result?.comparisonClosingMonth ?? ''
+  } catch (error) {
+    branchRankingItems.value = []
+    branchRankingPageInfo.value = createEmptyBranchRankingPage()
+    branchRankingClosingMonth.value = ''
+    branchRankingComparisonMonth.value = ''
+    branchRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 순위를 불러오지 못했습니다.'
+  } finally {
+    isBranchRankingLoading.value = false
+  }
+}
+
+function handleAdvisorSortChange() {
+  advisorRankingPage.value = 1
+  loadOrganizationAdvisorRankings()
+}
+
+function handleBranchRankOrderChange() {
+  branchRankingPage.value = 1
+  loadOrganizationBranchRankings()
+}
+
+function buildAdvisorRankingParams() {
+  return {
+    ...buildOrganizationSummaryParams(),
+    rankOrder: selectedAdvisorSortKey.value,
+    page: advisorRankingPage.value,
+    size: advisorRankingPageSize,
+  }
+}
+
+function buildBranchRankingParams() {
+  return {
+    closingMonth: selectedMonth.value,
+    rankOrder: selectedBranchRankOrder.value,
+    page: branchRankingPage.value,
+    size: branchRankingPageSize,
+  }
+}
+
+function changeAdvisorRankingPage(page) {
+  if (
+    page < 1 ||
+    page > advisorRankingPageInfo.value.totalPages ||
+    page === advisorRankingPage.value ||
+    isAdvisorRankingLoading.value
+  ) {
+    return
+  }
+
+  advisorRankingPage.value = page
+  loadOrganizationAdvisorRankings()
+}
+
+function changeBranchRankingPage(page) {
+  if (
+    page < 1 ||
+    page > branchRankingPageInfo.value.totalPages ||
+    page === branchRankingPage.value ||
+    isBranchRankingLoading.value
+  ) {
+    return
+  }
+
+  branchRankingPage.value = page
+  loadOrganizationBranchRankings()
+}
+
+function buildOrganizationSummaryParams() {
+  const params = {}
+
+  if (selectedMonth.value) {
+    params.closingMonth = selectedMonth.value
+  }
+
+  if (isHqManager.value && !isAllBranchSelected.value && selectedBranch.value) {
+    params.organizationCode = selectedBranch.value
+  }
+
+  return params
+}
+
+function normalizeMonthOption(month) {
+  if (typeof month === 'string') {
+    return {
+      label: formatClosingMonthLabel(month),
+      value: month,
+    }
+  }
+
+  const value =
+    month?.closingMonth ??
+    month?.month ??
+    month?.value ??
+    month?.label ??
+    ''
+
+  const label =
+    month?.closingMonthLabel ??
+    month?.monthLabel ??
+    month?.label ??
+    value
+
+  return {
+    label: formatClosingMonthLabel(label || value),
+    value,
+  }
+}
+
+function formatClosingMonthLabel(monthValue) {
+  const source = String(monthValue ?? '').trim()
+  const digits = source.replace(/\D/g, '')
+
+  if (digits.length >= 6) {
+    const year = digits.slice(0, 4)
+    const month = digits.slice(4, 6).padStart(2, '0')
+    return `${year}년 ${month}월`
+  }
+
+  const matched = source.match(/^(\d{4})년\s*(\d{1,2})월$/)
+  if (matched) {
+    return `${matched[1]}년 ${matched[2].padStart(2, '0')}월`
+  }
+
+  return source
+}
+
+function normalizeOrganizationSummary(payload) {
+  return {
+    advisorCount: toNumber(getValue(payload, ['advisorCount', 'fpCount', 'plannerCount', 'designerCount'])),
+    advisorCountDiff: toNumber(getValue(payload, ['advisorCountDiff', 'fpCountDiff', 'plannerCountDiff', 'designerCountDiff'])),
+    customerCount: toNumber(getValue(payload, ['customerCount', 'totalCustomerCount'])),
+    customerCountDiff: toNumber(getValue(payload, ['customerCountDiff', 'totalCustomerCountDiff', 'customerDiff'])),
+    contractCount: toNumber(getValue(payload, ['contractCount', 'totalContractCount'])),
+    contractCountDiff: toNumber(getValue(payload, ['contractCountDiff', 'totalContractCountDiff'])),
+    interestCustomerCount: toNumber(getValue(payload, ['interestCustomerCount', 'totalInterestCustomerCount'])),
+    interestCustomerCountDiff: toNumber(getValue(payload, ['interestCustomerCountDiff', 'totalInterestCustomerCountDiff'])),
+    contractSuccessRate: toNumber(getValue(payload, ['contractSuccessRate', 'contractAchievementRate', 'successRate'])),
+    contractSuccessRateDiff: toNumber(getValue(payload, ['contractSuccessRateDiff', 'contractAchievementRateDiff', 'successRateDiff'])),
+    retentionRate: toNumber(getValue(payload, ['retentionRate'])),
+    retentionRateDiff: toNumber(getValue(payload, ['retentionRateDiff'])),
+    terminatedContractCount: toNumber(getValue(payload, ['terminatedContractCount', 'cancelContractCount', 'lapseContractCount'])),
+    terminatedContractCountDiff: toNumber(getValue(payload, ['terminatedContractCountDiff', 'cancelContractCountDiff', 'lapseContractCountDiff'])),
+    commissionAmount: toNumber(getValue(payload, ['netIncomeCommissionAmount', 'commissionAmount', 'expectedCommissionAmount', 'totalCommissionAmount'])),
+    commissionAmountDiff: toNumber(getValue(payload, ['netIncomeCommissionDiffAmount', 'commissionAmountDiff', 'expectedCommissionAmountDiff', 'totalCommissionAmountDiff'])),
+    paymentCommissionAmount: toNumber(getValue(payload, ['totalPaymentCommissionAmount', 'paymentCommissionAmount'])),
+    paymentCommissionAmountDiff: toNumber(getValue(payload, ['totalPaymentCommissionDiffAmount', 'paymentCommissionAmountDiff'])),
+  }
+}
+
+function normalizeOrganizationDistribution(payload) {
+  return {
+    referenceDate: payload?.referenceDate ?? '',
+    closingMonth: payload?.closingMonth ?? '',
+    totalContractCount: toNumber(getValue(payload, ['totalContractCount', 'contractCount'])),
+    insuranceCompanies: normalizeDistributionItems(payload?.insuranceCompanies, 'insuranceCompanyName'),
+    insuranceCategories: normalizeDistributionItems(payload?.insuranceCategories, 'insuranceCategoryName'),
+  }
+}
+
+function createEmptyOrganizationSummary() {
+  return {
+    advisorCount: 0,
+    advisorCountDiff: 0,
+    customerCount: 0,
+    customerCountDiff: 0,
+    contractCount: 0,
+    contractCountDiff: 0,
+    interestCustomerCount: 0,
+    interestCustomerCountDiff: 0,
+    contractSuccessRate: 0,
+    contractSuccessRateDiff: 0,
+    retentionRate: 0,
+    retentionRateDiff: 0,
+    terminatedContractCount: 0,
+    terminatedContractCountDiff: 0,
+    commissionAmount: 0,
+    commissionAmountDiff: 0,
+    paymentCommissionAmount: 0,
+    paymentCommissionAmountDiff: 0,
+  }
+}
+
+function createEmptyOrganizationDistribution() {
+  return {
+    referenceDate: '',
+    closingMonth: '',
+    totalContractCount: 0,
+    insuranceCompanies: [],
+    insuranceCategories: [],
+  }
+}
+
+function normalizeDistributionItems(items, labelKey) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .map((item) => ({
+      ...item,
+      label: item?.label ?? item?.[labelKey] ?? '-',
+      contractCount: toNumber(item?.contractCount),
+    }))
+    .filter((item) => item.contractCount > 0)
+}
+
+function getValue(source, keys) {
+  for (const key of keys) {
+    if (source?.[key] !== undefined && source?.[key] !== null) {
+      return source[key]
+    }
+  }
+
+  return null
+}
+
+function toNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  const normalized = Number(String(value).replace(/,/g, ''))
+  return Number.isFinite(normalized) ? normalized : 0
+}
+
+function formatNumber(value) {
+  return toNumber(value).toLocaleString('ko-KR')
+}
+
+function formatDecimal(value, fractionDigits = 1) {
+  return toNumber(value).toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+}
+
+function formatSignedNumber(value, fractionDigits = 0) {
+  const numericValue = toNumber(value)
+  const absoluteValue = Math.abs(numericValue).toLocaleString('ko-KR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+
+  if (numericValue > 0) {
+    return `▲ ${absoluteValue}`
+  }
+
+  if (numericValue < 0) {
+    return `▼ ${absoluteValue}`
+  }
+
+  return absoluteValue
+}
+
+function formatCountDiffCaption(value, unit) {
+  return `전월 대비 ${formatSignedNumber(value)}${unit}`
+}
+
+function formatPercentDiffCaption(value) {
+  return `전월 대비 ${formatSignedNumber(value, 1)}%`
+}
+
+function formatCurrencyDiffCaption(value) {
+  return `전월 대비 ${formatSignedNumber(value)}원`
+}
+
+function buildDonutItems(items) {
+  const total = items.reduce((sum, item) => sum + item.contractCount, 0)
+
+  return items.map((item, index) => ({
+    label: item.label,
+    value: `${formatNumber(item.contractCount)}건`,
+    ratio: `${total > 0 ? ((item.contractCount / total) * 100).toFixed(1) : '0.0'}%`,
+    rawValue: item.contractCount,
+    color: chartColors[index % chartColors.length],
+  }))
+}
+
+function buildDonutGradient(items) {
+  const normalizedItems = buildDonutItems(items)
+
+  if (normalizedItems.length === 0) {
+    return '#f1f5f9'
+  }
+
+  const total = normalizedItems.reduce((sum, item) => sum + item.rawValue, 0)
+  let cursor = 0
+
+  const stops = normalizedItems.map((item) => {
+    const start = cursor
+    const end = total > 0 ? cursor + (item.rawValue / total) * 100 : cursor
+    cursor = end
+
+    return `${item.color} ${start}% ${end}%`
+  })
+
+  return `conic-gradient(${stops.join(', ')})`
+}
+
+function normalizeAdvisorRankingItems(payload) {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.content)
+      ? payload.content
+      : Array.isArray(payload?.rankings?.content)
+        ? payload.rankings.content
+        : Array.isArray(payload?.rankings)
+          ? payload.rankings
+        : Array.isArray(payload?.fps)
+          ? payload.fps
+          : []
+
+  return items.map((item, index) => normalizeAdvisorRankingItem(item, index))
+}
+
+function normalizeAdvisorRankingPage(page) {
+  if (!page) {
+    return createEmptyAdvisorRankingPage()
+  }
+
+  return {
+    page: Math.max(toNumber(page.page), 1),
+    size: Math.max(toNumber(page.size), advisorRankingPageSize),
+    totalElements: toNumber(page.totalElements),
+    totalPages: toNumber(page.totalPages),
+    numberOfElements: toNumber(page.numberOfElements),
+    hasNext: Boolean(page.hasNext),
+    hasPrevious: Boolean(page.hasPrevious),
+  }
+}
+
+function createEmptyAdvisorRankingPage() {
+  return {
+    page: 1,
+    size: advisorRankingPageSize,
+    totalElements: 0,
+    totalPages: 0,
+    numberOfElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+  }
+}
+
+function normalizeBranchRankingItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items.map((item) => {
+    const rankChange = toNullableNumber(item?.rankChange)
+    const previousRank = toNullableNumber(item?.previousRank)
+
+    return {
+      rank: toNumber(item?.rank),
+      organizationId: item?.organizationId ?? item?.organizationCode ?? item?.organizationName,
+      organizationCode: item?.organizationCode ?? '-',
+      organizationName: item?.organizationName ?? '-',
+      commissionAmount: `${formatNumber(item?.netIncomeCommissionAmount)}원`,
+      previousRank,
+      previousRankTitle: previousRank === null ? '전월 순위 데이터 없음' : `전월 ${previousRank}위`,
+      changeLabel: formatBranchRankChange(rankChange),
+      changeClass: getBranchRankChangeClass(rankChange),
+    }
+  })
+}
+
+function normalizeBranchRankingPage(page) {
+  if (!page) {
+    return createEmptyBranchRankingPage()
+  }
+
+  return {
+    page: Math.max(toNumber(page.page), 1),
+    size: Math.max(toNumber(page.size), branchRankingPageSize),
+    totalElements: toNumber(page.totalElements),
+    totalPages: toNumber(page.totalPages),
+    numberOfElements: toNumber(page.numberOfElements),
+    hasNext: Boolean(page.hasNext),
+    hasPrevious: Boolean(page.hasPrevious),
+  }
+}
+
+function createEmptyBranchRankingPage() {
+  return {
+    page: 1,
+    size: branchRankingPageSize,
+    totalElements: 0,
+    totalPages: 0,
+    numberOfElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+  }
+}
+
+function formatBranchRankChange(rankChange) {
+  if (rankChange === null) {
+    return '신규'
+  }
+
+  if (rankChange > 0) {
+    return `↑ ${rankChange} 상승`
+  }
+
+  if (rankChange < 0) {
+    return `↓ ${Math.abs(rankChange)} 하락`
+  }
+
+  return '-'
+}
+
+function getBranchRankChangeClass(rankChange) {
+  if (rankChange === null || rankChange === 0) {
+    return 'branch-change--neutral'
+  }
+
+  return rankChange > 0 ? 'branch-change--up' : 'branch-change--down'
+}
+
+function normalizeAdvisorRankingItem(item, index) {
+  const rank = toNumber(getValue(item, ['rank', 'ranking'])) || index + 1
+  const newContractsRaw = toNullableNumber(getValue(item, ['newContractCount', 'latestContractCount']))
+  const managedContractsRaw = toNullableNumber(getValue(item, ['managedContractCount', 'contractCount', 'contracts', 'totalContractCount']))
+  const retentionRaw = toNullableNumber(getValue(item, ['retentionRate', 'retention', 'contractRetentionRate']))
+  const customersRaw = toNullableNumber(getValue(item, ['customerCount', 'customers', 'managedCustomerCount']))
+  const commissionAmountRaw = toNullableNumber(getValue(item, ['commissionAmount', 'totalCommissionAmount']))
+
+  return {
+    rank,
+    empCode: getValue(item, ['empCode']) ?? null,
+    name: getValue(item, ['fpName', 'userName', 'name']) ?? '-',
+    branchName: getValue(item, ['organizationName', 'branchName']) ?? currentBranchName.value,
+    organizationCode: getValue(item, ['organizationCode', 'branchCode']) ?? '',
+    newContractsRaw,
+    newContracts: formatMetricValue(newContractsRaw, '건'),
+    managedContractsRaw,
+    managedContracts: formatMetricValue(managedContractsRaw, '건'),
+    retentionRaw,
+    retention: formatMetricValue(retentionRaw, '%', 1),
+    customersRaw,
+    customers: formatMetricValue(customersRaw, '명'),
+    commissionAmountRaw,
+    commissionAmount: formatMetricValue(commissionAmountRaw, '원'),
+  }
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const normalized = Number(String(value).replace(/,/g, ''))
+  return Number.isFinite(normalized) ? normalized : null
+}
+
+function formatMetricValue(value, unit, fractionDigits = 0) {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const formatted = fractionDigits > 0
+    ? formatDecimal(value, fractionDigits)
+    : formatNumber(value)
+
+  return `${formatted}${unit}`
+}
+
+function getCountTrendClass(value, zeroClass = 'is-muted') {
+  const numericValue = toNumber(value)
+
+  if (numericValue > 0) {
+    return 'is-up'
+  }
+
+  if (numericValue < 0) {
+    return 'is-down'
+  }
+
+  return zeroClass
+}
+
+function getRateTrendClass(value) {
+  const numericValue = toNumber(value)
+
+  if (numericValue > 0) {
+    return 'is-goal'
+  }
+
+  if (numericValue < 0) {
+    return 'is-down'
+  }
+
+  return 'is-muted'
+}
+
+const donutCharts = computed(() => [
   {
     title: '보험사별 계약 비율',
-    gradient: 'conic-gradient(#f97316 0 28%, #f59e0b 28% 50%, #2563eb 50% 64%, #dfe3ea 64% 75%, transparent 75% 100%)',
-    items: [
-      { label: '삼성화재', color: '#f97316' },
-      { label: '현대해상', color: '#f59e0b' },
-      { label: '신보연금', color: '#2563eb' },
-      { label: '다이렉트', color: '#dfe3ea' },
-    ],
+    total: formatNumber(distribution.value.totalContractCount),
+    gradient: buildDonutGradient(distribution.value.insuranceCompanies),
+    items: buildDonutItems(distribution.value.insuranceCompanies),
   },
   {
     title: '보종별 계약 비율',
-    gradient: 'conic-gradient(#f97316 0 28%, #f59e0b 28% 50%, #2563eb 50% 64%, #dfe3ea 64% 75%, transparent 75% 100%)',
-    items: [
-      { label: '장기보험', color: '#f97316' },
-      { label: '실손보험', color: '#f59e0b' },
-      { label: '기업보험', color: '#2563eb' },
-      { label: '자동차보험', color: '#dfe3ea' },
-    ],
+    total: formatNumber(distribution.value.totalContractCount),
+    gradient: buildDonutGradient(distribution.value.insuranceCategories),
+    items: buildDonutItems(distribution.value.insuranceCategories),
   },
-]
-
-const rankingRows = [
-  {
-    rank: 1,
-    badge: '강남',
-    name: '강남 프라임 지점',
-    location: '서울시 강남구',
-    revenue: '₩ 4,280M',
-    change: '↑ 5',
-    changeType: 'is-up',
-    color: '#f97316',
-    tone: '#ffedd5',
-  },
-  {
-    rank: 2,
-    badge: '서초',
-    name: '서초 중앙 지점',
-    location: '서울시 서초구',
-    revenue: '₩ 3,910M',
-    change: '↑ 12.5%',
-    changeType: 'is-up',
-    color: '#64748b',
-    tone: '#e8edf8',
-  },
-  {
-    rank: 3,
-    badge: '부산',
-    name: '해운대 마린 지점',
-    location: '부산시 해운대구',
-    revenue: '₩ 3,450M',
-    change: '↑ 8.4%',
-    changeType: 'is-up',
-    color: '#2563eb',
-    tone: '#eaf2ff',
-  },
-  {
-    rank: 4,
-    badge: '송파',
-    name: '잠실 에비뉴 지점',
-    location: '서울시 송파구',
-    revenue: '₩ 3,120M',
-    change: '↓ 2.1%',
-    changeType: 'is-down',
-    color: '#0f766e',
-    tone: '#e8fbf7',
-  },
-  {
-    rank: 5,
-    badge: '판교',
-    name: '판교 테크노 지점',
-    location: '성남시 분당구',
-    revenue: '₩ 2,980M',
-    change: '↑ 5.7%',
-    changeType: 'is-up',
-    color: '#4f46e5',
-    tone: '#eef2ff',
-  },
-]
+])
 
 const advisorRowsByBranch = {
   '강남본부 강남지점': [
@@ -426,26 +1193,89 @@ const advisorRowsByBranch = {
   ],
 }
 
-const fallbackAdvisorRows = advisorRowsByBranch['강남본부 강남지점']
+const allAdvisorRows = Object.entries(advisorRowsByBranch).flatMap(([branchName, rows]) =>
+  rows.map((advisor) => ({
+    ...advisor,
+    empCode: null,
+    branchName,
+    newContractsRaw: null,
+    newContracts: null,
+    managedContractsRaw: toNumber(advisor.contracts),
+    managedContracts: advisor.contracts,
+    retentionRaw: toNumber(advisor.retention),
+    customersRaw: toNumber(advisor.customers),
+    commissionAmountRaw: null,
+    commissionAmount: null,
+    organizationCode: '',
+  })),
+)
 
-const overallTopAdvisor = Object.values(advisorRowsByBranch)
-  .flat()
-  .slice()
-  .sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))[0]
+const advisorRankingItems = ref([])
+
+const overallTopAdvisor = computed(() =>
+  advisorRows.value
+    .slice()
+    .sort((a, b) => toNumber(b.newContractsRaw ?? b.managedContractsRaw) - toNumber(a.newContractsRaw ?? a.managedContractsRaw))[0],
+)
 
 const advisorRows = computed(() => {
-  const sourceRows = advisorRowsByBranch[currentBranchName.value] ?? fallbackAdvisorRows
-  const rows = [...sourceRows]
+  const rows = [...advisorRankingItems.value]
 
-  if (advisorSortKey.value === 'retention') {
-    return rows.sort((a, b) => Number.parseFloat(b.retention) - Number.parseFloat(a.retention))
+  return rows.map((advisor) => ({
+    ...advisor,
+    rowKey: `${advisor.organizationCode ?? advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
+  }))
+})
+
+const advisorTableColumns = computed(() => {
+  const columns = [
+    { key: 'rank', label: '순위', headerClass: '', cellClass: '' },
+    { key: 'name', label: '설계사명', headerClass: '', cellClass: '' },
+  ]
+
+  if (isAllBranchSelected.value) {
+    columns.push({
+      key: 'branchName',
+      label: '소속 지점',
+      headerClass: 'advisor-col--branch',
+      cellClass: 'advisor-col--branch',
+    })
   }
 
-  if (advisorSortKey.value === 'customers') {
-    return rows.sort((a, b) => Number.parseInt(b.customers, 10) - Number.parseInt(a.customers, 10))
-  }
+  columns.push(
+    {
+      key: 'customers',
+      label: '담당 고객',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'newContracts',
+      label: '신규 계약',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'managedContracts',
+      label: '보유 계약',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'retention',
+      label: '유지율',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'commissionAmount',
+      label: '수수료',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+  )
 
-  return rows.sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))
+  return columns
 })
 
 const topPerformers = computed(() => {
@@ -453,30 +1283,50 @@ const topPerformers = computed(() => {
     return [
       {
         eyebrow: '전 지점 1위 설계사',
-        name: overallTopAdvisor?.name ?? '홍길동 설계사',
-        meta: '설계사',
+        name: overallTopAdvisor.value?.name ?? '-',
+        meta: overallTopAdvisor.value?.branchName ?? '-',
       },
       {
         eyebrow: '지점 1위',
-        name: rankingRows[0]?.name ?? '강남 프라임 지점',
-        meta: rankingRows[0]?.location ?? '서울시 강남구',
+        name: branchRankingItems.value[0]?.organizationName ?? '-',
+        meta: branchRankingItems.value[0]?.commissionAmount ?? '-',
+      },
+    ]
+  }
+
+  if (!isAllBranchSelected.value) {
+    return [
+      {
+        eyebrow: '해당 지점 1위 설계사',
+        name: advisorRows.value[0]?.name ?? '-',
+        meta: '',
+      },
+      {
+        eyebrow: '1위 설계사 수수료',
+        name: advisorRows.value[0]?.commissionAmount ?? '-',
+        meta: '',
       },
     ]
   }
 
   return [
     {
-      eyebrow: `${currentBranchName.value} 1위 설계사`,
-      name: advisorRows.value[0]?.name ?? '홍길동 설계사',
-      meta: '설계사',
+      eyebrow: '전체 지점 1위 설계사',
+      name: advisorRows.value[0]?.name ?? '-',
+      meta: '',
     },
     {
-      eyebrow: `${currentBranchName.value} 우수 지표`,
-      name: advisorRows.value[0]?.retention ?? '91.1%',
-      meta: '최고 계약 유지율',
+      eyebrow: '전체 지점 1위 소속 지점',
+      name: advisorRows.value[0]?.branchName ?? '-',
+      meta: '',
     },
   ]
 })
+
+function getAdvisorCellValue(advisor, key) {
+  const value = advisor[key]
+  return value === null || value === undefined || value === '' ? '-' : value
+}
 </script>
 
 <style scoped>
@@ -501,6 +1351,11 @@ const topPerformers = computed(() => {
   color: #6b7280;
   font-size: 12px;
   font-weight: 800;
+}
+
+.dashboard-filter__error {
+  color: #dc2626;
+  font-size: 12px;
 }
 
 .dashboard-filter__field select,
@@ -551,6 +1406,10 @@ const topPerformers = computed(() => {
   font-size: 13px;
 }
 
+.report-panel__message--error {
+  color: #dc2626;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -597,6 +1456,13 @@ const topPerformers = computed(() => {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
+}
+
+.metric-card__secondary {
+  margin: 0 0 9px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .is-up {
@@ -662,11 +1528,43 @@ const topPerformers = computed(() => {
 
 .chart-panel {
   min-height: 230px;
+  display: flex;
+  flex-direction: column;
   padding: 30px 26px 24px;
 }
 
+.chart-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.chart-panel__total {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.chart-panel__state {
+  min-height: 166px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.chart-panel__state--error {
+  color: #dc2626;
+}
+
 .chart-panel h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 17px;
   font-weight: 800;
 }
@@ -674,8 +1572,9 @@ const topPerformers = computed(() => {
 .donut-summary {
   display: grid;
   grid-template-columns: minmax(132px, 190px) 1fr;
-  align-items: center;
+  align-items: start;
   gap: 22px;
+  flex: 1;
 }
 
 .donut-chart {
@@ -684,6 +1583,7 @@ const topPerformers = computed(() => {
   height: 132px;
   display: grid;
   place-content: center;
+  align-self: start;
   justify-self: center;
   border-radius: 999px;
   text-align: center;
@@ -697,25 +1597,6 @@ const topPerformers = computed(() => {
   background: #ffffff;
 }
 
-.donut-chart strong,
-.donut-chart span {
-  position: relative;
-  z-index: 1;
-  display: block;
-}
-
-.donut-chart strong {
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.donut-chart span {
-  margin-top: 6px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
 .donut-summary ul {
   display: grid;
   gap: 13px;
@@ -727,7 +1608,8 @@ const topPerformers = computed(() => {
 }
 
 .donut-summary li {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 11px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
 }
@@ -736,6 +1618,21 @@ const topPerformers = computed(() => {
   width: 11px;
   height: 11px;
   border-radius: 999px;
+}
+
+.donut-summary li span {
+  color: #475569;
+}
+
+.donut-summary li strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.donut-summary li em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .ranking-panel {
@@ -775,9 +1672,15 @@ const topPerformers = computed(() => {
   color: #ea580c;
 }
 
+.ranking-panel__tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .ranking-panel__controls {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .ranking-panel__sort {
@@ -786,6 +1689,44 @@ const topPerformers = computed(() => {
 
 .ranking-table-wrap {
   overflow-x: auto;
+}
+
+.ranking-table-state {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.ranking-table-state--error {
+  color: #dc2626;
+}
+
+.ranking-table-state__retry {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.branch-change--up {
+  color: #16a34a;
+}
+
+.branch-change--down {
+  color: #dc2626;
+}
+
+.branch-change--neutral {
+  color: #64748b;
 }
 
 .ranking-table {
@@ -806,16 +1747,9 @@ const topPerformers = computed(() => {
   white-space: nowrap;
 }
 
-.ranking-table th:nth-child(3),
-.ranking-table th:nth-child(4),
-.ranking-table td:nth-child(3),
-.ranking-table td:nth-child(4) {
-  text-align: right;
-}
-
 .ranking-table td {
   height: 62px;
-  padding: 0 28px;
+  padding: 0 22px;
   border-top: 1px solid #e5e7eb;
   color: #374151;
   font-weight: 800;
@@ -827,21 +1761,80 @@ const topPerformers = computed(() => {
 }
 
 .ranking-table--advisor {
-  min-width: 980px;
+  min-width: 900px;
+  table-layout: fixed;
 }
 
-.ranking-table--advisor th:nth-child(3),
-.ranking-table--advisor th:nth-child(4),
-.ranking-table--advisor th:nth-child(5),
-.ranking-table--advisor th:nth-child(6),
-.ranking-table--advisor th:nth-child(7),
-.ranking-table--advisor th:nth-child(8),
-.ranking-table--advisor td:nth-child(3),
-.ranking-table--advisor td:nth-child(4),
-.ranking-table--advisor td:nth-child(5),
-.ranking-table--advisor td:nth-child(6),
-.ranking-table--advisor td:nth-child(7),
-.ranking-table--advisor td:nth-child(8) {
+.ranking-table--branch {
+  table-layout: fixed;
+}
+
+.ranking-table--branch th,
+.ranking-table--branch td {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.branch-ranking-width--rank {
+  width: 10%;
+}
+
+.branch-ranking-width--name {
+  width: 40%;
+}
+
+.branch-ranking-width--amount {
+  width: 28%;
+}
+
+.branch-ranking-width--change {
+  width: 22%;
+}
+
+.ranking-table--advisor th,
+.ranking-table--advisor td {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.ranking-table--advisor th:first-child,
+.ranking-table--advisor td:first-child {
+  width: 72px;
+  text-align: center;
+}
+
+.ranking-table--advisor th:nth-child(2),
+.ranking-table--advisor td:nth-child(2) {
+  width: 150px;
+}
+
+.ranking-table--advisor .advisor-col--branch {
+  width: 170px;
+  text-align: left;
+}
+
+.ranking-table--advisor .advisor-col--metric {
+  width: 118px;
+  text-align: center;
+}
+
+.ranking-table--branch th.branch-ranking-col--rank,
+.ranking-table--branch td.branch-ranking-col--rank {
+  text-align: center;
+}
+
+.ranking-table--branch th.branch-ranking-col--name,
+.ranking-table--branch td.branch-ranking-col--name {
+  text-align: left;
+}
+
+.ranking-table--branch th.branch-ranking-col--amount,
+.ranking-table--branch td.branch-ranking-col--amount {
+  text-align: right;
+}
+
+.ranking-table--branch th.branch-ranking-col--change,
+.ranking-table--branch td.branch-ranking-col--change {
   text-align: center;
 }
 
@@ -878,31 +1871,13 @@ const topPerformers = computed(() => {
   font-weight: 600;
 }
 
-.advisor-rank {
-  width: 22px;
-  height: 22px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 12px;
+.ranking-number {
+  color: #1f2937;
   font-weight: 900;
 }
 
-.advisor-rank.is-gold {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.advisor-rank.is-silver {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.advisor-rank.is-bronze {
-  background: #fed7aa;
-  color: #c2410c;
+.ranking-number.is-first {
+  color: #f97316;
 }
 
 .status-pill {
@@ -960,27 +1935,10 @@ const topPerformers = computed(() => {
   font-size: 12px;
 }
 
-.pagination {
+.ranking-pagination {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.pagination button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #374151;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.pagination button.active {
-  border-color: #f97316;
-  background: #f97316;
-  color: #ffffff;
+  justify-content: flex-end;
 }
 
 @media (max-width: 1180px) {
@@ -1010,8 +1968,12 @@ const topPerformers = computed(() => {
     grid-template-columns: 1fr;
   }
 
+  .chart-panel__header {
+    flex-direction: column;
+  }
+
   .dashboard-filter__field select,
-  .ranking-panel__sort {
+  .dashboard-filter__field select {
     width: 100%;
   }
 
