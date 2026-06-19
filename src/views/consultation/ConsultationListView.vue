@@ -80,8 +80,8 @@
           hide-details
         />
       </div>
-      <v-alert v-if="branchErrorMessage" type="warning" variant="tonal" density="compact">
-        {{ branchErrorMessage }}
+      <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="compact">
+        {{ branchErrorMessage || branchFpErrorMessage }}
       </v-alert>
       <div class="filter-actions">
         <v-btn class="search-button" @click="searchConsultations">
@@ -180,6 +180,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getConsultations } from '../../api/consultations'
+import { getOrganizationFps } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import {
   getConsultationChannelLabel,
@@ -232,12 +233,18 @@ const filters = reactive({
 
 const consultationRows = ref([])
 const localCompletedRows = ref([])
+const branchFpFilter = ref(null)
+const branchFpErrorMessage = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
+const selectedBranchOption = computed(() => {
+  if (!filters.organizationCode) return null
+  return branches.value.find((branch) => branch.value === filters.organizationCode) ?? null
+})
 const allRows = computed(() => mergeConsultationRows(consultationRows.value, localCompletedRows.value))
 const filteredRows = computed(() => sortRows(allRows.value.filter((row) => {
   if (showBranchFilter.value && filters.organizationCode && !matchesOrganization(row, filters.organizationCode)) return false
@@ -292,18 +299,21 @@ watch(
   () => filters.organizationCode,
   async () => {
     currentPage.value = 1
+    await loadBranchFpFilter()
     await loadConsultations()
   },
 )
 
 onMounted(async () => {
   await initializeBranchFilter()
+  await loadBranchFpFilter()
   localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   loadConsultations()
 })
 
 async function searchConsultations() {
   currentPage.value = 1
+  await loadBranchFpFilter()
   await loadConsultations()
 }
 
@@ -315,6 +325,7 @@ async function resetFilters() {
   filters.startedAt = ''
   filters.endedAt = ''
   filters.sortOrder = 'latest'
+  branchFpFilter.value = null
   currentPage.value = 1
   await loadConsultations()
 }
@@ -322,6 +333,76 @@ async function resetFilters() {
 async function changePage(page) {
   currentPage.value = page
   await loadConsultations()
+}
+
+async function loadBranchFpFilter() {
+  branchFpFilter.value = null
+  branchFpErrorMessage.value = ''
+
+  if (!showBranchFilter.value || !filters.organizationCode) {
+    return
+  }
+
+  const branch = selectedBranchOption.value
+
+  if (!branch?.organizationId) {
+    return
+  }
+
+  try {
+    const fps = []
+    let page = 0
+    let totalPages = 1
+    let isOneBasedPage = false
+
+    do {
+      const { response, usedPage } = await getOrganizationFpsPage(branch.organizationId, page)
+      const result = response?.result ?? {}
+      const content = Array.isArray(result.content) ? result.content : []
+
+      fps.push(...content)
+      totalPages = Number(result.totalPages ?? result.totalPage ?? 1) || 1
+      isOneBasedPage = usedPage === 1 && page === 0
+      page = usedPage + 1
+    } while ((isOneBasedPage ? page <= totalPages : page < totalPages) && page < 20)
+
+    branchFpFilter.value = {
+      fpIds: new Set(fps.map((fp) => fp.id ?? fp.userId ?? fp.fpId).filter(Boolean)),
+      fpNames: new Set(fps.map((fp) => fp.userName ?? fp.fpName ?? fp.name).filter(Boolean)),
+    }
+  } catch (error) {
+    branchFpFilter.value = {
+      fpIds: new Set(),
+      fpNames: new Set(),
+    }
+    branchFpErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 설계사 목록을 불러오지 못했습니다.'
+  }
+}
+
+async function getOrganizationFpsPage(organizationId, page) {
+  const params = {
+    organizationId,
+    page,
+    size: 1000,
+  }
+
+  try {
+    const response = await getOrganizationFps(params)
+    return { response, usedPage: page }
+  } catch (error) {
+    if (page !== 0 || error.response?.status !== 400) {
+      throw error
+    }
+
+    const response = await getOrganizationFps({
+      ...params,
+      page: 1,
+    })
+    return { response, usedPage: 1 }
+  }
 }
 
 async function loadConsultations() {
@@ -355,6 +436,10 @@ function buildParams() {
 
   if (showBranchFilter.value && filters.organizationCode) {
     params.organizationCode = filters.organizationCode
+
+    if (selectedBranchOption.value?.organizationId) {
+      params.organizationId = selectedBranchOption.value.organizationId
+    }
   }
 
   return params
@@ -381,6 +466,7 @@ function normalizeConsultation(consultation) {
     consultationChannel,
     customerName: consultation.customerName ?? consultation.customer?.customerName,
     contractCode: consultation.contractCode ?? consultation.contract?.contractCode,
+    fpId: consultation.fpId ?? consultation.fp?.id ?? consultation.fp?.fpId ?? consultation.fp?.userId,
     fpName: consultation.fpName ?? consultation.fp?.userName,
     organizationCode:
       consultation.organizationCode ??
@@ -432,8 +518,16 @@ function toDateOnly(value) {
 
 function matchesOrganization(row, organizationCode) {
   if (!organizationCode) return true
-  if (!row.organizationCode && !row.organizationName) return true
-  return row.organizationCode === organizationCode
+  if (row.organizationCode) return row.organizationCode === organizationCode
+
+  const filter = branchFpFilter.value
+
+  if (!filter) return true
+
+  return (
+    (row.fpId && filter.fpIds.has(row.fpId)) ||
+    (row.fpName && filter.fpNames.has(row.fpName))
+  )
 }
 
 function mergeConsultationRows(serverRows, localRows) {
