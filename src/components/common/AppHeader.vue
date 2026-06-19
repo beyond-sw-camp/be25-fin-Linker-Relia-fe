@@ -45,8 +45,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getBranchOrganizations } from '../../api/organizations'
-import { USER_ROLES } from '../../constants/auth'
-import { ROLE_LABELS } from '../../constants/auth'
+import { ROLE_LABELS, USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -54,18 +53,29 @@ const route = useRoute()
 const router = useRouter()
 const resolvedOrganizationName = ref('')
 
+const BRANCH_SCOPED_TITLE_BY_ROUTE = {
+  'branch-dashboard': '대시보드',
+  'branch-customers': '고객 목록',
+  'branch-contracts': '계약 목록',
+  'branch-consultations': '상담 목록',
+  'handover-requests': '인수인계 현황',
+  'branch-commissions': '수수료 관리',
+}
+
 const pageTitle = computed(() => {
-  if (isBranchScopedConsultationRoute.value) {
-    const organizationName = authStore.organizationName || resolvedOrganizationName.value
-    if (organizationName) return `${organizationName} 상담 목록`
+  if (isBranchScopedRoute.value) {
+    const organizationName = getOrganizationName()
+    const titleSuffix = BRANCH_SCOPED_TITLE_BY_ROUTE[route.name]
+
+    if (organizationName && titleSuffix) return `${organizationName} ${titleSuffix}`
   }
 
   return route.meta.title ?? '대시보드'
 })
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
-const isBranchScopedConsultationRoute = computed(() => (
-  ['branch-consultations', 'fp-consultations'].includes(route.name) &&
-  [USER_ROLES.BRANCH_MANAGER, USER_ROLES.FP].includes(authStore.userRole)
+const isBranchScopedRoute = computed(() => (
+  Object.keys(BRANCH_SCOPED_TITLE_BY_ROUTE).includes(route.name) &&
+  authStore.userRole === USER_ROLES.BRANCH_MANAGER
 ))
 
 onMounted(resolveOrganizationName)
@@ -77,7 +87,7 @@ watch(
 
 async function resolveOrganizationName() {
   resolvedOrganizationName.value = ''
-  if (!isBranchScopedConsultationRoute.value || authStore.organizationName) return
+  if (!isBranchScopedRoute.value || getOrganizationName()) return
   const tokenProfile = parseTokenProfile(authStore.accessToken)
   if (!tokenProfile.organizationId && !tokenProfile.organizationCode) return
 
@@ -92,6 +102,10 @@ async function resolveOrganizationName() {
   } catch {
     resolvedOrganizationName.value = ''
   }
+}
+
+function getOrganizationName() {
+  return authStore.organizationName || authStore.user?.organizationName || resolvedOrganizationName.value
 }
 
 function parseTokenProfile(token) {
