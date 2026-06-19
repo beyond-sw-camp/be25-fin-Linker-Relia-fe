@@ -152,7 +152,7 @@ const typeDetailItems = computed(() => {
     const source = detail.value.claimDetail || {}
     return [
       { label: '청구 유형', value: source.claimType || '-' },
-      { label: '청구 사유', value: source.claimReason || '-' },
+      { label: '청구 사유', value: source.claimReasonDetail || source.claimReason || '-' },
       { label: '사고일', value: source.incidentDate || '-' },
       { label: '병원명', value: source.hospitalName || '-' },
       { label: '진단/치료', value: source.diagnosisOrTreatment || '-' },

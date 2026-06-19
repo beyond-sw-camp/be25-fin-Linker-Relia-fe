@@ -552,7 +552,7 @@
             <div class="compact-grid">
               <label class="field">
                 <span>청구 사유</span>
-                <input v-model.trim="claimDetail.claimReason" class="control" />
+                <input v-model.trim="claimDetail.claimReasonDetail" class="control" />
               </label>
               <label class="field">
                 <span>발생일 또는 진단일</span>
@@ -1248,7 +1248,7 @@ const newDetail = reactive({
 
 const claimDetail = reactive({
   claimType: '',
-  claimReason: '',
+  claimReasonDetail: '',
   incidentDate: '',
   hospitalName: '',
   diagnosisOrTreatment: '',
@@ -1545,6 +1545,9 @@ async function hydrateDraft() {
     }
     selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
     Object.assign(claimDetail, draft.claimDetail || {})
+    if (!claimDetail.claimReasonDetail && draft.claimDetail?.claimReason) {
+      claimDetail.claimReasonDetail = draft.claimDetail.claimReason
+    }
     if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
     if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
     Object.assign(renewalDetail, draft.renewalDetail || {})
@@ -1613,7 +1616,7 @@ function buildDraftPayload() {
     customerInfo: { ...customerInfo },
     newDetail: { ...newDetail },
     selectedProposedProducts: selectedProposedProducts.value,
-    claimDetail: { ...claimDetail },
+    claimDetail: buildClaimDraftDetail(),
     renewalDetail: buildRenewalDraftDetail(),
     cancelDetail: { ...cancelDetail },
     customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
@@ -1636,6 +1639,22 @@ function buildRenewalDraftDetail() {
     result: renewalDetail.result,
     nextActions: renewalDetail.nextActions,
     decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate),
+  }
+}
+
+function buildClaimDraftDetail() {
+  return {
+    claimType: claimDetail.claimType,
+    claimReasonDetail: claimDetail.claimReasonDetail,
+    incidentDate: claimDetail.incidentDate,
+    hospitalName: claimDetail.hospitalName,
+    diagnosisOrTreatment: claimDetail.diagnosisOrTreatment,
+    hospitalizationStatus: claimDetail.hospitalizationStatus,
+    surgeryStatus: claimDetail.surgeryStatus,
+    claimAmount: claimDetail.claimAmount,
+    reviewItems: claimDetail.reviewItems,
+    result: claimDetail.result,
+    nextActions: claimDetail.nextActions,
   }
 }
 
@@ -1787,7 +1806,7 @@ function buildCompletedConsultationRecord(payload, response) {
     specialNote: payload.specialNote,
     consultationContent: payload.specialNote,
     newDetail: form.consultationType === 'NEW_CONTRACT' ? { ...newDetail } : undefined,
-    claimDetail: form.consultationType === 'CLAIM' ? { ...claimDetail } : undefined,
+    claimDetail: form.consultationType === 'CLAIM' ? buildClaimDraftDetail() : undefined,
     renewalDetail: form.consultationType === 'RENEWAL' ? buildRenewalDraftDetail() : undefined,
     cancelDetail: form.consultationType === 'TERMINATION' ? { ...cancelDetail } : undefined,
     fpName: '',
@@ -1853,7 +1872,7 @@ function buildSubmitPayload() {
   if (form.consultationType === 'CLAIM') {
     payload.claimDetail = {
       claimType: claimDetail.claimType || null,
-      claimReason: claimDetail.claimReason || null,
+      claimReasonDetail: claimDetail.claimReasonDetail || null,
       incidentDate: claimDetail.incidentDate || null,
       hospitalName: claimDetail.hospitalName || null,
       diagnosisOrTreatment: claimDetail.diagnosisOrTreatment || null,
@@ -1956,7 +1975,7 @@ function validateForm() {
   }
   if (form.consultationType === 'CLAIM') {
     if (!claimDetail.claimType) return '청구 유형을 선택해주세요.'
-    if (!claimDetail.claimReason) return '청구 사유를 입력해주세요.'
+    if (!claimDetail.claimReasonDetail) return '청구 사유를 입력해주세요.'
     if (!claimDetail.incidentDate) return '발생일 또는 진단일을 입력해주세요.'
     if (!claimDetail.result) return '상담 결과를 선택해주세요.'
   }
