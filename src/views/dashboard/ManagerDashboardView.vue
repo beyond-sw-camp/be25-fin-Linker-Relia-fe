@@ -70,6 +70,7 @@
               type="button"
               class="ranking-panel__tab"
               :class="{ active: !isBranchRankingView }"
+              @click="rankingTab = 'advisor'"
             >
               설계사 순위
             </button>
@@ -77,6 +78,7 @@
               type="button"
               class="ranking-panel__tab"
               :class="{ active: isBranchRankingView }"
+              @click="rankingTab = 'branch'"
             >
               지점 순위
             </button>
@@ -127,28 +129,30 @@
             <tr>
               <th>순위</th>
               <th>설계사명</th>
-              <th>계약 건수</th>
-              <th>계약 유지율</th>
-              <th>담당 고객수</th>
-              <th>미관리 고객수</th>
-              <th>상태</th>
-              <th>상세 정보</th>
+              <th v-if="isAllBranchSelected" class="advisor-col--branch">소속 지점</th>
+              <th class="advisor-col--metric">계약 건수</th>
+              <th class="advisor-col--metric">계약 유지율</th>
+              <th class="advisor-col--metric">담당 고객수</th>
+              <th class="advisor-col--metric">미관리 고객수</th>
+              <th class="advisor-col--metric">상태</th>
+              <th class="advisor-col--metric">상세 정보</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="advisor in advisorRows" :key="advisor.rank">
+            <tr v-for="advisor in advisorRows" :key="advisor.rowKey">
               <td>
                 <span class="advisor-rank" :class="advisor.rankClass">{{ advisor.rank }}</span>
               </td>
               <td>{{ advisor.name }}</td>
-              <td>{{ advisor.contracts }}</td>
-              <td>{{ advisor.retention }}</td>
-              <td>{{ advisor.customers }}</td>
-              <td>{{ advisor.unmanaged }}</td>
-              <td>
+              <td v-if="isAllBranchSelected" class="advisor-col--branch">{{ advisor.branchName }}</td>
+              <td class="advisor-col--metric">{{ advisor.contracts }}</td>
+              <td class="advisor-col--metric">{{ advisor.retention }}</td>
+              <td class="advisor-col--metric">{{ advisor.customers }}</td>
+              <td class="advisor-col--metric">{{ advisor.unmanaged }}</td>
+              <td class="advisor-col--metric">
                 <span class="status-pill" :class="advisor.statusClass">{{ advisor.status }}</span>
               </td>
-              <td>
+              <td class="advisor-col--metric">
                 <button type="button" class="detail-button">보기</button>
               </td>
             </tr>
@@ -185,6 +189,7 @@ const authStore = useAuthStore()
 const selectedBranch = ref('전체 지점')
 const selectedMonth = ref('2026년 5월')
 const advisorSortKey = ref('contracts')
+const rankingTab = ref('advisor')
 
 const branchOptions = [
   '전체 지점',
@@ -198,6 +203,7 @@ const branchOptions = [
 const monthOptions = ['2026년 5월', '2026년 4월', '2026년 3월']
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
+const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
 const currentBranchName = computed(() => {
   if (isHqManager.value) {
     return selectedBranch.value
@@ -206,11 +212,15 @@ const currentBranchName = computed(() => {
   return authStore.user.organizationName || '강남본부 강남지점'
 })
 
-const isBranchRankingView = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const isBranchRankingView = computed(() => isHqManager.value && rankingTab.value === 'branch')
 
 const rankingTitle = computed(() => {
   if (isBranchRankingView.value) {
     return '지점별 순위'
+  }
+
+  if (isAllBranchSelected.value) {
+    return '전체 지점 설계사 실적 순위'
   }
 
   return `${currentBranchName.value} 설계사 실적 순위`
@@ -218,15 +228,23 @@ const rankingTitle = computed(() => {
 
 const rankingHint = computed(() => {
   if (isBranchRankingView.value) {
-    return '전체 지점 선택 시 지점 순위로 전환'
+    return '지점별 매출 순위를 확인할 수 있습니다.'
   }
 
-  return '특정 지점 선택 시 설계사 순위로 전환'
+  if (isAllBranchSelected.value) {
+    return '전체 지점의 설계사 실적을 통합해 보여줍니다.'
+  }
+
+  return '선택한 지점의 설계사 순위를 확인할 수 있습니다.'
 })
 
 const footerText = computed(() => {
   if (isBranchRankingView.value) {
     return '표시 항목: 1 - 5 / 총 152개 지점'
+  }
+
+  if (isAllBranchSelected.value) {
+    return `총 ${allAdvisorRows.length}명 중 1 - ${Math.min(allAdvisorRows.length, 8)} 표시`
   }
 
   return '총 156개 중 1 - 8 표시'
@@ -237,28 +255,28 @@ const metrics = [
     label: '설계사',
     value: '12,540',
     unit: '명',
-    caption: '전월 대비 ▲ 1.2%',
+    caption: '전월 대비 ▲ 148명',
     trendClass: 'is-up',
   },
   {
     label: '고객',
     value: '421,910',
     unit: '명',
-    caption: '전월 대비 ▲ 2.5%',
+    caption: '전월 대비 ▲ 10,284명',
     trendClass: 'is-up',
   },
   {
     label: '계약',
     value: '14,208',
     unit: '건',
-    caption: '전월 대비 ▲ 0.8%',
+    caption: '전월 대비 ▲ 113건',
     trendClass: 'is-up',
   },
   {
     label: '관심 고객',
     value: '28',
     unit: '명',
-    caption: '즉시 관리 필요',
+    caption: '전월 대비 ▲ 6명',
     trendClass: 'is-up',
     danger: true,
   },
@@ -428,24 +446,50 @@ const advisorRowsByBranch = {
 
 const fallbackAdvisorRows = advisorRowsByBranch['강남본부 강남지점']
 
-const overallTopAdvisor = Object.values(advisorRowsByBranch)
-  .flat()
+const allAdvisorRows = Object.entries(advisorRowsByBranch).flatMap(([branchName, rows]) =>
+  rows.map((advisor) => ({
+    ...advisor,
+    branchName,
+  })),
+)
+
+const overallTopAdvisor = allAdvisorRows
   .slice()
   .sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))[0]
 
 const advisorRows = computed(() => {
-  const sourceRows = advisorRowsByBranch[currentBranchName.value] ?? fallbackAdvisorRows
+  const sourceRows = isAllBranchSelected.value
+    ? allAdvisorRows
+    : (advisorRowsByBranch[currentBranchName.value] ?? fallbackAdvisorRows)
   const rows = [...sourceRows]
 
   if (advisorSortKey.value === 'retention') {
-    return rows.sort((a, b) => Number.parseFloat(b.retention) - Number.parseFloat(a.retention))
+    return rows
+      .sort((a, b) => Number.parseFloat(b.retention) - Number.parseFloat(a.retention))
+      .map((advisor, index) => ({
+        ...advisor,
+        rank: index + 1,
+        rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
+      }))
   }
 
   if (advisorSortKey.value === 'customers') {
-    return rows.sort((a, b) => Number.parseInt(b.customers, 10) - Number.parseInt(a.customers, 10))
+    return rows
+      .sort((a, b) => Number.parseInt(b.customers, 10) - Number.parseInt(a.customers, 10))
+      .map((advisor, index) => ({
+        ...advisor,
+        rank: index + 1,
+        rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
+      }))
   }
 
-  return rows.sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))
+  return rows
+    .sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))
+    .map((advisor, index) => ({
+      ...advisor,
+      rank: index + 1,
+      rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
+    }))
 })
 
 const topPerformers = computed(() => {
@@ -454,7 +498,7 @@ const topPerformers = computed(() => {
       {
         eyebrow: '전 지점 1위 설계사',
         name: overallTopAdvisor?.name ?? '홍길동 설계사',
-        meta: '설계사',
+        meta: overallTopAdvisor?.branchName ?? '강남본부 강남지점',
       },
       {
         eyebrow: '지점 1위',
@@ -464,16 +508,26 @@ const topPerformers = computed(() => {
     ]
   }
 
+  if (!isAllBranchSelected.value) {
+    return [
+      {
+        eyebrow: '해당 지점 1위 설계사',
+        name: advisorRows.value[0]?.name ?? '홍길동 설계사',
+        meta: '',
+      },
+    ]
+  }
+
   return [
     {
-      eyebrow: `${currentBranchName.value} 1위 설계사`,
+      eyebrow: '전체 지점 1위 설계사',
       name: advisorRows.value[0]?.name ?? '홍길동 설계사',
-      meta: '설계사',
+      meta: '',
     },
     {
-      eyebrow: `${currentBranchName.value} 우수 지표`,
-      name: advisorRows.value[0]?.retention ?? '91.1%',
-      meta: '최고 계약 유지율',
+      eyebrow: '전체 지점 1위 소속 지점',
+      name: advisorRows.value[0]?.branchName ?? '강남본부 강남지점',
+      meta: '',
     },
   ]
 })
@@ -830,18 +884,11 @@ const topPerformers = computed(() => {
   min-width: 980px;
 }
 
-.ranking-table--advisor th:nth-child(3),
-.ranking-table--advisor th:nth-child(4),
-.ranking-table--advisor th:nth-child(5),
-.ranking-table--advisor th:nth-child(6),
-.ranking-table--advisor th:nth-child(7),
-.ranking-table--advisor th:nth-child(8),
-.ranking-table--advisor td:nth-child(3),
-.ranking-table--advisor td:nth-child(4),
-.ranking-table--advisor td:nth-child(5),
-.ranking-table--advisor td:nth-child(6),
-.ranking-table--advisor td:nth-child(7),
-.ranking-table--advisor td:nth-child(8) {
+.ranking-table--advisor .advisor-col--branch {
+  text-align: left;
+}
+
+.ranking-table--advisor .advisor-col--metric {
   text-align: center;
 }
 
