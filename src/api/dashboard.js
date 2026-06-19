@@ -20,6 +20,11 @@ export async function getOrganizationDashboardFpRankings(params) {
   return response.data
 }
 
+export async function getOrganizationDashboardBranchRankings(params) {
+  const response = await authApi.get('/dashboard/organization/rankings/branches', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data

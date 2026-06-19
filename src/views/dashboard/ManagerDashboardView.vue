@@ -97,6 +97,7 @@
               type="button"
               class="ranking-panel__tab"
               :class="{ active: isBranchRankingView }"
+              :disabled="!isAllBranchSelected"
               @click="rankingTab = 'branch'"
             >
               지점 순위
@@ -106,7 +107,13 @@
           <h2>{{ rankingTitle }}</h2>
         </div>
 
-        <div v-if="!isBranchRankingView" class="ranking-panel__controls">
+        <div v-if="isBranchRankingView" class="ranking-panel__controls">
+          <select v-model="selectedBranchRankOrder" class="ranking-panel__sort" @change="handleBranchRankOrderChange">
+            <option value="TOP">상위 순위</option>
+            <option value="BOTTOM">하위 순위</option>
+          </select>
+        </div>
+        <div v-else class="ranking-panel__controls">
           <select v-model="selectedAdvisorSortKey" class="ranking-panel__sort" @change="handleAdvisorSortChange">
             <option value="TOP">상위 순위</option>
             <option value="BOTTOM">하위 순위</option>
@@ -115,29 +122,48 @@
       </div>
 
       <div class="ranking-table-wrap">
-        <table v-if="isBranchRankingView" class="ranking-table">
+        <div v-if="isBranchRankingView && isBranchRankingLoading" class="ranking-table-state">
+          <p>지점 순위를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="isBranchRankingView && branchRankingErrorMessage" class="ranking-table-state ranking-table-state--error">
+          <p>{{ branchRankingErrorMessage }}</p>
+          <button type="button" class="ranking-table-state__retry" @click="loadOrganizationBranchRankings">
+            다시 시도
+          </button>
+        </div>
+        <div v-else-if="isBranchRankingView && branchRankingItems.length === 0" class="ranking-table-state">
+          <p>조회된 지점 순위가 없습니다.</p>
+        </div>
+        <table v-else-if="isBranchRankingView" class="ranking-table ranking-table--branch">
+          <colgroup>
+            <col class="branch-ranking-width--rank" />
+            <col class="branch-ranking-width--name" />
+            <col class="branch-ranking-width--amount" />
+            <col class="branch-ranking-width--change" />
+          </colgroup>
           <thead>
             <tr>
-              <th>순위</th>
-              <th>지점명</th>
-              <th>매출액</th>
-              <th>순위 변동</th>
+              <th class="branch-ranking-col--rank">순위</th>
+              <th class="branch-ranking-col--name">지점명</th>
+              <th class="branch-ranking-col--amount">최종 수입수수료</th>
+              <th class="branch-ranking-col--change">전월 대비</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="branch in rankingRows" :key="branch.rank">
-              <td :class="{ 'is-first': branch.rank === 1 }">#{{ branch.rank }}</td>
-              <td>
+            <tr v-for="branch in branchRankingItems" :key="branch.organizationId">
+              <td class="branch-ranking-col--rank" :class="{ 'is-first': branch.rank === 1 }">#{{ branch.rank }}</td>
+              <td class="branch-ranking-col--name">
                 <div class="branch-cell">
-                  <span :style="{ color: branch.color, backgroundColor: branch.tone }">{{ branch.badge }}</span>
                   <div>
-                    <strong>{{ branch.name }}</strong>
-                    <small>{{ branch.location }}</small>
+                    <strong>{{ branch.organizationName }}</strong>
+                    <small>{{ branch.organizationCode }}</small>
                   </div>
                 </div>
               </td>
-              <td><strong>{{ branch.revenue }}</strong></td>
-              <td :class="branch.changeType">{{ branch.change }}</td>
+              <td class="branch-ranking-col--amount"><strong>{{ branch.commissionAmount }}</strong></td>
+              <td class="branch-ranking-col--change" :class="branch.changeClass" :title="branch.previousRankTitle">
+                {{ branch.changeLabel }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -182,14 +208,31 @@
 
       <div class="ranking-panel__footer">
         <span>{{ footerText }}</span>
-        <div v-if="isBranchRankingView" class="pagination">
-          <button type="button" aria-label="이전 페이지">
+        <div v-if="isBranchRankingView && branchRankingPageInfo.totalPages > 0" class="pagination">
+          <button
+            type="button"
+            aria-label="이전 페이지"
+            :disabled="!branchRankingPageInfo.hasPrevious || isBranchRankingLoading"
+            @click="changeBranchRankingPage(branchRankingPage - 1)"
+          >
             <v-icon icon="mdi-chevron-left" size="16" />
           </button>
-          <button v-for="page in 5" :key="page" type="button" :class="{ active: page === 1 }">
+          <button
+            v-for="page in branchPaginationPages"
+            :key="page"
+            type="button"
+            :class="{ active: page === branchRankingPage }"
+            :disabled="isBranchRankingLoading"
+            @click="changeBranchRankingPage(page)"
+          >
             {{ page }}
           </button>
-          <button type="button" aria-label="다음 페이지">
+          <button
+            type="button"
+            aria-label="다음 페이지"
+            :disabled="!branchRankingPageInfo.hasNext || isBranchRankingLoading"
+            @click="changeBranchRankingPage(branchRankingPage + 1)"
+          >
             <v-icon icon="mdi-chevron-right" size="16" />
           </button>
         </div>
@@ -231,6 +274,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import {
   getDashboardClosingMonths,
+  getOrganizationDashboardBranchRankings,
   getOrganizationDashboardContractDistribution,
   getOrganizationDashboardFpRankings,
   getOrganizationDashboardSummary,
@@ -248,16 +292,25 @@ const selectedAdvisorSortKey = ref('TOP')
 const advisorRankingPage = ref(1)
 const advisorRankingPageSize = 10
 const advisorRankingPageInfo = ref(createEmptyAdvisorRankingPage())
+const selectedBranchRankOrder = ref('TOP')
+const branchRankingPage = ref(1)
+const branchRankingPageSize = 10
+const branchRankingPageInfo = ref(createEmptyBranchRankingPage())
+const branchRankingItems = ref([])
+const branchRankingClosingMonth = ref('')
+const branchRankingComparisonMonth = ref('')
 const isLoadingBranches = ref(false)
 const isLoadingMonths = ref(false)
 const isSummaryLoading = ref(false)
 const isDistributionLoading = ref(false)
 const isAdvisorRankingLoading = ref(false)
+const isBranchRankingLoading = ref(false)
 const branchErrorMessage = ref('')
 const monthErrorMessage = ref('')
 const summaryErrorMessage = ref('')
 const distributionErrorMessage = ref('')
 const advisorRankingErrorMessage = ref('')
+const branchRankingErrorMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const distribution = ref(createEmptyOrganizationDistribution())
 
@@ -313,7 +366,14 @@ const rankingTitle = computed(() => {
 
 const rankingHint = computed(() => {
   if (isBranchRankingView.value) {
-    return '지점별 매출 순위를 확인할 수 있습니다.'
+    if (branchRankingClosingMonth.value) {
+      const comparisonText = branchRankingComparisonMonth.value
+        ? ` · ${formatClosingMonthLabel(branchRankingComparisonMonth.value)} 대비`
+        : ''
+      return `${formatClosingMonthLabel(branchRankingClosingMonth.value)} 기준${comparisonText}`
+    }
+
+    return '지점별 수입수수료 순위를 확인할 수 있습니다.'
   }
 
   if (isAllBranchSelected.value) {
@@ -337,7 +397,13 @@ const reportDescription = computed(() => {
 
 const footerText = computed(() => {
   if (isBranchRankingView.value) {
-    return '표시 항목: 1 - 5 / 총 152개 지점'
+    if (branchRankingPageInfo.value.totalElements === 0) {
+      return '총 0개 지점'
+    }
+
+    const start = (branchRankingPageInfo.value.page - 1) * branchRankingPageInfo.value.size + 1
+    const end = start + branchRankingPageInfo.value.numberOfElements - 1
+    return `총 ${formatNumber(branchRankingPageInfo.value.totalElements)}개 지점 중 ${start} - ${end} 표시`
   }
 
   if (advisorRankingPageInfo.value.totalElements === 0) {
@@ -352,6 +418,15 @@ const footerText = computed(() => {
 const advisorPaginationPages = computed(() => {
   const totalPages = advisorRankingPageInfo.value.totalPages
   const currentPage = advisorRankingPage.value
+  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
+  const end = Math.min(totalPages, start + 4)
+
+  return Array.from({ length: Math.max(end - start + 1, 0) }, (_, index) => start + index)
+})
+
+const branchPaginationPages = computed(() => {
+  const totalPages = branchRankingPageInfo.value.totalPages
+  const currentPage = branchRankingPage.value
   const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
   const end = Math.min(totalPages, start + 4)
 
@@ -440,9 +515,20 @@ watch(
     loadOrganizationContractDistribution()
     advisorRankingPage.value = 1
     loadOrganizationAdvisorRankings()
+
+    if (isHqManager.value) {
+      branchRankingPage.value = 1
+      loadOrganizationBranchRankings()
+    }
   },
   { immediate: true },
 )
+
+watch(isAllBranchSelected, (isAllBranches) => {
+  if (!isAllBranches && rankingTab.value === 'branch') {
+    rankingTab.value = 'advisor'
+  }
+})
 
 async function loadBranchOptions() {
   branchErrorMessage.value = ''
@@ -577,9 +663,45 @@ async function loadOrganizationAdvisorRankings() {
   }
 }
 
+async function loadOrganizationBranchRankings() {
+  if (!isHqManager.value) {
+    return
+  }
+
+  branchRankingErrorMessage.value = ''
+  isBranchRankingLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardBranchRankings(buildBranchRankingParams())
+    const result = response?.result
+
+    branchRankingItems.value = normalizeBranchRankingItems(result?.rankings?.content)
+    branchRankingPageInfo.value = normalizeBranchRankingPage(result?.rankings)
+    branchRankingPage.value = branchRankingPageInfo.value.page
+    branchRankingClosingMonth.value = result?.closingMonth ?? selectedMonth.value
+    branchRankingComparisonMonth.value = result?.comparisonClosingMonth ?? ''
+  } catch (error) {
+    branchRankingItems.value = []
+    branchRankingPageInfo.value = createEmptyBranchRankingPage()
+    branchRankingClosingMonth.value = ''
+    branchRankingComparisonMonth.value = ''
+    branchRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 순위를 불러오지 못했습니다.'
+  } finally {
+    isBranchRankingLoading.value = false
+  }
+}
+
 function handleAdvisorSortChange() {
   advisorRankingPage.value = 1
   loadOrganizationAdvisorRankings()
+}
+
+function handleBranchRankOrderChange() {
+  branchRankingPage.value = 1
+  loadOrganizationBranchRankings()
 }
 
 function buildAdvisorRankingParams() {
@@ -588,6 +710,15 @@ function buildAdvisorRankingParams() {
     rankOrder: selectedAdvisorSortKey.value,
     page: advisorRankingPage.value,
     size: advisorRankingPageSize,
+  }
+}
+
+function buildBranchRankingParams() {
+  return {
+    closingMonth: selectedMonth.value,
+    rankOrder: selectedBranchRankOrder.value,
+    page: branchRankingPage.value,
+    size: branchRankingPageSize,
   }
 }
 
@@ -603,6 +734,20 @@ function changeAdvisorRankingPage(page) {
 
   advisorRankingPage.value = page
   loadOrganizationAdvisorRankings()
+}
+
+function changeBranchRankingPage(page) {
+  if (
+    page < 1 ||
+    page > branchRankingPageInfo.value.totalPages ||
+    page === branchRankingPage.value ||
+    isBranchRankingLoading.value
+  ) {
+    return
+  }
+
+  branchRankingPage.value = page
+  loadOrganizationBranchRankings()
 }
 
 function buildOrganizationSummaryParams() {
@@ -881,6 +1026,81 @@ function createEmptyAdvisorRankingPage() {
   }
 }
 
+function normalizeBranchRankingItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items.map((item) => {
+    const rankChange = toNullableNumber(item?.rankChange)
+    const previousRank = toNullableNumber(item?.previousRank)
+
+    return {
+      rank: toNumber(item?.rank),
+      organizationId: item?.organizationId ?? item?.organizationCode ?? item?.organizationName,
+      organizationCode: item?.organizationCode ?? '-',
+      organizationName: item?.organizationName ?? '-',
+      commissionAmount: `${formatNumber(item?.netIncomeCommissionAmount)}원`,
+      previousRank,
+      previousRankTitle: previousRank === null ? '전월 순위 데이터 없음' : `전월 ${previousRank}위`,
+      changeLabel: formatBranchRankChange(rankChange),
+      changeClass: getBranchRankChangeClass(rankChange),
+    }
+  })
+}
+
+function normalizeBranchRankingPage(page) {
+  if (!page) {
+    return createEmptyBranchRankingPage()
+  }
+
+  return {
+    page: Math.max(toNumber(page.page), 1),
+    size: Math.max(toNumber(page.size), branchRankingPageSize),
+    totalElements: toNumber(page.totalElements),
+    totalPages: toNumber(page.totalPages),
+    numberOfElements: toNumber(page.numberOfElements),
+    hasNext: Boolean(page.hasNext),
+    hasPrevious: Boolean(page.hasPrevious),
+  }
+}
+
+function createEmptyBranchRankingPage() {
+  return {
+    page: 1,
+    size: branchRankingPageSize,
+    totalElements: 0,
+    totalPages: 0,
+    numberOfElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+  }
+}
+
+function formatBranchRankChange(rankChange) {
+  if (rankChange === null) {
+    return '신규'
+  }
+
+  if (rankChange > 0) {
+    return `↑ ${rankChange} 상승`
+  }
+
+  if (rankChange < 0) {
+    return `↓ ${Math.abs(rankChange)} 하락`
+  }
+
+  return '-'
+}
+
+function getBranchRankChangeClass(rankChange) {
+  if (rankChange === null || rankChange === 0) {
+    return 'branch-change--neutral'
+  }
+
+  return rankChange > 0 ? 'branch-change--up' : 'branch-change--down'
+}
+
 function normalizeAdvisorRankingItem(item, index) {
   const rank = toNumber(getValue(item, ['rank', 'ranking'])) || index + 1
   const newContractsRaw = toNullableNumber(getValue(item, ['newContractCount', 'latestContractCount']))
@@ -988,64 +1208,6 @@ const donutCharts = computed(() => [
     items: buildDonutItems(distribution.value.insuranceCategories),
   },
 ])
-
-const rankingRows = [
-  {
-    rank: 1,
-    badge: '강남',
-    name: '강남 프라임 지점',
-    location: '서울시 강남구',
-    revenue: '₩ 4,280M',
-    change: '↑ 5',
-    changeType: 'is-up',
-    color: '#f97316',
-    tone: '#ffedd5',
-  },
-  {
-    rank: 2,
-    badge: '서초',
-    name: '서초 중앙 지점',
-    location: '서울시 서초구',
-    revenue: '₩ 3,910M',
-    change: '↑ 12.5%',
-    changeType: 'is-up',
-    color: '#64748b',
-    tone: '#e8edf8',
-  },
-  {
-    rank: 3,
-    badge: '부산',
-    name: '해운대 마린 지점',
-    location: '부산시 해운대구',
-    revenue: '₩ 3,450M',
-    change: '↑ 8.4%',
-    changeType: 'is-up',
-    color: '#2563eb',
-    tone: '#eaf2ff',
-  },
-  {
-    rank: 4,
-    badge: '송파',
-    name: '잠실 에비뉴 지점',
-    location: '서울시 송파구',
-    revenue: '₩ 3,120M',
-    change: '↓ 2.1%',
-    changeType: 'is-down',
-    color: '#0f766e',
-    tone: '#e8fbf7',
-  },
-  {
-    rank: 5,
-    badge: '판교',
-    name: '판교 테크노 지점',
-    location: '성남시 분당구',
-    revenue: '₩ 2,980M',
-    change: '↑ 5.7%',
-    changeType: 'is-up',
-    color: '#4f46e5',
-    tone: '#eef2ff',
-  },
-]
 
 const advisorRowsByBranch = {
   '강남본부 강남지점': [
@@ -1195,8 +1357,8 @@ const topPerformers = computed(() => {
       },
       {
         eyebrow: '지점 1위',
-        name: rankingRows[0]?.name ?? '강남 프라임 지점',
-        meta: rankingRows[0]?.location ?? '서울시 강남구',
+        name: branchRankingItems.value[0]?.organizationName ?? '-',
+        meta: branchRankingItems.value[0]?.commissionAmount ?? '-',
       },
     ]
   }
@@ -1579,6 +1741,11 @@ function getAdvisorCellValue(advisor, key) {
   color: #ea580c;
 }
 
+.ranking-panel__tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .ranking-panel__controls {
   display: flex;
   align-items: center;
@@ -1597,6 +1764,8 @@ function getAdvisorCellValue(advisor, key) {
   min-height: 220px;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 12px;
   color: #64748b;
   font-size: 13px;
   text-align: center;
@@ -1604,6 +1773,29 @@ function getAdvisorCellValue(advisor, key) {
 
 .ranking-table-state--error {
   color: #dc2626;
+}
+
+.ranking-table-state__retry {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.branch-change--up {
+  color: #16a34a;
+}
+
+.branch-change--down {
+  color: #dc2626;
+}
+
+.branch-change--neutral {
+  color: #64748b;
 }
 
 .ranking-table {
@@ -1624,16 +1816,9 @@ function getAdvisorCellValue(advisor, key) {
   white-space: nowrap;
 }
 
-.ranking-table th:nth-child(3),
-.ranking-table th:nth-child(4),
-.ranking-table td:nth-child(3),
-.ranking-table td:nth-child(4) {
-  text-align: right;
-}
-
 .ranking-table td {
   height: 62px;
-  padding: 0 28px;
+  padding: 0 22px;
   border-top: 1px solid #e5e7eb;
   color: #374151;
   font-weight: 800;
@@ -1645,14 +1830,80 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .ranking-table--advisor {
-  min-width: 980px;
+  min-width: 900px;
+  table-layout: fixed;
+}
+
+.ranking-table--branch {
+  table-layout: fixed;
+}
+
+.ranking-table--branch th,
+.ranking-table--branch td {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.branch-ranking-width--rank {
+  width: 10%;
+}
+
+.branch-ranking-width--name {
+  width: 40%;
+}
+
+.branch-ranking-width--amount {
+  width: 28%;
+}
+
+.branch-ranking-width--change {
+  width: 22%;
+}
+
+.ranking-table--advisor th,
+.ranking-table--advisor td {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.ranking-table--advisor th:first-child,
+.ranking-table--advisor td:first-child {
+  width: 72px;
+  text-align: center;
+}
+
+.ranking-table--advisor th:nth-child(2),
+.ranking-table--advisor td:nth-child(2) {
+  width: 150px;
 }
 
 .ranking-table--advisor .advisor-col--branch {
+  width: 170px;
   text-align: left;
 }
 
 .ranking-table--advisor .advisor-col--metric {
+  width: 118px;
+  text-align: center;
+}
+
+.ranking-table--branch th.branch-ranking-col--rank,
+.ranking-table--branch td.branch-ranking-col--rank {
+  text-align: center;
+}
+
+.ranking-table--branch th.branch-ranking-col--name,
+.ranking-table--branch td.branch-ranking-col--name {
+  text-align: left;
+}
+
+.ranking-table--branch th.branch-ranking-col--amount,
+.ranking-table--branch td.branch-ranking-col--amount {
+  text-align: right;
+}
+
+.ranking-table--branch th.branch-ranking-col--change,
+.ranking-table--branch td.branch-ranking-col--change {
   text-align: center;
 }
 
