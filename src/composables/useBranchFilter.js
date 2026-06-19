@@ -37,6 +37,9 @@ export function useBranchFilter(authStore) {
         ...items.map((branch) => ({
           title: `${branch.organizationCode} · ${branch.organizationName}`,
           value: branch.organizationCode,
+          organizationId: branch.organizationId,
+          organizationCode: branch.organizationCode,
+          organizationName: branch.organizationName,
         })),
       ]
     } catch (error) {

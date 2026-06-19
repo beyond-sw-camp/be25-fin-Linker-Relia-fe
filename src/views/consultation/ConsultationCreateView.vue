@@ -59,14 +59,14 @@
             <button
               type="button"
               :class="{ 'is-active': customerMode === 'EXISTING' }"
-              @click="customerMode = 'EXISTING'"
+              @click="selectCustomerMode('EXISTING')"
             >
               기존 고객
             </button>
             <button
               type="button"
               :class="{ 'is-active': customerMode === 'PROSPECT' }"
-              @click="customerMode = 'PROSPECT'"
+              @click="selectCustomerMode('PROSPECT')"
             >
               신규 고객
             </button>
@@ -320,16 +320,13 @@
               <div class="field field--wide">
                 <span>기저질환 <em class="optional-mark">선택</em></span>
                 <div class="disease-picker">
-                  <select v-model="selectedDisease" class="control">
+                  <select v-model="selectedDisease" class="control" @change="addDisease">
                     <option value="">기저질환 선택</option>
                     <option value="없음">없음</option>
                     <option v-for="option in diseaseOptions" :key="option.diseaseCode" :value="option.diseaseCode">
                       {{ option.diseaseName }}
                     </option>
                   </select>
-                  <button type="button" class="address-box__button" @click="addDisease">
-                    추가
-                  </button>
                 </div>
                 <div class="selected-disease-list">
                   <span v-for="diseaseCode in customerInfo.underlyingDiseases" :key="diseaseCode" class="selected-disease-chip">
@@ -455,13 +452,13 @@
               <div class="option-chip-row">
                 <button
                   v-for="option in coverageTypeOptions"
-                  :key="option"
+                  :key="option.value"
                   type="button"
                   class="option-chip"
-                  :class="{ 'is-active': newDetail.coverageTypes.includes(option) }"
-                  @click="toggleArraySelection(newDetail.coverageTypes, option)"
+                  :class="{ 'is-active': newDetail.coverageTypes.includes(option.value) }"
+                  @click="toggleArraySelection(newDetail.coverageTypes, option.value)"
                 >
-                  {{ option }}
+                  {{ option.label }}
                 </button>
               </div>
             </div>
@@ -552,7 +549,7 @@
             <div class="compact-grid">
               <label class="field">
                 <span>청구 사유</span>
-                <input v-model.trim="claimDetail.claimReason" class="control" />
+                <input v-model.trim="claimDetail.claimReasonDetail" class="control" />
               </label>
               <label class="field">
                 <span>발생일 또는 진단일</span>
@@ -971,7 +968,7 @@
               type="button"
               class="draft-count-button"
               :disabled="isSubmitting"
-              @click="router.push({ name: 'consultation-drafts' })"
+              @click="openDraftList"
             >
               저장된 임시저장 일지 {{ draftCount }}
             </button>
@@ -1009,6 +1006,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const IN_PROGRESS_DRAFT_KEY = 'consultation-create-in-progress'
 
 const typeOptions = [
   { label: '신규', value: 'NEW_CONTRACT' },
@@ -1067,14 +1065,22 @@ const addressOptions = [
   { zipcode: '35229', road: '대전광역시 서구 둔산로 100', jibun: '둔산동 1413' },
 ]
 
-const coverageTypeOptions = ['진단비', '실손 의료비', '수술비', '사망보장', '기타']
+const coverageTypeOptions = [
+  { label: '암', value: 'CANCER' },
+  { label: '심장', value: 'HEART' },
+  { label: '생명', value: 'LIFE' },
+  { label: '사망', value: 'DEATH' },
+  { label: '장기요양', value: 'LONG_TERM_CARE' },
+]
 
 const coverageTypeCodeMap = {
-  '진단비': 'CANCER',
-  '실손 의료비': 'MEDICAL',
-  '수술비': 'SURGERY',
-  '사망보장': 'DEATH',
-  '기타': 'OTHER',
+  암: 'CANCER',
+  심장: 'HEART',
+  생명: 'LIFE',
+  사망: 'DEATH',
+  사망보장: 'DEATH',
+  장기요양: 'LONG_TERM_CARE',
+  진단비: 'CANCER',
 }
 
 const insurancePriorityOptions = ['보험료 저렴한 곳', '보장 범위가 넓은 곳', '보험금 지급 신속성', '기타']
@@ -1248,7 +1254,7 @@ const newDetail = reactive({
 
 const claimDetail = reactive({
   claimType: '',
-  claimReason: '',
+  claimReasonDetail: '',
   incidentDate: '',
   hospitalName: '',
   diagnosisOrTreatment: '',
@@ -1371,7 +1377,7 @@ watch(
   },
 )
 
-watch(customerMode, (nextMode, previousMode) => {
+watch(customerMode, async (nextMode, previousMode) => {
   if (isHydratingDraft.value) return
   if (nextMode === previousMode) return
 
@@ -1381,6 +1387,10 @@ watch(customerMode, (nextMode, previousMode) => {
   form.contractId = ''
   contracts.value = []
   resetCustomerInfo()
+
+  if (nextMode === 'EXISTING') {
+    await loadCustomers()
+  }
 })
 
 watch(
@@ -1417,12 +1427,35 @@ watch(
 )
 
 onMounted(async () => {
-  if (isEditMode.value) await hydrateDraft()
+  if (isEditMode.value) {
+    await hydrateDraft()
+  } else {
+    await restoreInProgressDraft()
+  }
   await loadDraftCount()
+  if (needsExistingCustomer.value && !customerSearchTouched.value) {
+    await loadCustomers()
+  }
 })
 
 function selectType(type) {
   form.consultationType = type
+}
+
+async function selectCustomerMode(mode) {
+  if (customerMode.value === mode) {
+    if (mode === 'EXISTING' && !customerSearchTouched.value) {
+      await loadCustomers()
+    }
+    return
+  }
+
+  customerMode.value = mode
+}
+
+function openDraftList() {
+  saveInProgressDraft()
+  router.push({ name: 'consultation-drafts' })
 }
 
 async function loadCustomers() {
@@ -1516,6 +1549,26 @@ async function hydrateDraft() {
     return
   }
 
+  await applyDraftToForm(draft)
+}
+
+async function restoreInProgressDraft() {
+  const rawDraft = window.sessionStorage.getItem(IN_PROGRESS_DRAFT_KEY)
+  if (!rawDraft) return
+
+  try {
+    await applyDraftToForm(JSON.parse(rawDraft))
+    window.sessionStorage.removeItem(IN_PROGRESS_DRAFT_KEY)
+  } catch {
+    window.sessionStorage.removeItem(IN_PROGRESS_DRAFT_KEY)
+  }
+}
+
+function saveInProgressDraft() {
+  window.sessionStorage.setItem(IN_PROGRESS_DRAFT_KEY, JSON.stringify(buildDraftPayload()))
+}
+
+async function applyDraftToForm(draft) {
   isHydratingDraft.value = true
 
   try {
@@ -1543,8 +1596,12 @@ async function hydrateDraft() {
     if (!Array.isArray(newDetail.coverageTypes)) {
       newDetail.coverageTypes = splitCommaList(draft.newDetail?.coverageTypesText)
     }
+    newDetail.coverageTypes = normalizeArrayField(newDetail.coverageTypes).map(getCoverageTypeCode)
     selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
     Object.assign(claimDetail, draft.claimDetail || {})
+    if (!claimDetail.claimReasonDetail && draft.claimDetail?.claimReason) {
+      claimDetail.claimReasonDetail = draft.claimDetail.claimReason
+    }
     if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
     if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
     Object.assign(renewalDetail, draft.renewalDetail || {})
@@ -1613,7 +1670,7 @@ function buildDraftPayload() {
     customerInfo: { ...customerInfo },
     newDetail: { ...newDetail },
     selectedProposedProducts: selectedProposedProducts.value,
-    claimDetail: { ...claimDetail },
+    claimDetail: buildClaimDraftDetail(),
     renewalDetail: buildRenewalDraftDetail(),
     cancelDetail: { ...cancelDetail },
     customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
@@ -1636,6 +1693,22 @@ function buildRenewalDraftDetail() {
     result: renewalDetail.result,
     nextActions: renewalDetail.nextActions,
     decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate),
+  }
+}
+
+function buildClaimDraftDetail() {
+  return {
+    claimType: claimDetail.claimType,
+    claimReasonDetail: claimDetail.claimReasonDetail,
+    incidentDate: claimDetail.incidentDate,
+    hospitalName: claimDetail.hospitalName,
+    diagnosisOrTreatment: claimDetail.diagnosisOrTreatment,
+    hospitalizationStatus: claimDetail.hospitalizationStatus,
+    surgeryStatus: claimDetail.surgeryStatus,
+    claimAmount: claimDetail.claimAmount,
+    reviewItems: claimDetail.reviewItems,
+    result: claimDetail.result,
+    nextActions: claimDetail.nextActions,
   }
 }
 
@@ -1787,7 +1860,7 @@ function buildCompletedConsultationRecord(payload, response) {
     specialNote: payload.specialNote,
     consultationContent: payload.specialNote,
     newDetail: form.consultationType === 'NEW_CONTRACT' ? { ...newDetail } : undefined,
-    claimDetail: form.consultationType === 'CLAIM' ? { ...claimDetail } : undefined,
+    claimDetail: form.consultationType === 'CLAIM' ? buildClaimDraftDetail() : undefined,
     renewalDetail: form.consultationType === 'RENEWAL' ? buildRenewalDraftDetail() : undefined,
     cancelDetail: form.consultationType === 'TERMINATION' ? { ...cancelDetail } : undefined,
     fpName: '',
@@ -1853,7 +1926,7 @@ function buildSubmitPayload() {
   if (form.consultationType === 'CLAIM') {
     payload.claimDetail = {
       claimType: claimDetail.claimType || null,
-      claimReason: claimDetail.claimReason || null,
+      claimReasonDetail: claimDetail.claimReasonDetail || null,
       incidentDate: claimDetail.incidentDate || null,
       hospitalName: claimDetail.hospitalName || null,
       diagnosisOrTreatment: claimDetail.diagnosisOrTreatment || null,
@@ -1913,6 +1986,8 @@ function buildNewContractDetailPayload() {
       monthlyInsurancePremium: parseMoneyOrNull(newDetail.monthlyInsurancePremium) ?? 0,
       existingInsuranceNote: newDetail.existingInsuranceNote || null,
       insurancePriority: newDetail.insurancePriority || null,
+      coverageTypes: newDetail.coverageTypes.map(getCoverageTypeCode),
+      proposedProductCodes: selectedProposedProducts.value.map(getProductCode).filter(Boolean),
     }
 
   return removeEmptyFields(payload)
@@ -1956,7 +2031,7 @@ function validateForm() {
   }
   if (form.consultationType === 'CLAIM') {
     if (!claimDetail.claimType) return '청구 유형을 선택해주세요.'
-    if (!claimDetail.claimReason) return '청구 사유를 입력해주세요.'
+    if (!claimDetail.claimReasonDetail) return '청구 사유를 입력해주세요.'
     if (!claimDetail.incidentDate) return '발생일 또는 진단일을 입력해주세요.'
     if (!claimDetail.result) return '상담 결과를 선택해주세요.'
   }
