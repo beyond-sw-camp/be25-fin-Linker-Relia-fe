@@ -51,16 +51,30 @@
 
     <div class="chart-grid">
       <section v-for="chart in donutCharts" :key="chart.title" class="chart-panel">
-        <h3>{{ chart.title }}</h3>
-        <div class="donut-summary">
+        <div class="chart-panel__header">
+          <h3>{{ chart.title }}</h3>
+          <div v-if="!isDistributionLoading && !distributionErrorMessage && chart.items.length > 0" class="chart-panel__total">
+            총 {{ chart.total }}건
+          </div>
+        </div>
+        <div v-if="isDistributionLoading" class="chart-panel__state">
+          <p>계약 비율 정보를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="distributionErrorMessage" class="chart-panel__state chart-panel__state--error">
+          <p>{{ distributionErrorMessage }}</p>
+        </div>
+        <div v-else-if="chart.items.length === 0" class="chart-panel__state">
+          <p>표시할 계약 비율 데이터가 없습니다.</p>
+        </div>
+        <div v-else class="donut-summary">
           <div class="donut-chart" :style="{ background: chart.gradient }">
-            <strong>100</strong>
-            <span>전체 건</span>
           </div>
           <ul>
             <li v-for="item in chart.items" :key="item.label">
               <i :style="{ backgroundColor: item.color }"></i>
-              {{ item.label }}
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.ratio }}</em>
             </li>
           </ul>
         </div>
@@ -186,7 +200,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { getDashboardClosingMonths, getOrganizationDashboardSummary } from '../../api/dashboard'
+import { getDashboardClosingMonths, getOrganizationDashboardContractDistribution, getOrganizationDashboardSummary } from '../../api/dashboard'
 import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
@@ -200,10 +214,15 @@ const rankingTab = ref('advisor')
 const isLoadingBranches = ref(false)
 const isLoadingMonths = ref(false)
 const isSummaryLoading = ref(false)
+const isDistributionLoading = ref(false)
 const branchErrorMessage = ref('')
 const monthErrorMessage = ref('')
 const summaryErrorMessage = ref('')
+const distributionErrorMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
+const distribution = ref(createEmptyOrganizationDistribution())
+
+const chartColors = ['#f97316', '#f59e0b', '#2563eb', '#0f766e', '#4f46e5', '#ec4899', '#14b8a6', '#64748b']
 
 const fallbackBranchOptions = [
   { label: '강남본부 강남지점', value: 'gangnam' },
@@ -368,6 +387,7 @@ watch(
     }
 
     loadOrganizationSummary()
+    loadOrganizationContractDistribution()
   },
   { immediate: true },
 )
@@ -466,6 +486,24 @@ async function loadOrganizationSummary() {
   }
 }
 
+async function loadOrganizationContractDistribution() {
+  distributionErrorMessage.value = ''
+  isDistributionLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardContractDistribution(buildOrganizationSummaryParams())
+    distribution.value = normalizeOrganizationDistribution(response?.result)
+  } catch (error) {
+    distribution.value = createEmptyOrganizationDistribution()
+    distributionErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '계약 비율 정보를 불러오지 못했습니다.'
+  } finally {
+    isDistributionLoading.value = false
+  }
+}
+
 function buildOrganizationSummaryParams() {
   const params = {}
 
@@ -548,6 +586,16 @@ function normalizeOrganizationSummary(payload) {
   }
 }
 
+function normalizeOrganizationDistribution(payload) {
+  return {
+    referenceDate: payload?.referenceDate ?? '',
+    closingMonth: payload?.closingMonth ?? '',
+    totalContractCount: toNumber(getValue(payload, ['totalContractCount', 'contractCount'])),
+    insuranceCompanies: normalizeDistributionItems(payload?.insuranceCompanies, 'insuranceCompanyName'),
+    insuranceCategories: normalizeDistributionItems(payload?.insuranceCategories, 'insuranceCategoryName'),
+  }
+}
+
 function createEmptyOrganizationSummary() {
   return {
     advisorCount: 0,
@@ -569,6 +617,30 @@ function createEmptyOrganizationSummary() {
     paymentCommissionAmount: 0,
     paymentCommissionAmountDiff: 0,
   }
+}
+
+function createEmptyOrganizationDistribution() {
+  return {
+    referenceDate: '',
+    closingMonth: '',
+    totalContractCount: 0,
+    insuranceCompanies: [],
+    insuranceCategories: [],
+  }
+}
+
+function normalizeDistributionItems(items, labelKey) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .map((item) => ({
+      ...item,
+      label: item?.label ?? item?.[labelKey] ?? '-',
+      contractCount: toNumber(item?.contractCount),
+    }))
+    .filter((item) => item.contractCount > 0)
 }
 
 function getValue(source, keys) {
@@ -631,6 +703,39 @@ function formatCurrencyDiffCaption(value) {
   return `전월 대비 ${formatSignedNumber(value)}원`
 }
 
+function buildDonutItems(items) {
+  const total = items.reduce((sum, item) => sum + item.contractCount, 0)
+
+  return items.map((item, index) => ({
+    label: item.label,
+    value: `${formatNumber(item.contractCount)}건`,
+    ratio: `${total > 0 ? ((item.contractCount / total) * 100).toFixed(1) : '0.0'}%`,
+    rawValue: item.contractCount,
+    color: chartColors[index % chartColors.length],
+  }))
+}
+
+function buildDonutGradient(items) {
+  const normalizedItems = buildDonutItems(items)
+
+  if (normalizedItems.length === 0) {
+    return '#f1f5f9'
+  }
+
+  const total = normalizedItems.reduce((sum, item) => sum + item.rawValue, 0)
+  let cursor = 0
+
+  const stops = normalizedItems.map((item) => {
+    const start = cursor
+    const end = total > 0 ? cursor + (item.rawValue / total) * 100 : cursor
+    cursor = end
+
+    return `${item.color} ${start}% ${end}%`
+  })
+
+  return `conic-gradient(${stops.join(', ')})`
+}
+
 function getCountTrendClass(value, zeroClass = 'is-muted') {
   const numericValue = toNumber(value)
 
@@ -659,28 +764,20 @@ function getRateTrendClass(value) {
   return 'is-muted'
 }
 
-const donutCharts = [
+const donutCharts = computed(() => [
   {
     title: '보험사별 계약 비율',
-    gradient: 'conic-gradient(#f97316 0 28%, #f59e0b 28% 50%, #2563eb 50% 64%, #dfe3ea 64% 75%, transparent 75% 100%)',
-    items: [
-      { label: '삼성화재', color: '#f97316' },
-      { label: '현대해상', color: '#f59e0b' },
-      { label: '신보연금', color: '#2563eb' },
-      { label: '다이렉트', color: '#dfe3ea' },
-    ],
+    total: formatNumber(distribution.value.totalContractCount),
+    gradient: buildDonutGradient(distribution.value.insuranceCompanies),
+    items: buildDonutItems(distribution.value.insuranceCompanies),
   },
   {
     title: '보종별 계약 비율',
-    gradient: 'conic-gradient(#f97316 0 28%, #f59e0b 28% 50%, #2563eb 50% 64%, #dfe3ea 64% 75%, transparent 75% 100%)',
-    items: [
-      { label: '장기보험', color: '#f97316' },
-      { label: '실손보험', color: '#f59e0b' },
-      { label: '기업보험', color: '#2563eb' },
-      { label: '자동차보험', color: '#dfe3ea' },
-    ],
+    total: formatNumber(distribution.value.totalContractCount),
+    gradient: buildDonutGradient(distribution.value.insuranceCategories),
+    items: buildDonutItems(distribution.value.insuranceCategories),
   },
-]
+])
 
 const rankingRows = [
   {
@@ -1081,11 +1178,43 @@ const topPerformers = computed(() => {
 
 .chart-panel {
   min-height: 230px;
+  display: flex;
+  flex-direction: column;
   padding: 30px 26px 24px;
 }
 
+.chart-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.chart-panel__total {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.chart-panel__state {
+  min-height: 166px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.chart-panel__state--error {
+  color: #dc2626;
+}
+
 .chart-panel h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 17px;
   font-weight: 800;
 }
@@ -1093,8 +1222,9 @@ const topPerformers = computed(() => {
 .donut-summary {
   display: grid;
   grid-template-columns: minmax(132px, 190px) 1fr;
-  align-items: center;
+  align-items: start;
   gap: 22px;
+  flex: 1;
 }
 
 .donut-chart {
@@ -1103,6 +1233,7 @@ const topPerformers = computed(() => {
   height: 132px;
   display: grid;
   place-content: center;
+  align-self: start;
   justify-self: center;
   border-radius: 999px;
   text-align: center;
@@ -1116,25 +1247,6 @@ const topPerformers = computed(() => {
   background: #ffffff;
 }
 
-.donut-chart strong,
-.donut-chart span {
-  position: relative;
-  z-index: 1;
-  display: block;
-}
-
-.donut-chart strong {
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.donut-chart span {
-  margin-top: 6px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
 .donut-summary ul {
   display: grid;
   gap: 13px;
@@ -1146,7 +1258,8 @@ const topPerformers = computed(() => {
 }
 
 .donut-summary li {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 11px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
 }
@@ -1155,6 +1268,21 @@ const topPerformers = computed(() => {
   width: 11px;
   height: 11px;
   border-radius: 999px;
+}
+
+.donut-summary li span {
+  color: #475569;
+}
+
+.donut-summary li strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.donut-summary li em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .ranking-panel {
@@ -1420,6 +1548,10 @@ const topPerformers = computed(() => {
   .chart-grid,
   .donut-summary {
     grid-template-columns: 1fr;
+  }
+
+  .chart-panel__header {
+    flex-direction: column;
   }
 
   .dashboard-filter__field select,

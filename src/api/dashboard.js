@@ -10,6 +10,11 @@ export async function getOrganizationDashboardSummary(params) {
   return response.data
 }
 
+export async function getOrganizationDashboardContractDistribution(params) {
+  const response = await authApi.get('/dashboard/organization/contracts/distribution', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data
