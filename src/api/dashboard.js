@@ -15,6 +15,11 @@ export async function getOrganizationDashboardContractDistribution(params) {
   return response.data
 }
 
+export async function getOrganizationDashboardFpRankings(params) {
+  const response = await authApi.get('/dashboard/organization/rankings/fps', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data

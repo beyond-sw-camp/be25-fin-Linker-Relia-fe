@@ -107,10 +107,9 @@
         </div>
 
         <div v-if="!isBranchRankingView" class="ranking-panel__controls">
-          <select v-model="advisorSortKey" class="ranking-panel__sort">
-            <option value="contracts">최신 계약순</option>
-            <option value="retention">계약 유지율순</option>
-            <option value="customers">담당 고객수순</option>
+          <select v-model="selectedAdvisorSortKey" class="ranking-panel__sort" @change="handleAdvisorSortChange">
+            <option value="TOP">상위 순위</option>
+            <option value="BOTTOM">하위 순위</option>
           </select>
         </div>
       </div>
@@ -143,36 +142,38 @@
           </tbody>
         </table>
 
+        <div v-else-if="isAdvisorRankingLoading" class="ranking-table-state">
+          <p>설계사 순위를 불러오는 중입니다.</p>
+        </div>
+        <div v-else-if="advisorRankingErrorMessage" class="ranking-table-state ranking-table-state--error">
+          <p>{{ advisorRankingErrorMessage }}</p>
+        </div>
+        <div v-else-if="advisorRows.length === 0" class="ranking-table-state">
+          <p>표시할 설계사 순위 데이터가 없습니다.</p>
+        </div>
         <table v-else class="ranking-table ranking-table--advisor">
           <thead>
             <tr>
-              <th>순위</th>
-              <th>설계사명</th>
-              <th v-if="isAllBranchSelected" class="advisor-col--branch">소속 지점</th>
-              <th class="advisor-col--metric">계약 건수</th>
-              <th class="advisor-col--metric">계약 유지율</th>
-              <th class="advisor-col--metric">담당 고객수</th>
-              <th class="advisor-col--metric">미관리 고객수</th>
-              <th class="advisor-col--metric">상태</th>
-              <th class="advisor-col--metric">상세 정보</th>
+              <th
+                v-for="column in advisorTableColumns"
+                :key="column.key"
+                :class="column.headerClass"
+              >
+                {{ column.label }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="advisor in advisorRows" :key="advisor.rowKey">
-              <td>
-                <span class="advisor-rank" :class="advisor.rankClass">{{ advisor.rank }}</span>
-              </td>
-              <td>{{ advisor.name }}</td>
-              <td v-if="isAllBranchSelected" class="advisor-col--branch">{{ advisor.branchName }}</td>
-              <td class="advisor-col--metric">{{ advisor.contracts }}</td>
-              <td class="advisor-col--metric">{{ advisor.retention }}</td>
-              <td class="advisor-col--metric">{{ advisor.customers }}</td>
-              <td class="advisor-col--metric">{{ advisor.unmanaged }}</td>
-              <td class="advisor-col--metric">
-                <span class="status-pill" :class="advisor.statusClass">{{ advisor.status }}</span>
-              </td>
-              <td class="advisor-col--metric">
-                <button type="button" class="detail-button">보기</button>
+              <td
+                v-for="column in advisorTableColumns"
+                :key="column.key"
+                :class="column.cellClass"
+              >
+                <span v-if="column.key === 'rank'" class="advisor-rank" :class="advisor.rankClass">{{ advisor.rank }}</span>
+                <template v-else>
+                  {{ getAdvisorCellValue(advisor, column.key) }}
+                </template>
               </td>
             </tr>
           </tbody>
@@ -181,7 +182,7 @@
 
       <div class="ranking-panel__footer">
         <span>{{ footerText }}</span>
-        <div class="pagination">
+        <div v-if="isBranchRankingView" class="pagination">
           <button type="button" aria-label="이전 페이지">
             <v-icon icon="mdi-chevron-left" size="16" />
           </button>
@@ -189,6 +190,34 @@
             {{ page }}
           </button>
           <button type="button" aria-label="다음 페이지">
+            <v-icon icon="mdi-chevron-right" size="16" />
+          </button>
+        </div>
+        <div v-else-if="advisorRankingPageInfo.totalPages > 0" class="pagination">
+          <button
+            type="button"
+            aria-label="이전 페이지"
+            :disabled="!advisorRankingPageInfo.hasPrevious || isAdvisorRankingLoading"
+            @click="changeAdvisorRankingPage(advisorRankingPage - 1)"
+          >
+            <v-icon icon="mdi-chevron-left" size="16" />
+          </button>
+          <button
+            v-for="page in advisorPaginationPages"
+            :key="page"
+            type="button"
+            :class="{ active: page === advisorRankingPage }"
+            :disabled="isAdvisorRankingLoading"
+            @click="changeAdvisorRankingPage(page)"
+          >
+            {{ page }}
+          </button>
+          <button
+            type="button"
+            aria-label="다음 페이지"
+            :disabled="!advisorRankingPageInfo.hasNext || isAdvisorRankingLoading"
+            @click="changeAdvisorRankingPage(advisorRankingPage + 1)"
+          >
             <v-icon icon="mdi-chevron-right" size="16" />
           </button>
         </div>
@@ -200,7 +229,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { getDashboardClosingMonths, getOrganizationDashboardContractDistribution, getOrganizationDashboardSummary } from '../../api/dashboard'
+import {
+  getDashboardClosingMonths,
+  getOrganizationDashboardContractDistribution,
+  getOrganizationDashboardFpRankings,
+  getOrganizationDashboardSummary,
+} from '../../api/dashboard'
 import { getBranchOrganizations } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
@@ -209,16 +243,21 @@ const authStore = useAuthStore()
 
 const selectedBranch = ref('전체 지점')
 const selectedMonth = ref('')
-const advisorSortKey = ref('contracts')
 const rankingTab = ref('advisor')
+const selectedAdvisorSortKey = ref('TOP')
+const advisorRankingPage = ref(1)
+const advisorRankingPageSize = 10
+const advisorRankingPageInfo = ref(createEmptyAdvisorRankingPage())
 const isLoadingBranches = ref(false)
 const isLoadingMonths = ref(false)
 const isSummaryLoading = ref(false)
 const isDistributionLoading = ref(false)
+const isAdvisorRankingLoading = ref(false)
 const branchErrorMessage = ref('')
 const monthErrorMessage = ref('')
 const summaryErrorMessage = ref('')
 const distributionErrorMessage = ref('')
+const advisorRankingErrorMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const distribution = ref(createEmptyOrganizationDistribution())
 
@@ -301,11 +340,22 @@ const footerText = computed(() => {
     return '표시 항목: 1 - 5 / 총 152개 지점'
   }
 
-  if (isAllBranchSelected.value) {
-    return `총 ${allAdvisorRows.length}명 중 1 - ${Math.min(allAdvisorRows.length, 8)} 표시`
+  if (advisorRankingPageInfo.value.totalElements === 0) {
+    return '총 0명'
   }
 
-  return '총 156개 중 1 - 8 표시'
+  const start = (advisorRankingPageInfo.value.page - 1) * advisorRankingPageInfo.value.size + 1
+  const end = start + advisorRankingPageInfo.value.numberOfElements - 1
+  return `총 ${formatNumber(advisorRankingPageInfo.value.totalElements)}명 중 ${start} - ${end} 표시`
+})
+
+const advisorPaginationPages = computed(() => {
+  const totalPages = advisorRankingPageInfo.value.totalPages
+  const currentPage = advisorRankingPage.value
+  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
+  const end = Math.min(totalPages, start + 4)
+
+  return Array.from({ length: Math.max(end - start + 1, 0) }, (_, index) => start + index)
 })
 
 const metrics = computed(() => [
@@ -388,6 +438,8 @@ watch(
 
     loadOrganizationSummary()
     loadOrganizationContractDistribution()
+    advisorRankingPage.value = 1
+    loadOrganizationAdvisorRankings()
   },
   { immediate: true },
 )
@@ -502,6 +554,55 @@ async function loadOrganizationContractDistribution() {
   } finally {
     isDistributionLoading.value = false
   }
+}
+
+async function loadOrganizationAdvisorRankings() {
+  advisorRankingErrorMessage.value = ''
+  isAdvisorRankingLoading.value = true
+
+  try {
+    const response = await getOrganizationDashboardFpRankings(buildAdvisorRankingParams())
+    advisorRankingItems.value = normalizeAdvisorRankingItems(response?.result)
+    advisorRankingPageInfo.value = normalizeAdvisorRankingPage(response?.result?.rankings)
+    advisorRankingPage.value = advisorRankingPageInfo.value.page
+  } catch (error) {
+    advisorRankingItems.value = []
+    advisorRankingPageInfo.value = createEmptyAdvisorRankingPage()
+    advisorRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '설계사 순위를 불러오지 못했습니다.'
+  } finally {
+    isAdvisorRankingLoading.value = false
+  }
+}
+
+function handleAdvisorSortChange() {
+  advisorRankingPage.value = 1
+  loadOrganizationAdvisorRankings()
+}
+
+function buildAdvisorRankingParams() {
+  return {
+    ...buildOrganizationSummaryParams(),
+    rankOrder: selectedAdvisorSortKey.value,
+    page: advisorRankingPage.value,
+    size: advisorRankingPageSize,
+  }
+}
+
+function changeAdvisorRankingPage(page) {
+  if (
+    page < 1 ||
+    page > advisorRankingPageInfo.value.totalPages ||
+    page === advisorRankingPage.value ||
+    isAdvisorRankingLoading.value
+  ) {
+    return
+  }
+
+  advisorRankingPage.value = page
+  loadOrganizationAdvisorRankings()
 }
 
 function buildOrganizationSummaryParams() {
@@ -736,6 +837,115 @@ function buildDonutGradient(items) {
   return `conic-gradient(${stops.join(', ')})`
 }
 
+function normalizeAdvisorRankingItems(payload) {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.content)
+      ? payload.content
+      : Array.isArray(payload?.rankings?.content)
+        ? payload.rankings.content
+        : Array.isArray(payload?.rankings)
+          ? payload.rankings
+        : Array.isArray(payload?.fps)
+          ? payload.fps
+          : []
+
+  return items.map((item, index) => normalizeAdvisorRankingItem(item, index))
+}
+
+function normalizeAdvisorRankingPage(page) {
+  if (!page) {
+    return createEmptyAdvisorRankingPage()
+  }
+
+  return {
+    page: Math.max(toNumber(page.page), 1),
+    size: Math.max(toNumber(page.size), advisorRankingPageSize),
+    totalElements: toNumber(page.totalElements),
+    totalPages: toNumber(page.totalPages),
+    numberOfElements: toNumber(page.numberOfElements),
+    hasNext: Boolean(page.hasNext),
+    hasPrevious: Boolean(page.hasPrevious),
+  }
+}
+
+function createEmptyAdvisorRankingPage() {
+  return {
+    page: 1,
+    size: advisorRankingPageSize,
+    totalElements: 0,
+    totalPages: 0,
+    numberOfElements: 0,
+    hasNext: false,
+    hasPrevious: false,
+  }
+}
+
+function normalizeAdvisorRankingItem(item, index) {
+  const rank = toNumber(getValue(item, ['rank', 'ranking'])) || index + 1
+  const newContractsRaw = toNullableNumber(getValue(item, ['newContractCount', 'latestContractCount']))
+  const managedContractsRaw = toNullableNumber(getValue(item, ['managedContractCount', 'contractCount', 'contracts', 'totalContractCount']))
+  const retentionRaw = toNullableNumber(getValue(item, ['retentionRate', 'retention', 'contractRetentionRate']))
+  const customersRaw = toNullableNumber(getValue(item, ['customerCount', 'customers', 'managedCustomerCount']))
+  const commissionAmountRaw = toNullableNumber(getValue(item, ['commissionAmount', 'totalCommissionAmount']))
+
+  return {
+    rank,
+    empCode: getValue(item, ['empCode']) ?? null,
+    name: getValue(item, ['fpName', 'userName', 'name']) ?? '-',
+    branchName: getValue(item, ['organizationName', 'branchName']) ?? currentBranchName.value,
+    organizationCode: getValue(item, ['organizationCode', 'branchCode']) ?? '',
+    newContractsRaw,
+    newContracts: formatMetricValue(newContractsRaw, '건'),
+    managedContractsRaw,
+    managedContracts: formatMetricValue(managedContractsRaw, '건'),
+    retentionRaw,
+    retention: formatMetricValue(retentionRaw, '%', 1),
+    customersRaw,
+    customers: formatMetricValue(customersRaw, '명'),
+    commissionAmountRaw,
+    commissionAmount: formatMetricValue(commissionAmountRaw, '원'),
+    rankClass: getAdvisorRankClass(rank),
+  }
+}
+
+function getAdvisorRankClass(rank) {
+  if (rank === 1) {
+    return 'is-gold'
+  }
+
+  if (rank === 2) {
+    return 'is-silver'
+  }
+
+  if (rank === 3) {
+    return 'is-bronze'
+  }
+
+  return 'is-default'
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const normalized = Number(String(value).replace(/,/g, ''))
+  return Number.isFinite(normalized) ? normalized : null
+}
+
+function formatMetricValue(value, unit, fractionDigits = 0) {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const formatted = fractionDigits > 0
+    ? formatDecimal(value, fractionDigits)
+    : formatNumber(value)
+
+  return `${formatted}${unit}`
+}
+
 function getCountTrendClass(value, zeroClass = 'is-muted') {
   const numericValue = toNumber(value)
 
@@ -890,52 +1100,89 @@ const advisorRowsByBranch = {
   ],
 }
 
-const fallbackAdvisorRows = advisorRowsByBranch['강남본부 강남지점']
-
 const allAdvisorRows = Object.entries(advisorRowsByBranch).flatMap(([branchName, rows]) =>
   rows.map((advisor) => ({
     ...advisor,
+    empCode: null,
     branchName,
+    newContractsRaw: null,
+    newContracts: null,
+    managedContractsRaw: toNumber(advisor.contracts),
+    managedContracts: advisor.contracts,
+    retentionRaw: toNumber(advisor.retention),
+    customersRaw: toNumber(advisor.customers),
+    commissionAmountRaw: null,
+    commissionAmount: null,
+    organizationCode: '',
   })),
 )
 
-const overallTopAdvisor = allAdvisorRows
-  .slice()
-  .sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))[0]
+const advisorRankingItems = ref([])
+
+const overallTopAdvisor = computed(() =>
+  advisorRows.value
+    .slice()
+    .sort((a, b) => toNumber(b.newContractsRaw ?? b.managedContractsRaw) - toNumber(a.newContractsRaw ?? a.managedContractsRaw))[0],
+)
 
 const advisorRows = computed(() => {
-  const sourceRows = isAllBranchSelected.value
-    ? allAdvisorRows
-    : (advisorRowsByBranch[currentBranchName.value] ?? fallbackAdvisorRows)
-  const rows = [...sourceRows]
+  const rows = [...advisorRankingItems.value]
 
-  if (advisorSortKey.value === 'retention') {
-    return rows
-      .sort((a, b) => Number.parseFloat(b.retention) - Number.parseFloat(a.retention))
-      .map((advisor, index) => ({
-        ...advisor,
-        rank: index + 1,
-        rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
-      }))
+  return rows.map((advisor) => ({
+    ...advisor,
+    rowKey: `${advisor.organizationCode ?? advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
+  }))
+})
+
+const advisorTableColumns = computed(() => {
+  const columns = [
+    { key: 'rank', label: '순위', headerClass: '', cellClass: '' },
+    { key: 'name', label: '설계사명', headerClass: '', cellClass: '' },
+  ]
+
+  if (isAllBranchSelected.value) {
+    columns.push({
+      key: 'branchName',
+      label: '소속 지점',
+      headerClass: 'advisor-col--branch',
+      cellClass: 'advisor-col--branch',
+    })
   }
 
-  if (advisorSortKey.value === 'customers') {
-    return rows
-      .sort((a, b) => Number.parseInt(b.customers, 10) - Number.parseInt(a.customers, 10))
-      .map((advisor, index) => ({
-        ...advisor,
-        rank: index + 1,
-        rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
-      }))
-  }
+  columns.push(
+    {
+      key: 'customers',
+      label: '담당 고객',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'newContracts',
+      label: '신규 계약',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'managedContracts',
+      label: '보유 계약',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'retention',
+      label: '유지율',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+    {
+      key: 'commissionAmount',
+      label: '수수료',
+      headerClass: 'advisor-col--metric',
+      cellClass: 'advisor-col--metric',
+    },
+  )
 
-  return rows
-    .sort((a, b) => Number.parseInt(b.contracts, 10) - Number.parseInt(a.contracts, 10))
-    .map((advisor, index) => ({
-      ...advisor,
-      rank: index + 1,
-      rowKey: `${advisor.branchName ?? currentBranchName.value}-${advisor.name}`,
-    }))
+  return columns
 })
 
 const topPerformers = computed(() => {
@@ -943,8 +1190,8 @@ const topPerformers = computed(() => {
     return [
       {
         eyebrow: '전 지점 1위 설계사',
-        name: overallTopAdvisor?.name ?? '홍길동 설계사',
-        meta: overallTopAdvisor?.branchName ?? '강남본부 강남지점',
+        name: overallTopAdvisor.value?.name ?? '-',
+        meta: overallTopAdvisor.value?.branchName ?? '-',
       },
       {
         eyebrow: '지점 1위',
@@ -958,7 +1205,12 @@ const topPerformers = computed(() => {
     return [
       {
         eyebrow: '해당 지점 1위 설계사',
-        name: advisorRows.value[0]?.name ?? '홍길동 설계사',
+        name: advisorRows.value[0]?.name ?? '-',
+        meta: '',
+      },
+      {
+        eyebrow: '1위 설계사 수수료',
+        name: advisorRows.value[0]?.commissionAmount ?? '-',
         meta: '',
       },
     ]
@@ -967,16 +1219,21 @@ const topPerformers = computed(() => {
   return [
     {
       eyebrow: '전체 지점 1위 설계사',
-      name: advisorRows.value[0]?.name ?? '홍길동 설계사',
+      name: advisorRows.value[0]?.name ?? '-',
       meta: '',
     },
     {
       eyebrow: '전체 지점 1위 소속 지점',
-      name: advisorRows.value[0]?.branchName ?? '강남본부 강남지점',
+      name: advisorRows.value[0]?.branchName ?? '-',
       meta: '',
     },
   ]
 })
+
+function getAdvisorCellValue(advisor, key) {
+  const value = advisor[key]
+  return value === null || value === undefined || value === '' ? '-' : value
+}
 </script>
 
 <style scoped>
@@ -1325,6 +1582,7 @@ const topPerformers = computed(() => {
 .ranking-panel__controls {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .ranking-panel__sort {
@@ -1333,6 +1591,19 @@ const topPerformers = computed(() => {
 
 .ranking-table-wrap {
   overflow-x: auto;
+}
+
+.ranking-table-state {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.ranking-table-state--error {
+  color: #dc2626;
 }
 
 .ranking-table {
@@ -1523,6 +1794,11 @@ const topPerformers = computed(() => {
   color: #ffffff;
 }
 
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1180px) {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1555,7 +1831,7 @@ const topPerformers = computed(() => {
   }
 
   .dashboard-filter__field select,
-  .ranking-panel__sort {
+  .dashboard-filter__field select {
     width: 100%;
   }
 
