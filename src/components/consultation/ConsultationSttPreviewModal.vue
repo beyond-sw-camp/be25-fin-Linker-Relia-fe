@@ -11,226 +11,222 @@
     <section class="stt-preview-modal__panel">
       <header class="stt-preview-modal__header">
         <div>
-          <p>STT Preview</p>
-          <h2 id="stt-preview-modal-title">PCM capture and transport debug</h2>
+          <p>STT Recorder</p>
+          <h2 id="stt-preview-modal-title">녹음</h2>
         </div>
         <button type="button" aria-label="Close" @click="handleClose">×</button>
       </header>
 
       <div class="stt-preview-modal__body">
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>Session</h3>
-            <span>REST and WebSocket</span>
+        <div class="stt-recorder__timer">{{ formattedElapsedTime }}</div>
+
+        <div
+          class="stt-recorder__mic-shell"
+          :class="{
+            'is-live': recordingState === 'RECORDING',
+            'is-paused': recordingState === 'PAUSED',
+            'is-processing': sessionStatus === 'PROCESSING',
+          }"
+        >
+          <div class="stt-recorder__mic-core">
+            <v-icon icon="mdi-microphone" size="96" />
+          </div>
+        </div>
+
+        <div class="stt-recorder__status-pill" :class="statusPillClass">
+          <span class="stt-recorder__status-dot"></span>
+          {{ statusPillLabel }}
+        </div>
+
+        <div class="stt-recorder__actions">
+          <button
+            type="button"
+            class="stt-button stt-button--primary"
+            :disabled="!canStartCombined"
+            @click="handleStart"
+          >
+            녹음 시작
+          </button>
+          <button
+            type="button"
+            class="stt-button"
+            :disabled="!canPauseRecording"
+            @click="pauseRecording"
+          >
+            일시정지
+          </button>
+          <button
+            type="button"
+            class="stt-button stt-button--primary"
+            :disabled="!canResumeRecording"
+            @click="resumeRecording"
+          >
+            다시 시작
+          </button>
+          <button
+            type="button"
+            class="stt-button stt-button--danger"
+            :disabled="!canStopRecording"
+            @click="stopRecording"
+          >
+            녹음 종료
+          </button>
+        </div>
+
+        <section class="stt-results">
+          <div class="stt-results__header">
+            <strong>녹음 자막</strong>
+            <span>{{ transcriptStateLabel }}</span>
           </div>
 
-          <div class="stt-preview-form">
-            <label class="stt-field">
-              <span>customerId</span>
-              <input
-                v-model.trim="sessionForm.customerId"
-                class="stt-input"
-                placeholder="nullable"
-              />
-            </label>
-
-            <label class="stt-field">
-              <span>consultationType</span>
-              <select v-model="sessionForm.consultationType" class="stt-input">
-                <option v-for="option in consultationTypeOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
+          <div class="stt-results__body" :class="{ 'is-empty': !displayTranscript }">
+            <p v-if="displayTranscript">{{ displayTranscript }}</p>
+            <p v-else>녹음을 시작하면 실시간 자막이 여기에 표시됩니다.</p>
           </div>
-
-          <div class="stt-preview-actions">
-            <button type="button" class="stt-button stt-button--primary" :disabled="!canStartSession" @click="startSession">
-              Start Session
-            </button>
-            <button type="button" class="stt-button" :disabled="!sessionId || isBusy" @click="refreshSession">
-              Refresh Session
-            </button>
-            <button type="button" class="stt-button" :disabled="!sessionId || isBusy" @click="reconnectSocket">
-              Reconnect WS
-            </button>
-          </div>
-
-          <dl class="stt-status-grid">
-            <div>
-              <dt>WS state</dt>
-              <dd>{{ wsConnectionState }}</dd>
-            </div>
-            <div>
-              <dt>Recording state</dt>
-              <dd>{{ recordingState }}</dd>
-            </div>
-            <div>
-              <dt>sessionId</dt>
-              <dd>{{ sessionId || '-' }}</dd>
-            </div>
-            <div>
-              <dt>sessionStatus</dt>
-              <dd>{{ sessionStatus }}</dd>
-            </div>
-            <div>
-              <dt>startedAt</dt>
-              <dd>{{ startedAt || '-' }}</dd>
-            </div>
-            <div>
-              <dt>endedAt</dt>
-              <dd>{{ endedAt || '-' }}</dd>
-            </div>
-          </dl>
         </section>
 
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>Capture</h3>
-            <span>Microphone -> float32</span>
+        <div class="stt-meta-grid">
+          <article>
+            <span>세션 상태</span>
+            <strong>{{ sessionStatus || 'IDLE' }}</strong>
+          </article>
+          <article>
+            <span>소켓 상태</span>
+            <strong>{{ wsConnectionState }}</strong>
+          </article>
+          <article>
+            <span>sessionId</span>
+            <strong>{{ sessionId || '-' }}</strong>
+          </article>
+          <article>
+            <span>상담 유형</span>
+            <strong>{{ sessionForm.consultationType }}</strong>
+          </article>
+        </div>
+
+        <v-alert
+          v-if="errorMessage || audioDebug.recentError"
+          type="error"
+          density="comfortable"
+          variant="tonal"
+        >
+          {{ errorMessage || audioDebug.recentError }}
+        </v-alert>
+
+        <details class="stt-details">
+          <summary>상세 디버그 정보</summary>
+
+          <div class="stt-details__content">
+            <section class="stt-detail-card">
+              <h3>Session</h3>
+              <div class="stt-preview-form">
+                <label class="stt-field">
+                  <span>customerId</span>
+                  <input
+                    v-model.trim="sessionForm.customerId"
+                    class="stt-input"
+                    placeholder="nullable"
+                  />
+                </label>
+
+                <label class="stt-field">
+                  <span>consultationType</span>
+                  <select v-model="sessionForm.consultationType" class="stt-input">
+                    <option
+                      v-for="option in consultationTypeOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="stt-preview-actions">
+                <button
+                  type="button"
+                  class="stt-button"
+                  :disabled="!sessionId || isBusy"
+                  @click="refreshSession"
+                >
+                  상태 새로고침
+                </button>
+                <button
+                  type="button"
+                  class="stt-button"
+                  :disabled="!sessionId || isBusy"
+                  @click="reconnectSocket"
+                >
+                  소켓 재연결
+                </button>
+              </div>
+
+              <dl class="stt-status-grid">
+                <div>
+                  <dt>startedAt</dt>
+                  <dd>{{ startedAt || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>endedAt</dt>
+                  <dd>{{ endedAt || '-' }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="stt-detail-card">
+              <h3>Audio / Transport</h3>
+              <dl class="stt-status-grid">
+                <div>
+                  <dt>Capture mode</dt>
+                  <dd>{{ audioDebug.capture.mode }}</dd>
+                </div>
+                <div>
+                  <dt>Input sample rate</dt>
+                  <dd>{{ formatSampleRate(audioDebug.capture.inputSampleRate) }}</dd>
+                </div>
+                <div>
+                  <dt>Output sample rate</dt>
+                  <dd>{{ formatSampleRate(audioDebug.transform.outputSampleRate) }}</dd>
+                </div>
+                <div>
+                  <dt>Chunk count</dt>
+                  <dd>{{ audioDebug.transport.chunkCount }}</dd>
+                </div>
+                <div>
+                  <dt>Total bytes</dt>
+                  <dd>{{ formatByteCount(audioDebug.transport.totalBytes) }}</dd>
+                </div>
+                <div>
+                  <dt>Last chunk bytes</dt>
+                  <dd>{{ formatByteCount(audioDebug.transport.lastByteLength) }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="stt-detail-card stt-detail-card--wide">
+              <h3>Debug Log</h3>
+              <ul class="stt-log-list">
+                <li v-for="log in audioDebug.logs" :key="log.id">
+                  <strong>[{{ log.stage }}] {{ log.at }}</strong>
+                  <span>{{ log.message }}</span>
+                  <code v-if="log.details">{{ stringifyDetails(log.details) }}</code>
+                </li>
+                <li v-if="audioDebug.logs.length === 0">
+                  <span>No debug entries yet.</span>
+                </li>
+              </ul>
+            </section>
           </div>
-
-          <div class="stt-preview-actions">
-            <button type="button" class="stt-button stt-button--primary" :disabled="!canStartRecording" @click="startRecording">
-              Start Recording
-            </button>
-            <button type="button" class="stt-button stt-button--danger" :disabled="!canStopRecording" @click="stopRecording">
-              Stop Recording
-            </button>
-          </div>
-
-          <dl class="stt-status-grid">
-            <div>
-              <dt>Capture mode</dt>
-              <dd>{{ audioDebug.capture.mode }}</dd>
-            </div>
-            <div>
-              <dt>Input sample rate</dt>
-              <dd>{{ formatSampleRate(audioDebug.capture.inputSampleRate) }}</dd>
-            </div>
-            <div>
-              <dt>Input channels</dt>
-              <dd>{{ audioDebug.capture.inputChannelCount || '-' }}</dd>
-            </div>
-            <div>
-              <dt>Buffer size</dt>
-              <dd>{{ audioDebug.capture.bufferSize || '-' }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>Transform</h3>
-            <span>mono + resample + int16</span>
-          </div>
-
-          <dl class="stt-status-grid">
-            <div>
-              <dt>Format</dt>
-              <dd>{{ audioDebug.transform.format }}</dd>
-            </div>
-            <div>
-              <dt>Output sample rate</dt>
-              <dd>{{ formatSampleRate(audioDebug.transform.outputSampleRate) }}</dd>
-            </div>
-            <div>
-              <dt>Output channels</dt>
-              <dd>{{ audioDebug.transform.outputChannelCount }}</dd>
-            </div>
-            <div>
-              <dt>Bit depth</dt>
-              <dd>{{ audioDebug.transform.bitDepth }}-bit</dd>
-            </div>
-            <div>
-              <dt>Endian</dt>
-              <dd>{{ audioDebug.transform.endian }}</dd>
-            </div>
-            <div>
-              <dt>Last input frames</dt>
-              <dd>{{ audioDebug.transform.lastInputFrameCount || '-' }}</dd>
-            </div>
-            <div>
-              <dt>Last output samples</dt>
-              <dd>{{ audioDebug.transform.lastOutputSampleCount || '-' }}</dd>
-            </div>
-            <div>
-              <dt>Payload type</dt>
-              <dd>{{ audioDebug.capture.payloadType }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section class="stt-preview-card">
-          <div class="stt-preview-card__title">
-            <h3>Transport</h3>
-            <span>ArrayBuffer over raw WebSocket</span>
-          </div>
-
-          <dl class="stt-status-grid">
-            <div>
-              <dt>Payload type</dt>
-              <dd>{{ audioDebug.transport.payloadType }}</dd>
-            </div>
-            <div>
-              <dt>Chunk count</dt>
-              <dd>{{ audioDebug.transport.chunkCount }}</dd>
-            </div>
-            <div>
-              <dt>Total bytes</dt>
-              <dd>{{ formatByteCount(audioDebug.transport.totalBytes) }}</dd>
-            </div>
-            <div>
-              <dt>Last chunk bytes</dt>
-              <dd>{{ formatByteCount(audioDebug.transport.lastByteLength) }}</dd>
-            </div>
-          </dl>
-
-          <v-alert v-if="errorMessage || audioDebug.recentError" type="error" density="comfortable" variant="tonal">
-            {{ errorMessage || audioDebug.recentError }}
-          </v-alert>
-        </section>
-
-        <section class="stt-preview-card stt-preview-card--wide stt-preview-card--caption">
-          <div class="stt-preview-card__title">
-            <h3>Recognition</h3>
-            <span>real-time subtitle preview</span>
-          </div>
-
-          <ConsultationSttLiveCaptionPanel
-            :partial-text="partialText"
-            :final-text="finalText"
-            :recording-state="recordingState"
-            :session-status="sessionStatus"
-          />
-        </section>
-
-        <section class="stt-preview-card stt-preview-card--wide stt-preview-card--fixed">
-          <div class="stt-preview-card__title">
-            <h3>Debug Log</h3>
-            <span>Capture / Transform / Transport / Session</span>
-          </div>
-
-          <ul class="stt-log-list">
-            <li v-for="log in audioDebug.logs" :key="log.id">
-              <strong>[{{ log.stage }}] {{ log.at }}</strong>
-              <span>{{ log.message }}</span>
-              <code v-if="log.details">{{ stringifyDetails(log.details) }}</code>
-            </li>
-            <li v-if="audioDebug.logs.length === 0">
-              <span>No debug entries yet.</span>
-            </li>
-          </ul>
-        </section>
+        </details>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import ConsultationSttLiveCaptionPanel from './ConsultationSttLiveCaptionPanel.vue'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -271,16 +267,44 @@ const {
   isBusy,
   audioDebug,
   canStartSession,
-  canStartRecording,
+  canPauseRecording,
+  canResumeRecording,
   canStopRecording,
   startSession,
   reconnectSocket,
   refreshSession,
   startRecording,
+  pauseRecording,
+  resumeRecording,
   stopRecording,
   dispose,
   resetRuntimeState,
 } = useConsultationSttPreview()
+
+const elapsedSeconds = ref(0)
+const timerId = ref(0)
+
+const canStartCombined = computed(() => canStartSession.value && !isBusy.value)
+const displayTranscript = computed(() => normalizeText(finalText.value || partialText.value))
+const formattedElapsedTime = computed(() => formatElapsedTime(elapsedSeconds.value))
+const statusPillLabel = computed(() => {
+  if (recordingState.value === 'RECORDING') return 'ON'
+  if (recordingState.value === 'PAUSED') return 'PAUSE'
+  if (sessionStatus.value === 'PROCESSING') return 'PROCESSING'
+  return 'OFF'
+})
+const statusPillClass = computed(() => ({
+  'is-on': recordingState.value === 'RECORDING',
+  'is-paused': recordingState.value === 'PAUSED',
+  'is-processing': sessionStatus.value === 'PROCESSING',
+}))
+const transcriptStateLabel = computed(() => {
+  if (recordingState.value === 'RECORDING') return '실시간 인식 중'
+  if (recordingState.value === 'PAUSED') return '일시정지'
+  if (sessionStatus.value === 'PROCESSING') return '최종 문장 처리 중'
+  if (finalText.value) return '최종 문장 준비 완료'
+  return '대기 중'
+})
 
 function syncInitialValues() {
   sessionForm.customerId = props.initialCustomerId || ''
@@ -299,7 +323,51 @@ function stringifyDetails(details) {
   return JSON.stringify(details)
 }
 
+function normalizeText(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ')
+}
+
+function formatElapsedTime(totalSeconds) {
+  const safeSeconds = Math.max(0, Number(totalSeconds || 0))
+  const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, '0')
+  const minutes = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, '0')
+  const seconds = String(safeSeconds % 60).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+function stopTimer() {
+  if (timerId.value) {
+    window.clearInterval(timerId.value)
+    timerId.value = 0
+  }
+}
+
+function startTimer() {
+  stopTimer()
+  timerId.value = window.setInterval(() => {
+    if (!startedAt.value) {
+      elapsedSeconds.value += 1
+      return
+    }
+
+    const started = new Date(startedAt.value).getTime()
+    if (Number.isNaN(started)) {
+      elapsedSeconds.value += 1
+      return
+    }
+
+    elapsedSeconds.value = Math.max(0, Math.floor((Date.now() - started) / 1000))
+  }, 1000)
+}
+
+async function handleStart() {
+  await startSession()
+  await startRecording()
+}
+
 async function handleClose() {
+  stopTimer()
+  elapsedSeconds.value = 0
   await dispose()
   resetRuntimeState()
   emit('update:open', false)
@@ -309,11 +377,14 @@ watch(
   () => props.open,
   async (isOpen) => {
     if (isOpen) {
+      elapsedSeconds.value = 0
       resetRuntimeState()
       syncInitialValues()
       return
     }
 
+    stopTimer()
+    elapsedSeconds.value = 0
     await dispose()
     resetRuntimeState()
   },
@@ -336,6 +407,24 @@ watch(
     }
   },
 )
+
+watch(
+  () => recordingState.value,
+  (value) => {
+    if (value === 'RECORDING') {
+      startTimer()
+      return
+    }
+
+    if (value !== 'STOPPING') {
+      stopTimer()
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  stopTimer()
+})
 </script>
 
 <style scoped>
@@ -357,12 +446,11 @@ watch(
 
 .stt-preview-modal__panel {
   position: relative;
-  width: min(1120px, 100%);
+  width: min(760px, 100%);
   max-height: calc(100vh - 48px);
   overflow: hidden;
-  border: 1px solid #dbe3ee;
-  border-radius: 20px;
-  background: #f8fafc;
+  border-radius: 28px;
+  background: #ffffff;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.26);
 }
 
@@ -371,137 +459,155 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px 28px 18px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffff;
+  padding: 24px 28px 20px;
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 60%, #8b5cf6 100%);
+  color: #ffffff;
 }
 
 .stt-preview-modal__header p {
   margin: 0 0 6px;
-  color: #f97316;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .stt-preview-modal__header h2 {
   margin: 0;
-  color: #0f172a;
-  font-size: 22px;
+  font-size: 34px;
   font-weight: 800;
 }
 
 .stt-preview-modal__header button {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border: 0;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #334155;
-  font-size: 22px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 24px;
   cursor: pointer;
 }
 
 .stt-preview-modal__body {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  padding: 20px 24px 24px;
+  gap: 22px;
+  padding: 28px;
   overflow-y: auto;
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 170px);
 }
 
-.stt-preview-card {
+.stt-recorder__timer {
+  text-align: center;
+  color: #111827;
+  font-size: 54px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.stt-recorder__mic-shell {
+  position: relative;
+  width: min(330px, 70vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid #dbe3ee;
-  border-radius: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0.14) 56%, transparent 56%),
+    radial-gradient(circle, rgba(16, 185, 129, 0.26) 0%, rgba(16, 185, 129, 0.26) 68%, transparent 68%),
+    radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0.18) 80%, transparent 80%);
+}
+
+.stt-recorder__mic-shell::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 999px;
+  background: #1ccf8b;
+  box-shadow: 0 18px 42px rgba(28, 207, 139, 0.22);
+}
+
+.stt-recorder__mic-shell.is-live::before {
+  content: '';
+  position: absolute;
+  inset: 7%;
+  border-radius: 999px;
+  border: 10px solid rgba(110, 231, 183, 0.36);
+  animation: sttPulse 1.8s ease-out infinite;
+}
+
+.stt-recorder__mic-shell.is-processing::after {
+  background: #a78bfa;
+  box-shadow: 0 18px 42px rgba(124, 58, 237, 0.18);
+}
+
+.stt-recorder__mic-shell.is-paused::after {
+  background: #f59e0b;
+  box-shadow: 0 18px 42px rgba(245, 158, 11, 0.2);
+}
+
+.stt-recorder__mic-core {
+  position: relative;
+  z-index: 1;
+  color: #ffffff;
+}
+
+.stt-recorder__status-pill {
+  margin: 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 24px;
+  border: 2px solid #f9a8d4;
+  border-radius: 999px;
   background: #ffffff;
-}
-
-.stt-preview-card--wide {
-  grid-column: 1 / -1;
-}
-
-.stt-preview-card--caption {
-  max-height: none;
-}
-
-.stt-preview-card--fixed {
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  max-height: 280px;
-}
-
-.stt-preview-card__title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.stt-preview-card__title h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.stt-preview-card__title span {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.stt-preview-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stt-field {
-  display: grid;
-  gap: 6px;
-}
-
-.stt-field span,
-.stt-status-grid dt {
-  color: #475569;
-  font-size: 12px;
+  color: #ec4899;
+  font-size: 26px;
   font-weight: 700;
 }
 
-.stt-input,
-.stt-textarea {
-  width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
-  font-size: 13px;
+.stt-recorder__status-pill.is-on {
+  border-color: #34d399;
+  color: #059669;
 }
 
-.stt-textarea {
-  min-height: 120px;
-  height: 100%;
-  resize: vertical;
+.stt-recorder__status-pill.is-paused {
+  border-color: #fcd34d;
+  color: #d97706;
 }
 
+.stt-recorder__status-pill.is-processing {
+  border-color: #c4b5fd;
+  color: #7c3aed;
+}
+
+.stt-recorder__status-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.stt-recorder__actions,
 .stt-preview-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
 }
 
 .stt-button {
-  min-height: 38px;
-  padding: 0 16px;
+  min-height: 42px;
+  padding: 0 18px;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #ffffff;
   color: #334155;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -512,15 +618,144 @@ watch(
 }
 
 .stt-button--primary {
-  border-color: #fb923c;
-  background: #fff7ed;
-  color: #ea580c;
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .stt-button--danger {
   border-color: #fecaca;
   background: #fef2f2;
   color: #dc2626;
+}
+
+.stt-results {
+  display: grid;
+  gap: 14px;
+}
+
+.stt-results__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stt-results__header strong {
+  font-size: 24px;
+  color: #111827;
+}
+
+.stt-results__header span {
+  color: #7c3aed;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stt-results__body {
+  min-height: 240px;
+  padding: 22px 24px;
+  border: 2px solid #d8b4fe;
+  border-radius: 28px;
+  background: #ffffff;
+}
+
+.stt-results__body p {
+  margin: 0;
+  color: #374151;
+  font-size: 18px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.stt-results__body.is-empty p {
+  color: #9ca3af;
+}
+
+.stt-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stt-meta-grid article,
+.stt-detail-card {
+  padding: 16px 18px;
+  border: 1px solid #e9d5ff;
+  border-radius: 18px;
+  background: #faf5ff;
+}
+
+.stt-field {
+  display: grid;
+  gap: 6px;
+}
+
+.stt-field span,
+.stt-status-grid dt,
+.stt-meta-grid span {
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.stt-meta-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.stt-details {
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #fafafa;
+}
+
+.stt-details summary {
+  padding: 16px 18px;
+  cursor: pointer;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.stt-details__content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+
+.stt-detail-card--wide {
+  grid-column: 1 / -1;
+}
+
+.stt-detail-card h3 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.stt-preview-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stt-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
 }
 
 .stt-status-grid {
@@ -533,7 +768,7 @@ watch(
 .stt-status-grid div {
   padding: 12px;
   border-radius: 12px;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .stt-status-grid dd {
@@ -550,18 +785,8 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-  min-height: 0;
+  max-height: 260px;
   overflow-y: auto;
-  align-content: start;
-}
-
-.stt-preview-card--fixed .stt-field {
-  min-height: 0;
-}
-
-.stt-preview-card--fixed .stt-textarea {
-  min-height: 0;
-  resize: none;
 }
 
 .stt-log-list li {
@@ -569,11 +794,11 @@ watch(
   gap: 4px;
   padding: 12px;
   border-radius: 12px;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .stt-log-list strong {
-  color: #f97316;
+  color: #7c3aed;
   font-size: 11px;
 }
 
@@ -591,24 +816,46 @@ watch(
   word-break: break-all;
 }
 
+@keyframes sttPulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+}
+
 @media (max-width: 900px) {
   .stt-preview-modal {
     padding: 12px;
   }
 
-  .stt-preview-modal__body,
+  .stt-preview-modal__panel {
+    max-height: calc(100vh - 24px);
+    border-radius: 24px;
+  }
+
+  .stt-preview-modal__body {
+    max-height: calc(100vh - 150px);
+    padding: 20px 16px 24px;
+  }
+
+  .stt-recorder__timer {
+    font-size: 42px;
+  }
+
+  .stt-meta-grid,
+  .stt-details__content,
   .stt-preview-form,
   .stt-status-grid {
     grid-template-columns: 1fr;
   }
 
-  .stt-preview-modal__panel {
-    max-height: calc(100vh - 24px);
-  }
-
-  .stt-preview-modal__body {
-    max-height: calc(100vh - 132px);
-    padding: 16px;
+  .stt-results__header {
+    display: grid;
   }
 }
 </style>

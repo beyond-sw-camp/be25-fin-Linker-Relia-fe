@@ -1,4 +1,5 @@
 import { createPcm16MonoEncoder } from './pcmAudioTransform'
+import { resolveSupportedMediaRecorderMimeType } from './mediaRecorderAudioCapture'
 
 const DEFAULT_TARGET_SAMPLE_RATE = 16000
 const WORKLET_BUFFER_SIZE = 2048
@@ -44,6 +45,7 @@ export async function createPcmAudioCapture({
   onChunk,
   onDebug,
   onError,
+  fileName = 'recording.webm',
   targetSampleRate = DEFAULT_TARGET_SAMPLE_RATE,
 } = {}) {
   if (!navigator?.mediaDevices?.getUserMedia) {
@@ -61,6 +63,10 @@ export async function createPcmAudioCapture({
   const mediaSourceNode = audioContext.createMediaStreamSource(mediaStream)
   const keepAliveGainNode = audioContext.createGain()
   keepAliveGainNode.gain.value = 0
+  const recordingMimeType = resolveSupportedMediaRecorderMimeType() || 'audio/webm'
+  const mediaRecorder = recordingMimeType
+    ? new MediaRecorder(mediaStream, { mimeType: recordingMimeType })
+    : new MediaRecorder(mediaStream)
 
   const pcmEncoder = createPcm16MonoEncoder({
     inputSampleRate: audioContext.sampleRate,
@@ -71,8 +77,21 @@ export async function createPcmAudioCapture({
   let processorNode = null
   let stopRequested = false
   let released = false
+  let transportPaused = false
   let flushResolver = null
   const pendingChunkTasks = new Set()
+  const recordedChunks = []
+  let stopRecorderResolver = null
+
+  function normalizeRecordingFileName(mimeType) {
+    const fallbackExtension = mimeType.includes('ogg')
+      ? 'ogg'
+      : mimeType.includes('mp4')
+        ? 'mp4'
+        : 'webm'
+    const sanitizedBaseName = String(fileName || 'recording').replace(/\.[^.]+$/, '')
+    return `${sanitizedBaseName}.${fallbackExtension}`
+  }
 
   function emitError(error, fallbackMessage) {
     const resolvedError = error instanceof Error ? error : new Error(fallbackMessage)
@@ -82,6 +101,10 @@ export async function createPcmAudioCapture({
   function enqueueTransportChunk(monoChunk, details = {}) {
     const pendingTask = Promise.resolve()
       .then(async () => {
+        if (transportPaused) {
+          return
+        }
+
         onDebug?.({
           stage: 'capture',
           details: {
@@ -116,6 +139,23 @@ export async function createPcmAudioCapture({
 
     pendingChunkTasks.add(pendingTask)
   }
+
+  mediaRecorder.addEventListener('dataavailable', (event) => {
+    if (!event.data || event.data.size === 0) {
+      return
+    }
+
+    recordedChunks.push(event.data)
+  })
+
+  mediaRecorder.addEventListener('error', (event) => {
+    emitError(event.error || new Error('녹음 파일 생성 중 오류가 발생했습니다.'), '녹음 파일 생성 중 오류가 발생했습니다.')
+  })
+
+  mediaRecorder.addEventListener('stop', () => {
+    stopRecorderResolver?.()
+    stopRecorderResolver = null
+  })
 
   function flushRemainingChunk() {
     const flushedChunk = pcmEncoder.flush()
@@ -226,15 +266,38 @@ export async function createPcmAudioCapture({
   })
 
   async function start() {
+    transportPaused = false
     await audioContext.resume()
+    if (mediaRecorder.state === 'inactive') {
+      mediaRecorder.start()
+    }
+  }
+
+  async function pause() {
+    if (mediaRecorder.state !== 'recording') {
+      return
+    }
+
+    transportPaused = true
+    mediaRecorder.pause()
+  }
+
+  async function resume() {
+    if (mediaRecorder.state !== 'paused') {
+      return
+    }
+
+    transportPaused = false
+    mediaRecorder.resume()
   }
 
   async function stop() {
     if (stopRequested) {
-      return
+      return createRecordingResult()
     }
 
     stopRequested = true
+    transportPaused = false
 
     if (captureMode === 'AudioWorklet' && processorNode?.port) {
       await new Promise((resolve) => {
@@ -246,7 +309,32 @@ export async function createPcmAudioCapture({
 
     await Promise.allSettled([...pendingChunkTasks])
     await flushRemainingChunk()
+    await stopMediaRecorder()
     await releaseResources()
+    return createRecordingResult()
+  }
+
+  async function stopMediaRecorder() {
+    if (mediaRecorder.state === 'inactive') {
+      return
+    }
+
+    await new Promise((resolve) => {
+      stopRecorderResolver = resolve
+      mediaRecorder.stop()
+    })
+  }
+
+  function createRecordingResult() {
+    const mimeType = mediaRecorder.mimeType || recordingMimeType || 'audio/webm'
+    const blob = new Blob(recordedChunks, { type: mimeType })
+
+    return {
+      blob,
+      fileSize: blob.size,
+      contentType: mimeType,
+      fileName: normalizeRecordingFileName(mimeType),
+    }
   }
 
   async function releaseResources() {
@@ -274,6 +362,14 @@ export async function createPcmAudioCapture({
       // ignore disconnect failures
     }
 
+    if (mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.stop()
+      } catch {
+        // ignore recorder stop failures
+      }
+    }
+
     mediaStream.getTracks().forEach((track) => track.stop())
 
     if (audioContext.state !== 'closed') {
@@ -289,11 +385,18 @@ export async function createPcmAudioCapture({
     targetChannelCount: 1,
     bitDepth: 16,
     payloadType: 'ArrayBuffer',
+    recordingMimeType: mediaRecorder.mimeType || recordingMimeType || 'audio/webm',
     async start() {
       await start()
     },
+    async pause() {
+      await pause()
+    },
+    async resume() {
+      await resume()
+    },
     async stop() {
-      await stop()
+      return stop()
     },
     async dispose() {
       await releaseResources()

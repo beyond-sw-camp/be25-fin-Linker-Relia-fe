@@ -7,7 +7,7 @@ const MIME_TYPE_CANDIDATES = [
   'audio/mp4',
 ]
 
-function resolveSupportedMimeType() {
+export function resolveSupportedMediaRecorderMimeType() {
   if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
     return ''
   }
@@ -21,7 +21,7 @@ export async function createMediaRecorderAudioCapture({ onChunk, onError, timesl
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  const mimeType = resolveSupportedMimeType()
+  const mimeType = resolveSupportedMediaRecorderMimeType()
   const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
   const pendingChunkTasks = new Set()
 
