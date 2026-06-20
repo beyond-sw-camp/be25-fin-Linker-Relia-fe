@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div
     v-if="open"
     class="stt-preview-modal"
@@ -18,70 +18,154 @@
       </header>
 
       <div class="stt-preview-modal__body">
-        <div class="stt-recorder__timer">{{ formattedElapsedTime }}</div>
-
-        <div
-          class="stt-recorder__mic-shell"
-          :class="{
-            'is-live': recordingState === 'RECORDING',
-            'is-paused': recordingState === 'PAUSED',
-            'is-processing': sessionStatus === 'PROCESSING',
-          }"
-        >
-          <div class="stt-recorder__mic-core">
-            <v-icon icon="mdi-microphone" size="96" />
-          </div>
-        </div>
-
-        <div class="stt-recorder__status-pill" :class="statusPillClass">
-          <span class="stt-recorder__status-dot"></span>
-          {{ statusPillLabel }}
-        </div>
-
-        <div class="stt-recorder__actions">
+        <div class="stt-stepper">
           <button
             type="button"
-            class="stt-button stt-button--primary"
-            :disabled="!canStartCombined"
-            @click="handleStart"
+            class="stt-stepper__item"
+            :class="{ 'is-active': currentStep === 1, 'is-complete': currentStep > 1 }"
+            @click="goToStep(1)"
           >
-            녹음 시작
+            <span>1</span>
+            <strong>STT</strong>
           </button>
+          <div class="stt-stepper__line"></div>
           <button
             type="button"
-            class="stt-button"
-            :disabled="!canPauseRecording"
-            @click="pauseRecording"
+            class="stt-stepper__item"
+            :class="{ 'is-active': currentStep === 2 }"
+            :disabled="!canOpenSummaryStep"
+            @click="goToStep(2)"
           >
-            일시정지
-          </button>
-          <button
-            type="button"
-            class="stt-button stt-button--primary"
-            :disabled="!canResumeRecording"
-            @click="resumeRecording"
-          >
-            다시 시작
-          </button>
-          <button
-            type="button"
-            class="stt-button stt-button--danger"
-            :disabled="!canStopRecording"
-            @click="stopRecording"
-          >
-            녹음 종료
+            <span>2</span>
+            <strong>요약 미리보기</strong>
           </button>
         </div>
 
-        <section class="stt-results">
-          <div class="stt-results__header">
-            <strong>녹음 자막</strong>
-            <span>{{ transcriptStateLabel }}</span>
+        <section v-show="currentStep === 1" class="stt-slide">
+          <div class="stt-recorder__timer">{{ formattedElapsedTime }}</div>
+
+          <div
+            class="stt-recorder__mic-shell"
+            :class="{
+              'is-live': recordingState === 'RECORDING',
+              'is-paused': recordingState === 'PAUSED',
+              'is-processing': sessionStatus === 'PROCESSING',
+            }"
+          >
+            <div class="stt-recorder__mic-core">
+              <v-icon icon="mdi-microphone" size="96" />
+            </div>
           </div>
 
-          <div class="stt-results__body" :class="{ 'is-empty': !displayTranscript }">
-            <p v-if="displayTranscript">{{ displayTranscript }}</p>
-            <p v-else>녹음을 시작하면 실시간 자막이 여기에 표시됩니다.</p>
+          <div class="stt-recorder__status-pill" :class="statusPillClass">
+            <span class="stt-recorder__status-dot"></span>
+            {{ statusPillLabel }}
+          </div>
+
+          <div class="stt-recorder__actions">
+            <button
+              type="button"
+              class="stt-button stt-button--primary"
+              :disabled="!canStartCombined"
+              @click="handleStart"
+            >
+              녹음 시작
+            </button>
+            <button
+              type="button"
+              class="stt-button"
+              :disabled="!canPauseRecording"
+              @click="pauseRecording"
+            >
+              일시정지
+            </button>
+            <button
+              type="button"
+              class="stt-button stt-button--primary"
+              :disabled="!canResumeRecording"
+              @click="resumeRecording"
+            >
+              다시 시작
+            </button>
+            <button
+              type="button"
+              class="stt-button stt-button--danger"
+              :disabled="!canStopRecording"
+              @click="handleStopAndContinue"
+            >
+              녹음 종료
+            </button>
+          </div>
+
+          <section class="stt-results">
+            <div class="stt-results__header">
+              <strong>녹음 자막</strong>
+              <span>{{ transcriptStateLabel }}</span>
+            </div>
+
+            <div class="stt-results__body" :class="{ 'is-empty': !displayTranscript }">
+              <p v-if="displayTranscript">{{ displayTranscript }}</p>
+              <p v-else>녹음을 시작하면 실시간 전사 결과가 여기에 표시됩니다.</p>
+            </div>
+          </section>
+        </section>
+
+        <section v-show="currentStep === 2" class="stt-slide stt-slide--summary">
+          <div class="stt-summary-hero">
+            <div>
+              <p>STEP 2</p>
+              <h3>AI 요약 미리보기</h3>
+            </div>
+            <span>{{ summaryStepLabel }}</span>
+          </div>
+
+          <v-alert
+            v-if="aiDraftLoading"
+            type="info"
+            density="comfortable"
+            variant="tonal"
+          >
+            AI 초안을 불러오는 중입니다.
+          </v-alert>
+
+          <v-alert v-else-if="aiDraftError" type="warning" density="comfortable" variant="tonal">
+            {{ aiDraftError }}
+          </v-alert>
+
+          <section class="stt-summary-card stt-summary-card--preview">
+            <div class="stt-results__header">
+              <strong>상담일지 미리보기</strong>
+              <span>{{ structuredPreviewRows.length ? '구조화 완료' : '생성 대기' }}</span>
+            </div>
+            <div v-if="structuredPreviewRows.length" class="stt-preview-sheet">
+              <div
+                v-for="row in structuredPreviewRows"
+                :key="row.key"
+                class="stt-preview-row"
+              >
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
+              </div>
+            </div>
+            <div v-else class="stt-results__body is-empty">
+              <p>AI 구조화 초안이 준비되면 상담일지 입력값 기준으로 여기에 표시됩니다.</p>
+            </div>
+          </section>
+
+          <details class="stt-details">
+            <summary>STT 원문 보기</summary>
+            <div class="stt-details__content">
+              <section class="stt-detail-card stt-detail-card--wide">
+                <div class="stt-results__body" :class="{ 'is-empty': !displayTranscript }">
+                  <p v-if="displayTranscript">{{ displayTranscript }}</p>
+                  <p v-else>전사 결과가 아직 준비되지 않았습니다.</p>
+                </div>
+              </section>
+            </div>
+          </details>
+
+          <div class="stt-summary-actions">
+            <button type="button" class="stt-button" @click="goToStep(1)">이전 단계</button>
           </div>
         </section>
 
@@ -227,6 +311,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { getConsultationSttAiDraft } from '../../api/consultationStt'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -244,7 +329,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:open'])
+const emit = defineEmits(['update:open', 'apply-structured-draft'])
 
 const consultationTypeOptions = [
   { label: 'NEW_CONTRACT', value: 'NEW_CONTRACT' },
@@ -281,11 +366,27 @@ const {
   resetRuntimeState,
 } = useConsultationSttPreview()
 
+const currentStep = ref(1)
 const elapsedSeconds = ref(0)
 const timerId = ref(0)
+const manualSummaryDraft = ref('')
+const aiDraftLoading = ref(false)
+const aiDraftError = ref('')
+const aiStructuredDraft = ref(null)
 
 const canStartCombined = computed(() => canStartSession.value && !isBusy.value)
+const canOpenSummaryStep = computed(() => {
+  return Boolean(finalText.value || partialText.value || endedAt.value || sessionStatus.value === 'PROCESSING')
+})
 const displayTranscript = computed(() => normalizeText(finalText.value || partialText.value))
+const generatedSummaryText = computed(() => {
+  const draft = aiStructuredDraft.value
+  if (!draft) return ''
+
+  return normalizeText(
+    draft.summaryText || draft.consultationContent || draft.specialNote || draft.newDetail?.existingInsuranceNote || '',
+  )
+})
 const formattedElapsedTime = computed(() => formatElapsedTime(elapsedSeconds.value))
 const statusPillLabel = computed(() => {
   if (recordingState.value === 'RECORDING') return 'ON'
@@ -304,6 +405,58 @@ const transcriptStateLabel = computed(() => {
   if (sessionStatus.value === 'PROCESSING') return '최종 문장 처리 중'
   if (finalText.value) return '최종 문장 준비 완료'
   return '대기 중'
+})
+const summaryStepLabel = computed(() => {
+  if (aiDraftLoading.value) return 'AI 초안 불러오는 중'
+  if (aiStructuredDraft.value) return 'AI 초안 반영 가능'
+  if (sessionStatus.value === 'PROCESSING') return '전사 결과 정리 중'
+  if (finalText.value) return '전사 반영 완료'
+  return '수동 작성 단계'
+})
+const structuredPreviewRows = computed(() => {
+  const draft = aiStructuredDraft.value
+  if (!draft) return []
+
+  const rows = [
+    ['consultationType', '상담 유형', draft.consultationType],
+    ['consultationChannel', '상담 채널', draft.consultationChannel],
+    ['consultedAt', '상담 일시', formatDateTimeValue(draft.consultedAt)],
+    ['specialNote', '특이사항', draft.specialNote],
+    ['nextScheduledAt', '다음 일정', formatDateTimeValue(draft.nextScheduledAt)],
+    ['customerName', '고객명', draft.customerInfo?.customerName],
+    ['customerPhone', '연락처', draft.customerInfo?.customerPhone],
+    ['customerAnnualIncome', '연소득', formatNumberValue(draft.customerInfo?.customerAnnualIncome)],
+    ['customerJob', '직업', draft.customerInfo?.customerJob],
+    ['customerCompanyName', '직장명', draft.customerInfo?.customerCompanyName],
+    ['customerMaritalStatus', '혼인 상태', draft.customerInfo?.customerMaritalStatus],
+    ['underlyingDiseaseCodes', '기저 질환', formatListValue(draft.customerInfo?.underlyingDiseaseCodes)],
+    ['monthlyIncome', '월 소득', formatNumberValue(draft.newDetail?.monthlyIncome)],
+    ['hasExistingInsurance', '기존 보험 가입', formatBooleanValue(draft.newDetail?.hasExistingInsurance)],
+    ['monthlyInsurancePremium', '기존 보험료', formatNumberValue(draft.newDetail?.monthlyInsurancePremium)],
+    ['insurancePriority', '보험 우선순위', draft.newDetail?.insurancePriority],
+    ['coverageTypes', '관심 보장', formatListValue(draft.newDetail?.coverageTypes)],
+    ['proposedProductCodes', '추천 상품', formatListValue(draft.newDetail?.proposedProductCodes)],
+    ['claimType', '청구 유형', draft.claimDetail?.claimType],
+    ['claimReason', '청구 사유', draft.claimDetail?.claimReason],
+    ['incidentDate', '사고/진단일', draft.claimDetail?.incidentDate],
+    ['claimAmount', '청구 금액', formatNumberValue(draft.claimDetail?.claimAmount)],
+    ['renewalScheduledDate', '갱신 예정일', draft.renewalDetail?.renewalScheduledDate],
+    ['currentPremium', '현재 보험료', formatNumberValue(draft.renewalDetail?.currentPremium)],
+    ['renewalPremium', '갱신 보험료', formatNumberValue(draft.renewalDetail?.renewalPremium)],
+    ['changeType', '변경 유형', draft.renewalDetail?.changeType],
+    ['reviewReasons', '해지 검토 사유', formatListValue(draft.cancelDetail?.reviewReasons)],
+    ['customerIntent', '고객 의사', draft.cancelDetail?.customerIntent],
+    ['retentionPossibility', '유지 가능성', draft.cancelDetail?.retentionPossibility],
+    ['summaryText', '요약', generatedSummaryText.value],
+  ]
+
+  return rows
+    .filter(([, , value]) => hasMeaningfulValue(value))
+    .map(([key, label, value]) => ({
+      key,
+      label,
+      value,
+    }))
 })
 
 function syncInitialValues() {
@@ -360,14 +513,95 @@ function startTimer() {
   }, 1000)
 }
 
+function goToStep(step) {
+  if (step === 1) {
+    currentStep.value = 1
+    return
+  }
+
+  if (canOpenSummaryStep.value) {
+    currentStep.value = 2
+  }
+}
+
 async function handleStart() {
+  currentStep.value = 1
   await startSession()
   await startRecording()
+}
+
+function isDraftNotReadyError(error) {
+  const status = error?.response?.status
+  const message = String(error?.response?.data?.message || error?.message || '')
+  return status === 404 || message.includes('AI 상담 초안을 찾을 수 없습니다')
+}
+
+async function loadAiDraft(options = {}) {
+  if (!sessionId.value) {
+    return
+  }
+
+  const { retry = false } = options
+  aiDraftLoading.value = true
+  aiDraftError.value = ''
+
+  try {
+    const maxAttempts = retry ? 6 : 1
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const response = await getConsultationSttAiDraft(sessionId.value)
+        const result = response?.result ?? response
+        const structuredData = result?.structuredData ?? result?.draft ?? result
+
+        aiStructuredDraft.value = structuredData || null
+
+        if (structuredData) {
+          manualSummaryDraft.value = normalizeText(
+            structuredData.summaryText || structuredData.consultationContent || structuredData.specialNote || '',
+          )
+          emit('apply-structured-draft', structuredData)
+        }
+
+        return
+      } catch (error) {
+        if (retry && isDraftNotReadyError(error) && attempt < maxAttempts - 1) {
+          await wait(1500)
+          continue
+        }
+
+        throw error
+      }
+    }
+  } catch (error) {
+    if (isDraftNotReadyError(error)) {
+      aiDraftError.value = 'AI 구조화 초안이 아직 생성되지 않았습니다. 잠시 후 다시 자동 반영됩니다.'
+      return
+    }
+
+    aiDraftError.value = error?.response?.data?.message || error?.message || 'AI 초안 조회에 실패했습니다.'
+  } finally {
+    aiDraftLoading.value = false
+  }
+}
+
+async function handleStopAndContinue() {
+  await stopRecording()
+
+  if (recordingState.value === 'STOPPED' || sessionStatus.value === 'PROCESSING') {
+    currentStep.value = 2
+    await loadAiDraft({ retry: true })
+  }
 }
 
 async function handleClose() {
   stopTimer()
   elapsedSeconds.value = 0
+  currentStep.value = 1
+  manualSummaryDraft.value = ''
+  aiDraftLoading.value = false
+  aiDraftError.value = ''
+  aiStructuredDraft.value = null
   await dispose()
   resetRuntimeState()
   emit('update:open', false)
@@ -378,6 +612,11 @@ watch(
   async (isOpen) => {
     if (isOpen) {
       elapsedSeconds.value = 0
+      currentStep.value = 1
+      manualSummaryDraft.value = ''
+      aiDraftLoading.value = false
+      aiDraftError.value = ''
+      aiStructuredDraft.value = null
       resetRuntimeState()
       syncInitialValues()
       return
@@ -385,6 +624,11 @@ watch(
 
     stopTimer()
     elapsedSeconds.value = 0
+    currentStep.value = 1
+    manualSummaryDraft.value = ''
+    aiDraftLoading.value = false
+    aiDraftError.value = ''
+    aiStructuredDraft.value = null
     await dispose()
     resetRuntimeState()
   },
@@ -422,9 +666,66 @@ watch(
   },
 )
 
+watch(
+  () => finalText.value,
+  async (value) => {
+    if (value && currentStep.value === 2 && !aiStructuredDraft.value && !aiDraftLoading.value) {
+      await loadAiDraft({ retry: true })
+    }
+  },
+)
+
+watch(
+  () => currentStep.value,
+  async (step) => {
+    if (step === 2 && !aiStructuredDraft.value && !aiDraftLoading.value && sessionId.value) {
+      await loadAiDraft({ retry: true })
+    }
+  },
+)
+
 onBeforeUnmount(() => {
   stopTimer()
 })
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+function hasMeaningfulValue(value) {
+  if (Array.isArray(value)) return value.length > 0
+  return value !== null && value !== undefined && String(value).trim() !== ''
+}
+
+function formatListValue(value) {
+  return Array.isArray(value) ? value.filter(Boolean).join(', ') : ''
+}
+
+function formatBooleanValue(value) {
+  if (value === true) return '예'
+  if (value === false) return '아니오'
+  return ''
+}
+
+function formatNumberValue(value) {
+  if (value === null || value === undefined || value === '') return ''
+  return `${Number(value).toLocaleString('ko-KR')}`
+}
+
+function formatDateTimeValue(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
 </script>
 
 <style scoped>
@@ -446,7 +747,7 @@ onBeforeUnmount(() => {
 
 .stt-preview-modal__panel {
   position: relative;
-  width: min(760px, 100%);
+  width: min(880px, 100%);
   max-height: calc(100vh - 48px);
   overflow: hidden;
   border-radius: 28px;
@@ -496,6 +797,66 @@ onBeforeUnmount(() => {
   padding: 28px;
   overflow-y: auto;
   max-height: calc(100vh - 170px);
+}
+
+.stt-stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.stt-stepper__line {
+  height: 2px;
+  background: linear-gradient(90deg, #c4b5fd 0%, #e9d5ff 100%);
+}
+
+.stt-stepper__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.stt-stepper__item:disabled {
+  cursor: not-allowed;
+}
+
+.stt-stepper__item span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d8b4fe;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #7c3aed;
+}
+
+.stt-stepper__item.is-active,
+.stt-stepper__item.is-complete {
+  color: #111827;
+}
+
+.stt-stepper__item.is-active span,
+.stt-stepper__item.is-complete span {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.stt-slide {
+  display: grid;
+  gap: 22px;
+}
+
+.stt-slide--summary {
+  gap: 18px;
 }
 
 .stt-recorder__timer {
@@ -593,7 +954,8 @@ onBeforeUnmount(() => {
 }
 
 .stt-recorder__actions,
-.stt-preview-actions {
+.stt-preview-actions,
+.stt-summary-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -671,6 +1033,70 @@ onBeforeUnmount(() => {
 
 .stt-results__body.is-empty p {
   color: #9ca3af;
+}
+
+.stt-summary-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid #ddd6fe;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+}
+
+.stt-summary-hero p {
+  margin: 0 0 4px;
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.stt-summary-hero h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.stt-summary-hero span {
+  color: #6d28d9;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stt-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stt-summary-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e9d5ff;
+  border-radius: 24px;
+  background: #ffffff;
+}
+
+.stt-summary-card--preview {
+  gap: 12px;
+}
+
+.stt-summary-textarea {
+  width: 100%;
+  min-height: 240px;
+  padding: 18px;
+  border: 2px solid #ddd6fe;
+  border-radius: 20px;
+  background: #fafafa;
+  color: #1f2937;
+  font-size: 15px;
+  line-height: 1.7;
+  resize: vertical;
 }
 
 .stt-meta-grid {
@@ -847,6 +1273,8 @@ onBeforeUnmount(() => {
     font-size: 42px;
   }
 
+  .stt-stepper,
+  .stt-summary-grid,
   .stt-meta-grid,
   .stt-details__content,
   .stt-preview-form,
@@ -854,7 +1282,8 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
-  .stt-results__header {
+  .stt-results__header,
+  .stt-summary-hero {
     display: grid;
   }
 }

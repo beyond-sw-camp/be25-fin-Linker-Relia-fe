@@ -922,6 +922,7 @@
       v-model:open="isSttPreviewOpen"
       :initial-customer-id="sttPreviewCustomerId"
       :initial-consultation-type="form.consultationType"
+      @apply-structured-draft="applyStructuredDraft"
     />
   </section>
 </template>
@@ -1003,6 +1004,7 @@ const diseaseCodeMap = {
   천식: 'ASTHMA',
   갑상선질환: 'THYROID_DISEASE',
 }
+const diseaseNameMap = Object.fromEntries(Object.entries(diseaseCodeMap).map(([name, code]) => [code, name]))
 
 const emailDomainOptions = ['naver.com', 'gmail.com', 'daum.net', 'kakao.com', 'outlook.com']
 
@@ -1485,6 +1487,115 @@ function openSttPreview() {
   isSttPreviewOpen.value = true
 }
 
+function applyStructuredDraft(draft) {
+  if (!draft) {
+    return
+  }
+
+  Object.assign(form, {
+    consultationType: draft.consultationType || form.consultationType,
+    consultationChannel: draft.consultationChannel || form.consultationChannel,
+    consultedAt: draft.consultedAt ? toLocalInputValue(draft.consultedAt) : form.consultedAt,
+    consultationContent: draft.consultationContent || draft.summaryText || draft.specialNote || '',
+    specialNote: draft.specialNote || draft.summaryText || draft.consultationContent || '',
+    nextScheduledAt: draft.nextScheduledAt ? toDateInputValue(draft.nextScheduledAt) : '',
+    contractId: draft.contractId || '',
+  })
+
+  if (draft.customerInfo) {
+    Object.assign(customerInfo, {
+      customerName: draft.customerInfo.customerName || '',
+      customerGender: draft.customerInfo.customerGender || '',
+      customerBirthDate: draft.customerInfo.customerBirthDate || '',
+      customerPhone: draft.customerInfo.customerPhone || '',
+      customerEmail: draft.customerInfo.customerEmail || '',
+      customerZipcode: draft.customerInfo.customerZipcode || '',
+      customerAddressRoad: draft.customerInfo.customerAddressRoad || '',
+      customerAddressDetail: draft.customerInfo.customerAddressDetail || '',
+      customerJob: draft.customerInfo.customerJob || '',
+      customerJobCustom: '',
+      customerCompanyName: draft.customerInfo.customerCompanyName || '',
+      customerAnnualIncome: draft.customerInfo.customerAnnualIncome ?? '',
+      customerAssetSize: draft.customerInfo.customerAssetSize ?? '',
+      customerDebtStatus: draft.customerInfo.customerDebtStatus || '',
+      customerIsSmoker: Boolean(draft.customerInfo.customerIsSmoker),
+      customerIsDrinker: Boolean(draft.customerInfo.customerIsDrinker),
+      customerMaritalStatus: draft.customerInfo.customerMaritalStatus || '',
+      customerDependentsCount: draft.customerInfo.customerDependentsCount ?? '',
+      underlyingDiseases: Array.isArray(draft.customerInfo.underlyingDiseaseCodes)
+        ? draft.customerInfo.underlyingDiseaseCodes.map((code) => diseaseNameMap[code] || code)
+        : [],
+    })
+    hydrateEmailFields(draft.customerInfo.customerEmail)
+  }
+
+  if (draft.consultationType === 'NEW_CONTRACT') {
+    customerMode.value = draft.customerId ? 'EXISTING' : 'PROSPECT'
+    Object.assign(newDetail, {
+      monthlyIncome: draft.newDetail?.monthlyIncome ?? '',
+      hasExistingInsurance: Boolean(draft.newDetail?.hasExistingInsurance),
+      monthlyInsurancePremium: draft.newDetail?.monthlyInsurancePremium ?? '',
+      existingInsuranceNote: draft.newDetail?.existingInsuranceNote || '',
+      insurancePriority: draft.newDetail?.insurancePriority || '',
+      coverageTypes: Array.isArray(draft.newDetail?.coverageTypes) ? draft.newDetail.coverageTypes : [],
+    })
+    selectedProposedProducts.value = Array.isArray(draft.newDetail?.proposedProductCodes)
+      ? draft.newDetail.proposedProductCodes.map((code) => ({
+          insuranceProductCode: code,
+          insuranceProductName: code,
+        }))
+      : []
+  }
+
+  if (draft.claimDetail) {
+    Object.assign(claimDetail, {
+      claimType: draft.claimDetail.claimType || '',
+      claimReason: draft.claimDetail.claimReason || '',
+      incidentDate: draft.claimDetail.incidentDate || '',
+      claimAmount: draft.claimDetail.claimAmount ?? '',
+      reviewItems: Array.isArray(draft.claimDetail.reviewItems) ? draft.claimDetail.reviewItems : [],
+      result: draft.claimDetail.result || '',
+      nextActions: Array.isArray(draft.claimDetail.nextActions) ? draft.claimDetail.nextActions : [],
+    })
+  }
+
+  if (draft.renewalDetail) {
+    Object.assign(renewalDetail, {
+      renewalReason: draft.renewalDetail.renewalReason || '',
+      desiredRenewalDate: draft.renewalDetail.desiredRenewalDate || '',
+      expectedPremium: draft.renewalDetail.expectedPremium ?? '',
+      renewalScheduledDate: draft.renewalDetail.renewalScheduledDate || '',
+      currentPremium: draft.renewalDetail.currentPremium ?? '',
+      renewalPremium: draft.renewalDetail.renewalPremium ?? '',
+      changeType: draft.renewalDetail.changeType || '',
+      changeDetail: draft.renewalDetail.changeDetail || '',
+      premiumChangeReasons: Array.isArray(draft.renewalDetail.premiumChangeReasons) ? draft.renewalDetail.premiumChangeReasons : [],
+      customerResponses: Array.isArray(draft.renewalDetail.customerResponses) ? draft.renewalDetail.customerResponses : [],
+      customerInterests: Array.isArray(draft.renewalDetail.customerInterests) ? draft.renewalDetail.customerInterests : [],
+      result: draft.renewalDetail.result || '',
+      nextActions: Array.isArray(draft.renewalDetail.nextActions) ? draft.renewalDetail.nextActions : [],
+      decisionExpectedDate: draft.renewalDetail.decisionExpectedDate || '',
+    })
+  }
+
+  if (draft.cancelDetail) {
+    Object.assign(cancelDetail, {
+      ...cancelDetail,
+      ...draft.cancelDetail,
+      reviewReasons: Array.isArray(draft.cancelDetail.reviewReasons) ? draft.cancelDetail.reviewReasons : [],
+      retentionPlans: Array.isArray(draft.cancelDetail.retentionPlans) ? draft.cancelDetail.retentionPlans : [],
+      nextActions: Array.isArray(draft.cancelDetail.nextActions) ? draft.cancelDetail.nextActions : [],
+      customerIntent: draft.cancelDetail.customerIntent || '',
+      result: draft.cancelDetail.result || '',
+      reasonDetail: draft.cancelDetail.reasonDetail || '',
+      retentionPossibility: draft.cancelDetail.retentionPossibility || cancelDetail.retentionPossibility,
+    })
+  }
+
+  messageType.value = 'success'
+  message.value = 'AI 초안을 상담일지에 반영했습니다.'
+}
+
 async function submitConsultation() {
   const validationMessage = validateForm()
   if (validationMessage) {
@@ -1826,6 +1937,18 @@ function toLocalInputValue(value) {
   const date = new Date(value)
   const offset = date.getTimezoneOffset() * 60000
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+function toDateInputValue(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10)
+  }
+
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
 }
 
 function toApiDateTime(value) {
