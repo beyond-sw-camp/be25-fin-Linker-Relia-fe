@@ -15,6 +15,11 @@ export async function getConsultationSttAiDraft(sessionId) {
   return response.data
 }
 
+export async function applyConsultationAiNote(aiNoteId) {
+  const response = await authApi.patch(`/consultation-ai-notes/${aiNoteId}/apply`)
+  return response.data
+}
+
 export async function completeConsultationSttSession(sessionId, payload) {
   const response = await authApi.post(`/consultation-stt-sessions/${sessionId}/complete`, payload)
   return response.data

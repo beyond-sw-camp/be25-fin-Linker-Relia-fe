@@ -1093,6 +1093,46 @@ const cancelBooleanFields = [
   { key: 'managementDissatisfaction', label: '관리 부족 불만' },
 ]
 
+const consultationTypeAliases = {
+  '신규': 'NEW_CONTRACT',
+  '청구': 'CLAIM',
+  '갱신': 'RENEWAL',
+  '해지': 'TERMINATION',
+}
+
+const consultationChannelAliases = {
+  '방문': 'VISIT',
+  '대면': 'VISIT',
+  '전화': 'PHONE',
+  '메시지': 'MESSAGE',
+  '메신저': 'MESSAGE',
+}
+
+const maritalStatusAliases = {
+  '미혼': 'SINGLE',
+  '기혼': 'MARRIED',
+  '이혼': 'DIVORCED',
+  '사별': 'WIDOWED',
+}
+
+const retentionPossibilityAliases = {
+  '낮음': 'LOW',
+  '보통': 'MEDIUM',
+  '중간': 'MEDIUM',
+  '높음': 'HIGH',
+}
+
+const insurancePriorityAliases = {
+  '보험료': '보험료 저렴한 곳',
+  '보험료 저렴': '보험료 저렴한 곳',
+  '보장범위': '보장 범위가 넓은 곳',
+  '보장 범위': '보장 범위가 넓은 곳',
+  '보장범위가넓은곳': '보장 범위가 넓은 곳',
+  '보험금지급': '보험금 지급 신속성',
+  '보험금 지급': '보험금 지급 신속성',
+  '보험금 지급 신속': '보험금 지급 신속성',
+}
+
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
@@ -1487,14 +1527,25 @@ function openSttPreview() {
   isSttPreviewOpen.value = true
 }
 
-function applyStructuredDraft(draft) {
+async function applyStructuredDraft(draft) {
   if (!draft) {
     return
   }
 
+  const normalizedConsultationType = normalizeEnumValue(
+    draft.consultationType,
+    typeOptions.map((option) => option.value),
+    consultationTypeAliases,
+  ) || form.consultationType
+  const normalizedConsultationChannel = normalizeEnumValue(
+    draft.consultationChannel,
+    channelOptions.map((option) => option.value),
+    consultationChannelAliases,
+  ) || form.consultationChannel
+
   Object.assign(form, {
-    consultationType: draft.consultationType || form.consultationType,
-    consultationChannel: draft.consultationChannel || form.consultationChannel,
+    consultationType: normalizedConsultationType,
+    consultationChannel: normalizedConsultationChannel,
     consultedAt: draft.consultedAt ? toLocalInputValue(draft.consultedAt) : form.consultedAt,
     consultationContent: draft.consultationContent || draft.summaryText || draft.specialNote || '',
     specialNote: draft.specialNote || draft.summaryText || draft.consultationContent || '',
@@ -1520,7 +1571,11 @@ function applyStructuredDraft(draft) {
       customerDebtStatus: draft.customerInfo.customerDebtStatus || '',
       customerIsSmoker: Boolean(draft.customerInfo.customerIsSmoker),
       customerIsDrinker: Boolean(draft.customerInfo.customerIsDrinker),
-      customerMaritalStatus: draft.customerInfo.customerMaritalStatus || '',
+      customerMaritalStatus: normalizeEnumValue(
+        draft.customerInfo.customerMaritalStatus,
+        ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'],
+        maritalStatusAliases,
+      ),
       customerDependentsCount: draft.customerInfo.customerDependentsCount ?? '',
       underlyingDiseases: Array.isArray(draft.customerInfo.underlyingDiseaseCodes)
         ? draft.customerInfo.underlyingDiseaseCodes.map((code) => diseaseNameMap[code] || code)
@@ -1529,33 +1584,38 @@ function applyStructuredDraft(draft) {
     hydrateEmailFields(draft.customerInfo.customerEmail)
   }
 
-  if (draft.consultationType === 'NEW_CONTRACT') {
+  if (normalizedConsultationType === 'NEW_CONTRACT') {
     customerMode.value = draft.customerId ? 'EXISTING' : 'PROSPECT'
+    if (customerMode.value === 'PROSPECT') {
+      selectedCustomer.value = null
+      contracts.value = []
+      form.contractId = ''
+    }
+
     Object.assign(newDetail, {
       monthlyIncome: draft.newDetail?.monthlyIncome ?? '',
       hasExistingInsurance: Boolean(draft.newDetail?.hasExistingInsurance),
       monthlyInsurancePremium: draft.newDetail?.monthlyInsurancePremium ?? '',
       existingInsuranceNote: draft.newDetail?.existingInsuranceNote || '',
-      insurancePriority: draft.newDetail?.insurancePriority || '',
-      coverageTypes: Array.isArray(draft.newDetail?.coverageTypes) ? draft.newDetail.coverageTypes : [],
+      insurancePriority: normalizeOptionValue(
+        draft.newDetail?.insurancePriority,
+        insurancePriorityOptions,
+        insurancePriorityAliases,
+      ),
+      coverageTypes: normalizeOptionArray(draft.newDetail?.coverageTypes, coverageTypeOptions),
     })
-    selectedProposedProducts.value = Array.isArray(draft.newDetail?.proposedProductCodes)
-      ? draft.newDetail.proposedProductCodes.map((code) => ({
-          insuranceProductCode: code,
-          insuranceProductName: code,
-        }))
-      : []
+    selectedProposedProducts.value = await resolveDraftProducts(draft.newDetail?.proposedProductCodes)
   }
 
   if (draft.claimDetail) {
     Object.assign(claimDetail, {
-      claimType: draft.claimDetail.claimType || '',
+      claimType: normalizeOptionValue(draft.claimDetail.claimType, claimTypeOptions),
       claimReason: draft.claimDetail.claimReason || '',
       incidentDate: draft.claimDetail.incidentDate || '',
       claimAmount: draft.claimDetail.claimAmount ?? '',
-      reviewItems: Array.isArray(draft.claimDetail.reviewItems) ? draft.claimDetail.reviewItems : [],
-      result: draft.claimDetail.result || '',
-      nextActions: Array.isArray(draft.claimDetail.nextActions) ? draft.claimDetail.nextActions : [],
+      reviewItems: normalizeOptionArray(draft.claimDetail.reviewItems, claimReviewOptions),
+      result: normalizeOptionValue(draft.claimDetail.result, claimResultOptions),
+      nextActions: normalizeOptionArray(draft.claimDetail.nextActions, claimNextActionOptions),
     })
   }
 
@@ -1567,13 +1627,13 @@ function applyStructuredDraft(draft) {
       renewalScheduledDate: draft.renewalDetail.renewalScheduledDate || '',
       currentPremium: draft.renewalDetail.currentPremium ?? '',
       renewalPremium: draft.renewalDetail.renewalPremium ?? '',
-      changeType: draft.renewalDetail.changeType || '',
+      changeType: normalizeOptionValue(draft.renewalDetail.changeType, renewalChangeTypeOptions),
       changeDetail: draft.renewalDetail.changeDetail || '',
-      premiumChangeReasons: Array.isArray(draft.renewalDetail.premiumChangeReasons) ? draft.renewalDetail.premiumChangeReasons : [],
-      customerResponses: Array.isArray(draft.renewalDetail.customerResponses) ? draft.renewalDetail.customerResponses : [],
-      customerInterests: Array.isArray(draft.renewalDetail.customerInterests) ? draft.renewalDetail.customerInterests : [],
-      result: draft.renewalDetail.result || '',
-      nextActions: Array.isArray(draft.renewalDetail.nextActions) ? draft.renewalDetail.nextActions : [],
+      premiumChangeReasons: normalizeOptionArray(draft.renewalDetail.premiumChangeReasons, renewalPremiumReasonOptions),
+      customerResponses: normalizeOptionArray(draft.renewalDetail.customerResponses, renewalCustomerResponseOptions),
+      customerInterests: normalizeOptionArray(draft.renewalDetail.customerInterests, renewalCustomerInterestOptions),
+      result: normalizeOptionValue(draft.renewalDetail.result, renewalResultOptions),
+      nextActions: normalizeOptionArray(draft.renewalDetail.nextActions, renewalNextActionOptions),
       decisionExpectedDate: draft.renewalDetail.decisionExpectedDate || '',
     })
   }
@@ -1582,13 +1642,17 @@ function applyStructuredDraft(draft) {
     Object.assign(cancelDetail, {
       ...cancelDetail,
       ...draft.cancelDetail,
-      reviewReasons: Array.isArray(draft.cancelDetail.reviewReasons) ? draft.cancelDetail.reviewReasons : [],
-      retentionPlans: Array.isArray(draft.cancelDetail.retentionPlans) ? draft.cancelDetail.retentionPlans : [],
-      nextActions: Array.isArray(draft.cancelDetail.nextActions) ? draft.cancelDetail.nextActions : [],
-      customerIntent: draft.cancelDetail.customerIntent || '',
-      result: draft.cancelDetail.result || '',
+      reviewReasons: normalizeOptionArray(draft.cancelDetail.reviewReasons, terminationReasonOptions),
+      retentionPlans: normalizeOptionArray(draft.cancelDetail.retentionPlans, terminationRetentionPlanOptions),
+      nextActions: normalizeOptionArray(draft.cancelDetail.nextActions, terminationNextActionOptions),
+      customerIntent: normalizeOptionValue(draft.cancelDetail.customerIntent, terminationCustomerIntentOptions),
+      result: normalizeOptionValue(draft.cancelDetail.result, terminationResultOptions),
       reasonDetail: draft.cancelDetail.reasonDetail || '',
-      retentionPossibility: draft.cancelDetail.retentionPossibility || cancelDetail.retentionPossibility,
+      retentionPossibility: normalizeEnumValue(
+        draft.cancelDetail.retentionPossibility,
+        terminationPossibilityOptions.map((option) => option.value),
+        retentionPossibilityAliases,
+      ) || cancelDetail.retentionPossibility,
     })
   }
 
@@ -1879,6 +1943,112 @@ function updatePhone(rawValue) {
 
 function updateMoneyField(key, rawValue, target = customerInfo) {
   target[key] = String(rawValue || '').replace(/[^\d]/g, '')
+}
+
+function normalizeCompareText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+}
+
+function normalizeOptionValue(value, options, aliases = {}) {
+  if (!value) return ''
+
+  const normalizedValue = normalizeCompareText(value)
+  const aliasEntry = Object.entries(aliases).find(([alias]) => normalizeCompareText(alias) === normalizedValue)
+  if (aliasEntry) {
+    return aliasEntry[1]
+  }
+
+  const directMatch = options.find((option) => normalizeCompareText(option) === normalizedValue)
+  return directMatch || ''
+}
+
+function normalizeOptionArray(values, options, aliases = {}) {
+  if (!Array.isArray(values)) return []
+
+  return values
+    .map((value) => normalizeOptionValue(value, options, aliases))
+    .filter(Boolean)
+}
+
+function normalizeEnumValue(value, values, aliases = {}) {
+  if (!value) return ''
+
+  const normalizedValue = normalizeCompareText(value)
+  const aliasEntry = Object.entries(aliases).find(([alias]) => normalizeCompareText(alias) === normalizedValue)
+  if (aliasEntry) {
+    return aliasEntry[1]
+  }
+
+  return values.find((item) => normalizeCompareText(item) === normalizedValue) || ''
+}
+
+async function ensureDraftProductOptionsLoaded() {
+  if (proposedProductOptions.value.length > 0) {
+    return proposedProductOptions.value
+  }
+
+  try {
+    const response = await getInsuranceProducts({ size: 1000 })
+    const result = response?.result?.products ?? response?.result
+    const rows = Array.isArray(result?.content) ? result.content : result
+    proposedProductOptions.value = Array.isArray(rows) ? rows : []
+  } catch {
+    proposedProductOptions.value = []
+  }
+
+  return proposedProductOptions.value
+}
+
+function findMatchingProduct(rawValue, products) {
+  const target = normalizeCompareText(rawValue)
+  if (!target) return null
+
+  return products.find((product) => {
+    const candidates = [
+      product.insuranceProductCode,
+      product.productCode,
+      product.insuranceProductName,
+      product.productName,
+      product.name,
+    ]
+
+    return candidates.some((candidate) => normalizeCompareText(candidate) === target)
+  }) || products.find((product) => {
+    const searchable = [
+      product.insuranceProductCode,
+      product.productCode,
+      product.insuranceProductName,
+      product.productName,
+      product.name,
+    ]
+      .map(normalizeCompareText)
+      .filter(Boolean)
+
+    return searchable.some((candidate) => candidate.includes(target) || target.includes(candidate))
+  }) || null
+}
+
+async function resolveDraftProducts(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return []
+  }
+
+  const products = await ensureDraftProductOptionsLoaded()
+
+  return values.map((value) => {
+    const matched = findMatchingProduct(value, products)
+    if (matched) {
+      return matched
+    }
+
+    return {
+      insuranceProductCode: value,
+      insuranceProductName: value,
+    }
+  })
 }
 
 function formatPhoneDisplay(rawValue) {

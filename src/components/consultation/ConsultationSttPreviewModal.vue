@@ -119,12 +119,7 @@
             <span>{{ summaryStepLabel }}</span>
           </div>
 
-          <v-alert
-            v-if="aiDraftLoading"
-            type="info"
-            density="comfortable"
-            variant="tonal"
-          >
+          <v-alert v-if="aiDraftLoading" type="info" density="comfortable" variant="tonal">
             AI 초안을 불러오는 중입니다.
           </v-alert>
 
@@ -132,10 +127,14 @@
             {{ aiDraftError }}
           </v-alert>
 
+          <v-alert v-if="applyErrorMessage" type="error" density="comfortable" variant="tonal">
+            {{ applyErrorMessage }}
+          </v-alert>
+
           <section class="stt-summary-card stt-summary-card--preview">
             <div class="stt-results__header">
               <strong>상담일지 미리보기</strong>
-              <span>{{ structuredPreviewRows.length ? '구조화 완료' : '생성 대기' }}</span>
+              <span>{{ aiDraftStatusLabel }}</span>
             </div>
             <div v-if="structuredPreviewRows.length" class="stt-preview-sheet">
               <div
@@ -166,6 +165,23 @@
 
           <div class="stt-summary-actions">
             <button type="button" class="stt-button" @click="goToStep(1)">이전 단계</button>
+            <button
+              v-if="showApplyButton"
+              type="button"
+              class="stt-button stt-button--primary"
+              :disabled="!canApplyAiDraft"
+              @click="handleApplyAiDraft"
+            >
+              {{ applyButtonLabel }}
+            </button>
+            <button
+              v-else-if="aiDraftStatus === 'APPLIED'"
+              type="button"
+              class="stt-button stt-button--primary"
+              disabled
+            >
+              적용 완료
+            </button>
           </div>
         </section>
 
@@ -306,12 +322,18 @@
       </div>
     </section>
   </div>
+
+  <transition name="stt-toast">
+    <div v-if="toastMessage" class="stt-toast" :class="`is-${toastType}`">
+      {{ toastMessage }}
+    </div>
+  </transition>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { getConsultationSttAiDraft } from '../../api/consultationStt'
+import { applyConsultationAiNote, getConsultationSttAiDraft } from '../../api/consultationStt'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -372,7 +394,13 @@ const timerId = ref(0)
 const manualSummaryDraft = ref('')
 const aiDraftLoading = ref(false)
 const aiDraftError = ref('')
+const aiDraftRecord = ref(null)
 const aiStructuredDraft = ref(null)
+const applyLoading = ref(false)
+const applyErrorMessage = ref('')
+const toastMessage = ref('')
+const toastType = ref('success')
+const toastTimerId = ref(0)
 
 const canStartCombined = computed(() => canStartSession.value && !isBusy.value)
 const canOpenSummaryStep = computed(() => {
@@ -407,12 +435,32 @@ const transcriptStateLabel = computed(() => {
   return '대기 중'
 })
 const summaryStepLabel = computed(() => {
+  if (applyLoading.value) return '상담일지 반영 중'
+  if (aiDraftStatus.value === 'APPLIED') return '적용 완료'
+  if (aiDraftStatus.value === 'GPT_COMPLETED') return '적용 대기'
   if (aiDraftLoading.value) return 'AI 초안 불러오는 중'
   if (aiStructuredDraft.value) return 'AI 초안 반영 가능'
   if (sessionStatus.value === 'PROCESSING') return '전사 결과 정리 중'
   if (finalText.value) return '전사 반영 완료'
   return '수동 작성 단계'
 })
+const aiDraftId = computed(() => {
+  const record = aiDraftRecord.value
+  return record?.id || record?.aiNoteId || record?.consultationAiNoteId || ''
+})
+const aiDraftStatus = computed(() => {
+  const record = aiDraftRecord.value
+  return record?.status || record?.aiNoteStatus || record?.draftStatus || ''
+})
+const aiDraftStatusLabel = computed(() => {
+  if (applyLoading.value) return '반영 중'
+  if (aiDraftStatus.value === 'GPT_COMPLETED') return '적용 가능'
+  if (aiDraftStatus.value === 'APPLIED') return '적용 완료'
+  return structuredPreviewRows.value.length ? '구조화 완료' : '생성 대기'
+})
+const showApplyButton = computed(() => aiDraftStatus.value === 'GPT_COMPLETED')
+const canApplyAiDraft = computed(() => Boolean(aiStructuredDraft.value && aiDraftId.value) && !applyLoading.value)
+const applyButtonLabel = computed(() => (applyLoading.value ? '반영 중...' : '상담일지에 반영'))
 const structuredPreviewRows = computed(() => {
   const draft = aiStructuredDraft.value
   if (!draft) return []
@@ -462,6 +510,20 @@ const structuredPreviewRows = computed(() => {
 function syncInitialValues() {
   sessionForm.customerId = props.initialCustomerId || ''
   sessionForm.consultationType = props.initialConsultationType || 'NEW_CONTRACT'
+}
+
+function showToast(message, type = 'success') {
+  toastMessage.value = message
+  toastType.value = type
+
+  if (toastTimerId.value) {
+    window.clearTimeout(toastTimerId.value)
+  }
+
+  toastTimerId.value = window.setTimeout(() => {
+    toastMessage.value = ''
+    toastTimerId.value = 0
+  }, 2400)
 }
 
 function formatSampleRate(value) {
@@ -552,6 +614,7 @@ async function loadAiDraft(options = {}) {
       try {
         const response = await getConsultationSttAiDraft(sessionId.value)
         const result = response?.result ?? response
+        aiDraftRecord.value = result || null
         const structuredData = result?.structuredData ?? result?.draft ?? result
 
         aiStructuredDraft.value = structuredData || null
@@ -560,7 +623,6 @@ async function loadAiDraft(options = {}) {
           manualSummaryDraft.value = normalizeText(
             structuredData.summaryText || structuredData.consultationContent || structuredData.specialNote || '',
           )
-          emit('apply-structured-draft', structuredData)
         }
 
         return
@@ -594,6 +656,44 @@ async function handleStopAndContinue() {
   }
 }
 
+async function handleApplyAiDraft() {
+  if (!canApplyAiDraft.value) {
+    return
+  }
+
+  applyLoading.value = true
+  applyErrorMessage.value = ''
+
+  try {
+    const response = await applyConsultationAiNote(aiDraftId.value)
+    const result = response?.result ?? response
+
+    aiDraftRecord.value = {
+      ...(aiDraftRecord.value || {}),
+      ...(result || {}),
+      status: result?.status || result?.aiNoteStatus || result?.draftStatus || 'APPLIED',
+    }
+
+    emit('apply-structured-draft', aiStructuredDraft.value)
+    showToast('상담일지에 초안을 반영했습니다.', 'success')
+    await handleClose()
+  } catch (error) {
+    applyErrorMessage.value = error?.response?.data?.message || error?.message || '상담일지 반영에 실패했습니다.'
+    showToast('상담일지 반영에 실패했습니다.', 'error')
+  } finally {
+    applyLoading.value = false
+  }
+}
+
+async function applyStructuredDraftToForm() {
+  if (!aiStructuredDraft.value) {
+    return
+  }
+
+  emit('apply-structured-draft', aiStructuredDraft.value)
+  await handleClose()
+}
+
 async function handleClose() {
   stopTimer()
   elapsedSeconds.value = 0
@@ -601,7 +701,10 @@ async function handleClose() {
   manualSummaryDraft.value = ''
   aiDraftLoading.value = false
   aiDraftError.value = ''
+  aiDraftRecord.value = null
   aiStructuredDraft.value = null
+  applyLoading.value = false
+  applyErrorMessage.value = ''
   await dispose()
   resetRuntimeState()
   emit('update:open', false)
@@ -616,7 +719,10 @@ watch(
       manualSummaryDraft.value = ''
       aiDraftLoading.value = false
       aiDraftError.value = ''
+      aiDraftRecord.value = null
       aiStructuredDraft.value = null
+      applyLoading.value = false
+      applyErrorMessage.value = ''
       resetRuntimeState()
       syncInitialValues()
       return
@@ -628,7 +734,10 @@ watch(
     manualSummaryDraft.value = ''
     aiDraftLoading.value = false
     aiDraftError.value = ''
+    aiDraftRecord.value = null
     aiStructuredDraft.value = null
+    applyLoading.value = false
+    applyErrorMessage.value = ''
     await dispose()
     resetRuntimeState()
   },
@@ -686,6 +795,10 @@ watch(
 
 onBeforeUnmount(() => {
   stopTimer()
+
+  if (toastTimerId.value) {
+    window.clearTimeout(toastTimerId.value)
+  }
 })
 
 function wait(ms) {
@@ -1240,6 +1353,42 @@ function formatDateTimeValue(value) {
   font-size: 11px;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.stt-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 1300;
+  min-width: 280px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 18px;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.stt-toast.is-success {
+  background: #16a34a;
+}
+
+.stt-toast.is-error {
+  background: #dc2626;
+}
+
+.stt-toast-enter-active,
+.stt-toast-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.stt-toast-enter-from,
+.stt-toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
 }
 
 @keyframes sttPulse {
