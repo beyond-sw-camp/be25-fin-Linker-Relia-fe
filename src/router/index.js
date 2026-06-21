@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { DEFAULT_ROUTE_BY_ROLE } from '../constants/auth'
+import { DEFAULT_ROUTE_BY_ROLE, USER_ROLES } from '../constants/auth'
 import { APP_PAGE_SPECS } from '../constants/navigation'
 import AppLayout from '../layouts/AppLayout.vue'
 import AuthLayout from '../layouts/AuthLayout.vue'
@@ -130,7 +130,7 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     },
     meta: {
       requiresAuth: true,
-      roles: ['HQ_MANAGER', 'SYSTEM_ADMIN'],
+      roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
       title: '설계사 상세 정보 조회',
     },
   },

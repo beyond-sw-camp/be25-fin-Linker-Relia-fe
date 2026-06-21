@@ -351,7 +351,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="contract in contractPage.content" :key="`${contract.customerName}-${contract.contractDate}`">
+                <tr v-for="contract in contractPage.content" :key="getContractKey(contract)">
                   <td>{{ contract.customerName }}</td>
                   <td>{{ contract.insuranceType }}</td>
                   <td>{{ contract.insuranceCompany }}</td>
@@ -774,6 +774,13 @@ function getBranchAdvisorCount(branch) {
     ?? null
 }
 
+function getContractKey(contract) {
+  return contract.id
+    ?? contract.contractId
+    ?? contract.contractCode
+    ?? `${contract.customerId ?? contract.customerName}-${contract.insuranceCompany}-${contract.contractDate}`
+}
+
 function collectExpandableOrganizationIds(nodes) {
   return nodes
     .filter((node) => Array.isArray(node.children) && node.children.length > 0)
@@ -874,9 +881,13 @@ const LoadingState = defineComponent({
       type: String,
       required: true,
     },
+    compact: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(componentProps) {
-    return () => h('div', { class: 'state-box' }, [
+    return () => h('div', { class: ['state-box', { 'state-box--compact': componentProps.compact }] }, [
       h('div', { class: 'state-spinner' }),
       h('p', componentProps.message),
     ])
