@@ -1,6 +1,8 @@
 import { USER_ROLES } from './auth'
 
 const ORGANIZATION_ROLES = [
+  USER_ROLES.FP,
+  USER_ROLES.BRANCH_MANAGER,
   USER_ROLES.HQ_MANAGER,
   USER_ROLES.SYSTEM_ADMIN,
 ]
@@ -11,6 +13,15 @@ const ORGANIZATION_MENU_SECTION = {
   children: [
     { title: '조직도', to: { name: 'organization-chart' } },
     { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
+  ],
+}
+
+const ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES = {
+  title: '조직 및 인사 관리',
+  icon: 'mdi-domain',
+  children: [
+    { title: '조직도', to: { name: 'organization-chart' } },
+    { title: '설계사 목록', to: { name: 'hq-advisors' } },
   ],
 }
 
@@ -292,6 +303,7 @@ export const MENU_BY_ROLE = {
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
     },
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
   ],
   [USER_ROLES.BRANCH_MANAGER]: [
     {
@@ -341,6 +353,7 @@ export const MENU_BY_ROLE = {
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
     },
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
   ],
   [USER_ROLES.HQ_MANAGER]: [
     {
