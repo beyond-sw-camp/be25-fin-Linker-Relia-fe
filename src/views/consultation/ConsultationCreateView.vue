@@ -1,0 +1,3081 @@
+<template>
+  <section class="journal-page">
+    <nav class="journal-breadcrumb" aria-label="breadcrumb">
+      <button type="button" @click="goBack">
+        <v-icon icon="mdi-arrow-left" size="14" />
+        상담 관리로 돌아가기
+      </button>
+      <span>/</span>
+      <strong>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</strong>
+    </nav>
+
+    <form class="journal-workspace" @submit.prevent="submitConsultation">
+      <aside class="journal-side">
+        <section class="side-card">
+          <h3>상담 정보</h3>
+
+          <label class="field">
+            <span>상담 일시</span>
+            <input v-model="form.consultedAt" class="control" type="datetime-local" />
+          </label>
+
+          <div class="field">
+            <span>상담 형식</span>
+            <div class="pill-row">
+              <button
+                v-for="option in channelOptions"
+                :key="option.value"
+                type="button"
+                class="pill"
+                :class="{ 'is-active': form.consultationChannel === option.value }"
+                @click="form.consultationChannel = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>상담 유형</span>
+            <div class="pill-row">
+              <button
+                v-for="option in typeOptions"
+                :key="option.value"
+                type="button"
+                class="pill pill--type"
+                :class="{ 'is-active': form.consultationType === option.value }"
+                @click="selectType(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="side-card">
+          <h3>고객 기본 정보</h3>
+
+          <div v-if="isNewContract" class="segmented">
+            <button
+              type="button"
+              :class="{ 'is-active': customerMode === 'EXISTING' }"
+              @click="selectCustomerMode('EXISTING')"
+            >
+              기존 고객
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': customerMode === 'PROSPECT' }"
+              @click="selectCustomerMode('PROSPECT')"
+            >
+              신규 고객
+            </button>
+          </div>
+
+          <template v-if="needsExistingCustomer">
+            <label class="field">
+              <span>기존 고객 불러오기</span>
+              <div class="search-control">
+                <input
+                  v-model.trim="customerKeyword"
+                  class="control"
+                  placeholder="고객명 검색"
+                  @keyup.enter.prevent="loadCustomers"
+                />
+                <button type="button" @click="loadCustomers">
+                  <v-icon icon="mdi-magnify" size="15" />
+                </button>
+              </div>
+            </label>
+
+            <div v-if="customerSearchTouched" class="customer-list">
+              <button
+                v-for="customer in customers"
+                :key="customer.customerId"
+                type="button"
+                :class="{ 'is-selected': selectedCustomer?.customerId === customer.customerId }"
+                @click="selectCustomer(customer)"
+              >
+                <strong>{{ customer.customerName }}</strong>
+                <span>{{ formatPhoneDisplay(customer.phoneNumber || customer.customerPhone || '') || '-' }}</span>
+              </button>
+              <p v-if="!customers.length">검색된 고객이 없습니다.</p>
+            </div>
+
+            <div v-if="selectedCustomer" class="selected-customer-panel">
+              <dl>
+                <div>
+                  <dt>고객명</dt>
+                  <dd>{{ customerInfo.customerName || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>생년월일</dt>
+                  <dd>{{ customerInfo.customerBirthDate || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>성별</dt>
+                  <dd>{{ getGenderLabel(customerInfo.customerGender) }}</dd>
+                </div>
+                <div>
+                  <dt>연락처</dt>
+                  <dd>{{ customerInfo.customerPhone || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>이메일</dt>
+                  <dd>{{ customerInfo.customerEmail || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>주소</dt>
+                  <dd>{{ customerAddressText }}</dd>
+                </div>
+                <div>
+                  <dt>직업 및 직무</dt>
+                  <dd>{{ customerJobText }}</dd>
+                </div>
+                <div>
+                  <dt>보유 계약 수</dt>
+                  <dd>{{ selectedCustomer.contractCount ?? 0 }}건</dd>
+                </div>
+                <div>
+                  <dt>최근 상담일</dt>
+                  <dd>{{ selectedCustomer.lastConsultedAt || selectedCustomer.lastConsultationDate || '-' }}</dd>
+                </div>
+              </dl>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="prospect-grid">
+              <label class="field">
+                <span>고객명 <b class="required-mark">*</b></span>
+                <input v-model.trim="customerInfo.customerName" class="control" />
+              </label>
+
+              <label class="field">
+                <span>성별 <b class="required-mark">*</b></span>
+                <select v-model="customerInfo.customerGender" class="control">
+                  <option value="">선택</option>
+                  <option value="MALE">남성</option>
+                  <option value="FEMALE">여성</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>생년월일 <b class="required-mark">*</b></span>
+                <input v-model="customerInfo.customerBirthDate" class="control" type="date" />
+              </label>
+
+              <label class="field">
+                <span>연락처 <b class="required-mark">*</b></span>
+                <input
+                  :value="customerInfo.customerPhone"
+                  class="control"
+                  inputmode="numeric"
+                  maxlength="13"
+                  placeholder="010-1234-5678"
+                  @input="updatePhone($event.target.value)"
+                />
+              </label>
+
+              <div class="field field--wide">
+                <span>이메일 <b class="required-mark">*</b></span>
+                <div class="email-row" :class="{ 'is-custom-domain': emailDomainSelected === 'custom' }">
+                  <input v-model.trim="emailLocalPart" class="control" placeholder="email" />
+                  <span>@</span>
+                  <input
+                    v-if="emailDomainSelected === 'custom'"
+                    v-model.trim="emailDomainCustom"
+                    class="control email-domain-custom"
+                    placeholder="domain.com"
+                  />
+                  <select v-model="emailDomainSelected" class="control email-domain-select">
+                    <option v-for="option in emailDomainOptions" :key="option" :value="option">
+                      {{ option }}
+                    </option>
+                    <option value="custom">직접 입력</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field field--wide">
+                <span>주소 <b class="required-mark">*</b></span>
+                <div class="address-box">
+                  <div class="address-box__search">
+                    <input
+                      v-model.trim="addressSearchKeyword"
+                      class="control"
+                      placeholder="도로명주소를 검색하세요"
+                      @focus="showAddressResults = true"
+                      @input="showAddressResults = true"
+                    />
+                    <button type="button" class="address-box__button" :disabled="isAddressSearchLoading" @click="openPostcodeSearch">
+                      주소 검색
+                    </button>
+                  </div>
+                  <p v-if="addressSearchMessage" class="address-box__message">{{ addressSearchMessage }}</p>
+                  <div v-if="showAddressResults" class="address-results">
+                    <button
+                      v-for="address in filteredAddressOptions"
+                      :key="`${address.zipcode}-${address.road}`"
+                      type="button"
+                      class="address-results__item"
+                      @click="selectAddress(address)"
+                    >
+                      <strong>{{ address.road }}</strong>
+                      <span>{{ address.zipcode }} · {{ address.jibun }}</span>
+                    </button>
+                    <p v-if="filteredAddressOptions.length === 0">검색 결과가 없습니다.</p>
+                  </div>
+                  <div class="address-box__inputs">
+                    <input
+                      v-model.trim="customerInfo.customerZipcode"
+                      class="control address-box__zipcode"
+                      placeholder="우편번호"
+                      readonly
+                    />
+                    <input
+                      v-model.trim="customerInfo.customerAddressRoad"
+                      class="control"
+                      placeholder="도로명주소"
+                      readonly
+                    />
+                    <input
+                      v-model.trim="customerInfo.customerAddressDetail"
+                      class="control"
+                      placeholder="상세주소 입력"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <label class="field">
+                <span>직업 <b class="required-mark">*</b></span>
+                <select v-model="customerInfo.customerJob" class="control">
+                  <option value="">선택</option>
+                  <option v-for="option in jobOptions" :key="option" :value="option">{{ option }}</option>
+                </select>
+              </label>
+
+              <label v-if="customerInfo.customerJob === '기타/직접입력'" class="field">
+                <span>직업 직접 입력 <b class="required-mark">*</b></span>
+                <input v-model.trim="customerInfo.customerJobCustom" class="control" />
+              </label>
+
+              <label class="field">
+                <span>회사명 <em class="optional-mark">선택</em></span>
+                <input v-model.trim="customerInfo.customerCompanyName" class="control" />
+              </label>
+
+              <label class="field">
+                <span>연 소득 <b class="required-mark">*</b></span>
+                <input
+                  :value="formatMoneyDisplay(customerInfo.customerAnnualIncome)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="68,000,000"
+                  @input="updateMoneyField('customerAnnualIncome', $event.target.value)"
+                />
+              </label>
+
+              <label class="field">
+                <span>자산 규모 <em class="optional-mark">선택</em></span>
+                <input
+                  :value="formatMoneyDisplay(customerInfo.customerAssetSize)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="150,000,000"
+                  @input="updateMoneyField('customerAssetSize', $event.target.value)"
+                />
+              </label>
+
+              <label class="field field--wide">
+                <span>부채 현황 <em class="optional-mark">선택</em></span>
+                <input v-model.trim="customerInfo.customerDebtStatus" class="control" />
+              </label>
+
+              <label class="field">
+                <span>혼인 상태 <b class="required-mark">*</b></span>
+                <select v-model="customerInfo.customerMaritalStatus" class="control">
+                  <option value="">선택</option>
+                  <option value="SINGLE">미혼</option>
+                  <option value="MARRIED">기혼</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>부양가족 수 <em class="optional-mark">선택</em></span>
+                <input v-model="customerInfo.customerDependentsCount" class="control" inputmode="numeric" />
+              </label>
+
+              <label class="check-line">
+                <input v-model="customerInfo.customerIsSmoker" type="checkbox" />
+                흡연 여부 <em class="optional-mark">선택</em>
+              </label>
+
+              <label class="check-line">
+                <input v-model="customerInfo.customerIsDrinker" type="checkbox" />
+                음주 여부 <em class="optional-mark">선택</em>
+              </label>
+
+              <div class="field field--wide">
+                <span>기저질환 <em class="optional-mark">선택</em></span>
+                <div class="disease-picker">
+                  <select v-model="selectedDisease" class="control" @change="addDisease">
+                    <option value="">기저질환 선택</option>
+                    <option value="없음">없음</option>
+                    <option v-for="option in diseaseOptions" :key="option.diseaseCode" :value="option.diseaseCode">
+                      {{ option.diseaseName }}
+                    </option>
+                  </select>
+                </div>
+                <div class="selected-disease-list">
+                  <span v-for="diseaseCode in customerInfo.underlyingDiseases" :key="diseaseCode" class="selected-disease-chip">
+                    {{ getDiseaseName(diseaseCode) }}
+                    <button type="button" @click="removeDisease(diseaseCode)">×</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </section>
+      </aside>
+
+      <main class="journal-main">
+        <section v-if="isEditMode" class="draft-banner">
+          <div>
+            <span>임시저장 상담일지</span>
+            <strong>저장된 내용을 이어서 수정 중입니다.</strong>
+          </div>
+          <div class="draft-progress">
+            <span></span>
+          </div>
+        </section>
+
+        <section class="stt-card">
+          <v-icon icon="mdi-microphone-outline" size="18" />
+          <div>
+            <strong>STT (녹취 -> 텍스트) 기능 안내</strong>
+            <p>STT 기능을 사용하면 상담 음성을 텍스트로 변환하여 상담일지 작성에 참고할 수 있습니다. 변환된 내용은 반드시 설계사가 검토한 후 최종 저장해야 합니다.</p>
+          </div>
+          <div class="stt-actions">
+            <button type="button" aria-label="녹취 파일 첨부">
+              <v-icon icon="mdi-file-upload-outline" size="16" />
+            </button>
+            <button type="button">텍스트로 추출하기</button>
+          </div>
+        </section>
+
+        <section v-if="needsContract" class="form-card">
+          <h3>1. 계약 정보 선택</h3>
+          <div class="contract-grid">
+            <label
+              v-for="contract in contracts"
+              :key="contract.contractId"
+              class="contract-option"
+              :class="{ 'is-selected': form.contractId === contract.contractId }"
+            >
+              <input v-model="form.contractId" type="radio" :value="contract.contractId" />
+              <span>
+                <strong>{{ contract.insuranceProductName || contract.contractCode || contract.contractId }}</strong>
+                <em>{{ contract.insuranceCompanyName || '보험사 미지정' }}</em>
+              </span>
+            </label>
+            <p v-if="!contracts.length" class="empty-text">고객을 선택하면 보유 계약을 불러옵니다.</p>
+          </div>
+        </section>
+
+        <template v-if="form.consultationType === 'NEW_CONTRACT'">
+          <section class="form-card">
+            <h3>1. 재무 및 가입 현황</h3>
+            <div class="compact-grid">
+              <label class="field">
+                <span>월 평균 소득</span>
+                <input
+                  :value="formatMoneyDisplay(newDetail.monthlyIncome)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="5,600,000"
+                  @input="updateMoneyField('monthlyIncome', $event.target.value, newDetail)"
+                />
+              </label>
+
+              <div class="field">
+                <span>기존 보험 가입 여부 <b>*</b></span>
+                <div class="choice-row">
+                  <button
+                    type="button"
+                    class="choice-button"
+                    :class="{ 'is-active': newDetail.hasExistingInsurance === true }"
+                    @click="setExistingInsurance(true)"
+                  >
+                    있음
+                  </button>
+                  <button
+                    type="button"
+                    class="choice-button"
+                    :class="{ 'is-active': newDetail.hasExistingInsurance === false }"
+                    @click="setExistingInsurance(false)"
+                  >
+                    없음
+                  </button>
+                </div>
+              </div>
+
+              <label class="field" :class="{ 'is-disabled': !newDetail.hasExistingInsurance }">
+                <span>월 보험료 지출</span>
+                <input
+                  :value="formatMoneyDisplay(newDetail.monthlyInsurancePremium)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="210,000"
+                  :disabled="!newDetail.hasExistingInsurance"
+                  @input="updateMoneyField('monthlyInsurancePremium', $event.target.value, newDetail)"
+                />
+              </label>
+
+              <label class="field field--wide" :class="{ 'is-disabled': !newDetail.hasExistingInsurance }">
+                <span>기존 보험 간단히 입력</span>
+                <textarea
+                  v-model.trim="newDetail.existingInsuranceNote"
+                  class="control textarea"
+                  placeholder="회사명 / 상품명 / 월 납입액 입력"
+                  :disabled="!newDetail.hasExistingInsurance"
+                ></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>2. 고객 니즈 및 성향</h3>
+            <div class="field">
+              <span>관심 보장 분야(복수 선택 가능)</span>
+              <div class="option-chip-row">
+                <button
+                  v-for="option in coverageTypeOptions"
+                  :key="option.value"
+                  type="button"
+                  class="option-chip"
+                  :class="{ 'is-active': newDetail.coverageTypes.includes(option.value) }"
+                  @click="toggleArraySelection(newDetail.coverageTypes, option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>보험 가입 기준(주요 1개 선택)</span>
+              <div class="option-chip-row">
+                <button
+                  v-for="option in insurancePriorityOptions"
+                  :key="option"
+                  type="button"
+                  class="option-chip"
+                  :class="{ 'is-active': newDetail.insurancePriority === option }"
+                  @click="newDetail.insurancePriority = toggleSingleSelection(newDetail.insurancePriority, option)"
+                >
+                  {{ option }}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>3. 맞춤형 가입 설계 제안</h3>
+            <div class="field">
+              <span>제안 상품 선택</span>
+              <div class="product-search-row">
+                <div class="product-search-input">
+                  <v-icon icon="mdi-magnify" size="15" />
+                  <input
+                    v-model.trim="proposedProductKeyword"
+                    class="control"
+                    placeholder="상품명 검색 또는 선택..."
+                    @keyup.enter.prevent="loadProposedProducts"
+                  />
+                </div>
+                <button type="button" class="add-button" @click="loadProposedProducts">추가</button>
+              </div>
+              <div v-if="showProductOptions" class="product-option-list">
+                <button
+                  v-for="product in filteredProposedProducts"
+                  :key="getProductKey(product)"
+                  type="button"
+                  :disabled="isProductSelected(product) || selectedProposedProducts.length >= 5"
+                  @click="addProposedProduct(product)"
+                >
+                  <strong>{{ product.insuranceProductName || product.productName || product.name }}</strong>
+                  <span>{{ product.insuranceCompanyName || product.companyName || product.insurer || '보험사 미지정' }}</span>
+                </button>
+                <p v-if="!filteredProposedProducts.length">
+                  {{ isProductsLoading ? '상품을 불러오는 중입니다.' : '조건에 맞는 상품이 없습니다.' }}
+                </p>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>선택된 상품 목록 (최대 5개까지 Tag 형태로 표시)</span>
+              <div class="selected-product-tags">
+                <span v-for="product in selectedProposedProducts" :key="getProductKey(product)">
+                  {{ product.insuranceProductName || product.productName || product.name }}
+                  <button type="button" @click="removeProposedProduct(product)">×</button>
+                </span>
+                <p v-if="!selectedProposedProducts.length">선택된 상품이 없습니다.</p>
+              </div>
+            </div>
+          </section>
+        </template>
+
+        <template v-else-if="form.consultationType === 'CLAIM'">
+          <section class="form-card">
+            <h3>2. 청구 유형</h3>
+            <p class="section-help">해당하는 청구 유형을 선택하세요.</p>
+            <div class="claim-type-grid">
+              <button
+                v-for="option in claimTypeOptions"
+                :key="option"
+                type="button"
+                class="claim-type-button"
+                :class="{ 'is-active': claimDetail.claimType === option }"
+                @click="claimDetail.claimType = toggleSingleSelection(claimDetail.claimType, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>3. 사고 / 질병 정보</h3>
+            <div class="compact-grid">
+              <label class="field">
+                <span>청구 사유</span>
+                <input v-model.trim="claimDetail.claimReasonDetail" class="control" />
+              </label>
+              <label class="field">
+                <span>발생일 또는 진단일</span>
+                <input v-model="claimDetail.incidentDate" class="control" type="date" />
+              </label>
+              <label class="field">
+                <span>병원명</span>
+                <input v-model.trim="claimDetail.hospitalName" class="control" />
+              </label>
+              <label class="field field--wide">
+                <span>진단/치료 내용</span>
+                <textarea
+                  v-model.trim="claimDetail.diagnosisOrTreatment"
+                  class="control textarea"
+                  placeholder="진단명 또는 치료 내용을 입력하세요."
+                ></textarea>
+              </label>
+              <div class="claim-status-grid field--wide">
+                <div class="field">
+                  <span>입원/통원 여부</span>
+                  <div class="option-chip-row option-chip-row--balanced">
+                    <button
+                      v-for="option in hospitalizationStatusOptions"
+                      :key="option"
+                      type="button"
+                      class="option-chip"
+                      :class="{ 'is-active': claimDetail.hospitalizationStatus === option }"
+                      @click="claimDetail.hospitalizationStatus = toggleSingleSelection(claimDetail.hospitalizationStatus, option)"
+                    >
+                      {{ option }}
+                    </button>
+                  </div>
+                </div>
+                <div class="field">
+                  <span>수술 여부</span>
+                  <div class="option-chip-row option-chip-row--balanced">
+                    <button
+                      v-for="option in surgeryStatusOptions"
+                      :key="option"
+                      type="button"
+                      class="option-chip"
+                      :class="{ 'is-active': claimDetail.surgeryStatus === option }"
+                      @click="claimDetail.surgeryStatus = toggleSingleSelection(claimDetail.surgeryStatus, option)"
+                    >
+                      {{ option }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>4. 청구 가능 여부 검토</h3>
+            <p class="section-help">해당 항목을 확인하여 체크하세요. (복수 선택 가능)</p>
+            <div class="checkbox-chip-row">
+              <button
+                v-for="option in claimReviewOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': claimDetail.reviewItems.includes(option) }"
+                @click="toggleArraySelection(claimDetail.reviewItems, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>5. 상담 결과</h3>
+            <div class="claim-result-row">
+              <button
+                v-for="option in claimResultOptions"
+                :key="option"
+                type="button"
+                class="claim-result-button"
+                :class="{ 'is-active': claimDetail.result === option }"
+                @click="claimDetail.result = toggleSingleSelection(claimDetail.result, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>6. 다음 조치</h3>
+            <p class="section-help">후속 처리 항목을 선택하세요. (복수 선택 가능)</p>
+            <div class="checkbox-chip-row">
+              <button
+                v-for="option in claimNextActionOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': claimDetail.nextActions.includes(option) }"
+                @click="toggleArraySelection(claimDetail.nextActions, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+        </template>
+
+        <template v-else-if="form.consultationType === 'RENEWAL'">
+          <section class="form-card">
+            <h3>2. 갱신 정보</h3>
+            <div class="renewal-info-grid">
+              <label class="field">
+                <span>갱신 예정일</span>
+                <input v-model="renewalDetail.renewalScheduledDate" class="control" type="date" />
+              </label>
+              <label class="field">
+                <span>현재 보험료</span>
+                <input
+                  :value="formatMoneyDisplay(renewalDetail.currentPremium)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="45,000"
+                  @input="updateMoneyField('currentPremium', $event.target.value, renewalDetail)"
+                />
+              </label>
+              <label class="field">
+                <span>갱신 보험료</span>
+                <input
+                  :value="formatMoneyDisplay(renewalDetail.renewalPremium)"
+                  class="control"
+                  inputmode="numeric"
+                  placeholder="54,000"
+                  @input="updateMoneyField('renewalPremium', $event.target.value, renewalDetail)"
+                />
+              </label>
+              <label class="field">
+                <span>보험료 변동률</span>
+                <input :value="renewalPremiumChangeRate" class="control control--locked" readonly />
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>3. 보장 변경 내용</h3>
+            <div class="renewal-change-layout">
+              <div class="field">
+                <span>변경 유형 선택</span>
+                <div class="vertical-choice-row">
+                  <button
+                    v-for="option in renewalChangeTypeOptions"
+                    :key="option"
+                    type="button"
+                    class="option-chip"
+                    :class="{ 'is-active': renewalDetail.changeType === option }"
+                    @click="renewalDetail.changeType = toggleSingleSelection(renewalDetail.changeType, option)"
+                  >
+                    {{ option }}
+                  </button>
+                </div>
+              </div>
+              <label class="field">
+                <span>변경 상세 내용</span>
+                <textarea
+                  v-model.trim="renewalDetail.changeDetail"
+                  class="control textarea textarea--large"
+                  placeholder="예: 입원일당 특약 보험료 갱신, 일부 특약 보장금액 변경"
+                ></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>4. 보험료 변동 사유</h3>
+            <p class="section-help">(복수 선택 가능)</p>
+            <div class="checkbox-chip-row">
+              <button
+                v-for="option in renewalPremiumReasonOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': renewalDetail.premiumChangeReasons.includes(option) }"
+                @click="toggleArraySelection(renewalDetail.premiumChangeReasons, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <div class="renewal-two-column">
+            <section class="form-card">
+              <h3>5. 고객 반응</h3>
+              <p class="section-help">(단일 선택)</p>
+              <div class="checkbox-chip-row">
+                <button
+                  v-for="option in renewalCustomerResponseOptions"
+                  :key="option"
+                  type="button"
+                  class="checkbox-chip"
+                  :class="{ 'is-active': renewalDetail.customerReaction === option }"
+                  @click="renewalDetail.customerReaction = toggleSingleSelection(renewalDetail.customerReaction, option)"
+                >
+                  {{ option }}
+                </button>
+              </div>
+            </section>
+
+            <section class="form-card">
+              <h3>6. 고객 관심사항</h3>
+              <p class="section-help">(복수 선택 가능)</p>
+              <div class="checkbox-chip-row">
+                <button
+                  v-for="option in renewalCustomerInterestOptions"
+                  :key="option"
+                  type="button"
+                  class="checkbox-chip"
+                  :class="{ 'is-active': renewalDetail.renewalInterests.includes(option) }"
+                  @click="toggleArraySelection(renewalDetail.renewalInterests, option)"
+                >
+                  {{ option }}
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <section class="form-card">
+            <h3>7. 상담 결과</h3>
+            <div class="claim-result-row">
+              <button
+                v-for="option in renewalResultOptions"
+                :key="option"
+                type="button"
+                class="claim-result-button"
+                :class="{ 'is-active': renewalDetail.result === option }"
+                @click="renewalDetail.result = toggleSingleSelection(renewalDetail.result, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>8. 후속 조치</h3>
+            <div class="checkbox-chip-row">
+              <button
+                v-for="option in renewalNextActionOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': renewalDetail.nextActions.includes(option) }"
+                @click="toggleArraySelection(renewalDetail.nextActions, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>9. 고객 결정 예정일</h3>
+            <label class="field renewal-decision-field">
+              <span>고객 결정 예정일 (선택 사항)</span>
+              <input v-model="renewalDetail.decisionExpectedDate" class="control" type="date" />
+            </label>
+          </section>
+        </template>
+
+        <template v-else-if="form.consultationType === 'TERMINATION'">
+          <section class="form-card">
+            <h3>2. 해지 검토 사유</h3>
+            <p class="section-help">(복수 선택 가능)</p>
+            <div class="checkbox-chip-row checkbox-chip-row--spaced">
+              <button
+                v-for="option in terminationReasonOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': cancelDetail.reviewReasons.includes(option) }"
+                @click="toggleArraySelection(cancelDetail.reviewReasons, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>3. 해지 사유 상세</h3>
+            <label class="field">
+              <span>해지 사유 상세 내용</span>
+              <textarea
+                v-model.trim="cancelDetail.reasonDetail"
+                class="control textarea textarea--large"
+                placeholder="예: 고객이 최근 소득 감소로 보험료 부담을 느끼고 있음. 실손 보험을 유지 의사가 있으나 보험료나 보장 내용을 재검토 중"
+              ></textarea>
+            </label>
+          </section>
+
+          <section class="form-card">
+            <h3>4. 유지 방안 검토</h3>
+            <p class="section-help">(복수 선택 가능)</p>
+            <div class="checkbox-chip-row checkbox-chip-row--spaced">
+              <button
+                v-for="option in terminationRetentionPlanOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': cancelDetail.retentionPlans.includes(option) }"
+                @click="toggleArraySelection(cancelDetail.retentionPlans, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <div class="renewal-two-column">
+            <section class="form-card">
+              <h3>5. 고객 의사</h3>
+              <p class="section-help">(단일 선택)</p>
+              <div class="checkbox-chip-row">
+                <button
+                  v-for="option in terminationCustomerIntentOptions"
+                  :key="option"
+                  type="button"
+                  class="checkbox-chip"
+                  :class="{ 'is-active': cancelDetail.customerIntent === option }"
+                  @click="cancelDetail.customerIntent = toggleSingleSelection(cancelDetail.customerIntent, option)"
+                >
+                  {{ option }}
+                </button>
+              </div>
+            </section>
+
+            <section class="form-card">
+              <h3>6. 유지 가능성</h3>
+              <div class="retention-possibility">
+                <div class="retention-possibility__choices">
+                  <button
+                    v-for="option in terminationPossibilityOptions"
+                    :key="option.value"
+                    type="button"
+                    class="checkbox-chip"
+                    :class="{ 'is-active': cancelDetail.retentionPossibility === option.value }"
+                    @click="cancelDetail.retentionPossibility = toggleSingleSelection(cancelDetail.retentionPossibility, option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+                <div class="retention-possibility__bar">
+                  <span :class="cancelDetail.retentionPossibility ? `is-${cancelDetail.retentionPossibility.toLowerCase()}` : ''"></span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section class="form-card">
+            <h3>7. 상담 결과</h3>
+            <div class="claim-result-row">
+              <button
+                v-for="option in terminationResultOptions"
+                :key="option"
+                type="button"
+                class="claim-result-button"
+                :class="{ 'is-active': cancelDetail.result === option }"
+                @click="cancelDetail.result = toggleSingleSelection(cancelDetail.result, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>8. 후속 조치</h3>
+            <p class="section-help">(복수 선택 가능)</p>
+            <div class="checkbox-chip-row">
+              <button
+                v-for="option in terminationNextActionOptions"
+                :key="option"
+                type="button"
+                class="checkbox-chip"
+                :class="{ 'is-active': cancelDetail.nextActions.includes(option) }"
+                @click="toggleArraySelection(cancelDetail.nextActions, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+        </template>
+
+        <section class="form-card">
+          <h3>{{ noteSectionNumber }}. 특이사항</h3>
+          <label class="field">
+            <span>특이사항 메모 (선택)</span>
+            <textarea
+              v-model.trim="form.specialNote"
+              class="control textarea textarea--large"
+              placeholder="특이사항을 입력해주세요."
+            ></textarea>
+          </label>
+          <label class="field">
+            <span>후속 상담 예정일 (선택)</span>
+            <input v-model="form.nextScheduledAt" class="control follow-up-date-control" type="date" />
+          </label>
+        </section>
+
+        <p v-if="message" class="message" :class="`message--${messageType}`">{{ message }}</p>
+
+        <div class="journal-actions">
+          <span>입력 내용은 저장 또는 임시저장 전까지 서버에 전송되지 않습니다.</span>
+          <div>
+            <button type="button" class="subtle-button" @click="goBack">취소</button>
+            <button
+              v-if="isEditMode"
+              type="button"
+              class="danger-button"
+              :disabled="isSubmitting"
+              @click="deleteCurrentDraft"
+            >
+              삭제
+            </button>
+            <button type="button" class="outline-button" :disabled="isSubmitting" @click="saveDraft">임시저장</button>
+            <button
+              type="button"
+              class="draft-count-button"
+              :disabled="isSubmitting"
+              @click="openDraftList"
+            >
+              저장된 임시저장 일지 {{ draftCount }}
+            </button>
+            <button type="submit" class="save-button" :disabled="isSubmitting">
+              {{ isSubmitting ? '저장 중' : '저장' }}
+            </button>
+          </div>
+        </div>
+      </main>
+    </form>
+  </section>
+</template>
+
+<script setup>
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import {
+  createConsultation,
+  deleteConsultationDraftFromApi,
+  getConsultationDraftFromApi,
+  getConsultationDraftsFromApi,
+  saveConsultationDraftToApi,
+} from '../../api/consultations'
+import { getCustomerContracts } from '../../api/contracts'
+import { getCustomerDetail, getCustomers } from '../../api/customers'
+import { getInsuranceProducts } from '../../api/insurance'
+import {
+  deleteConsultationDraft,
+  getConsultationDraft,
+  normalizeDraftResponse,
+  saveCompletedConsultation,
+  saveConsultationDraft,
+} from '../../utils/consultationDrafts'
+
+const route = useRoute()
+const router = useRouter()
+const IN_PROGRESS_DRAFT_KEY = 'consultation-create-in-progress'
+
+const typeOptions = [
+  { label: '신규', value: 'NEW_CONTRACT' },
+  { label: '청구', value: 'CLAIM' },
+  { label: '갱신', value: 'RENEWAL' },
+  { label: '해지', value: 'TERMINATION' },
+]
+
+const channelOptions = [
+  { label: '방문', value: 'VISIT' },
+  { label: '전화', value: 'PHONE' },
+  { label: '메시지', value: 'MESSAGE' },
+]
+
+const jobOptions = [
+  '학생',
+  '직장인',
+  '공무원·교직원',
+  '전문직',
+  '자영업자',
+  '프리랜서',
+  '군인',
+  '주부',
+  '무직',
+  '은퇴자',
+  '기타/직접입력',
+]
+
+const fallbackDiseaseOptions = [
+  { diseaseCode: 'HYPERTENSION', diseaseName: '고혈압' },
+  { diseaseCode: 'DIABETES', diseaseName: '당뇨병' },
+  { diseaseCode: 'HYPERLIPIDEMIA', diseaseName: '고지혈증' },
+  { diseaseCode: 'ANGINA', diseaseName: '협심증' },
+  { diseaseCode: 'MYOCARDIAL_INFARCTION', diseaseName: '심근경색' },
+  { diseaseCode: 'STROKE', diseaseName: '뇌졸중' },
+  { diseaseCode: 'CANCER', diseaseName: '암' },
+  { diseaseCode: 'THYROID_CANCER', diseaseName: '갑상선암' },
+  { diseaseCode: 'LIVER_DISEASE', diseaseName: '간질환' },
+  { diseaseCode: 'KIDNEY_DISEASE', diseaseName: '신장질환' },
+  { diseaseCode: 'DEPRESSION', diseaseName: '우울증' },
+  { diseaseCode: 'ANXIETY_DISORDER', diseaseName: '불안장애' },
+  { diseaseCode: 'DISC_DISEASE', diseaseName: '디스크' },
+  { diseaseCode: 'ASTHMA', diseaseName: '천식' },
+  { diseaseCode: 'THYROID_DISEASE', diseaseName: '갑상선질환' },
+]
+
+const emailDomainOptions = ['naver.com', 'gmail.com', 'daum.net', 'kakao.com', 'outlook.com']
+
+const POSTCODE_SCRIPT_URL = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+
+const addressOptions = [
+  { zipcode: '06236', road: '서울특별시 강남구 테헤란로 152', jibun: '역삼동 737' },
+  { zipcode: '04147', road: '서울특별시 마포구 양화로 45', jibun: '서교동 374-10' },
+  { zipcode: '07242', road: '서울특별시 영등포구 여의대로 24', jibun: '여의도동 23' },
+  { zipcode: '48058', road: '부산광역시 해운대구 센텀중앙로 97', jibun: '우동 1495' },
+  { zipcode: '35229', road: '대전광역시 서구 둔산로 100', jibun: '둔산동 1413' },
+]
+
+const coverageTypeOptions = [
+  { label: '암', value: 'CANCER' },
+  { label: '심장', value: 'HEART' },
+  { label: '생명', value: 'LIFE' },
+  { label: '사망', value: 'DEATH' },
+  { label: '장기요양', value: 'LONG_TERM_CARE' },
+]
+
+const coverageTypeCodeMap = {
+  암: 'CANCER',
+  심장: 'HEART',
+  생명: 'LIFE',
+  사망: 'DEATH',
+  사망보장: 'DEATH',
+  장기요양: 'LONG_TERM_CARE',
+  진단비: 'CANCER',
+}
+
+const insurancePriorityOptions = ['보험료 저렴한 곳', '보장 범위가 넓은 곳', '보험금 지급 신속성', '기타']
+
+const claimTypeOptions = ['실손의료비 보장', '입원 보장', '통원 보장', '수술 보장', '진단 보장', '상해 보장']
+
+const claimReviewOptions = ['보장 대상 여부', '면책/감액 기간 여부', '약관상 제외 가능성', '기존 청구 이력 여부']
+
+const claimResultOptions = ['청구 가능', '추가 확인 필요', '서류 보완 필요', '청구 어려움', '고객 재안내 예정']
+
+const claimNextActionOptions = ['고객 서류 준비', '설계사 서류 확인', '보험사 접수', '진행 상태 확인', '부지급 사유 확인', '추가 상담 예정']
+
+const hospitalizationStatusOptions = ['입원', '통원', '입원+통원', '해당 없음', '확인 필요']
+
+const surgeryStatusOptions = ['수술함', '수술 안함', '수술 예정', '해당 없음', '확인 필요']
+
+const renewalChangeTypeOptions = ['변경 없음', '보장 확대', '보장 축소', '특약 변경']
+
+const renewalPremiumReasonOptions = ['연령 증가', '위험률 변경', '손해율 변경', '보장 변경', '보험사 정책 변경', '기타']
+
+const renewalPremiumReasonCodeMap = {
+  '연령 증가': 'AGE_INCREASE',
+  '위험률 변경': 'RISK_CHANGE',
+  '손해율 변경': 'LOSS_RATIO_CHANGE',
+  '보장 변경': 'COVERAGE_CHANGE',
+  '보험사 정책 변경': 'OTHER',
+  '기타': 'OTHER',
+}
+
+const renewalCustomerResponseOptions = ['수용', '부담 호소', '비교 요청', '해지 고민', '재상담 요청', '무응답', '검토 후 연락']
+
+const renewalCustomerInterestOptions = ['보험료', '보장 범위', '만기', '환급금', '대체상품']
+
+const renewalInterestCodeMap = {
+  '보험료': 'PREMIUM',
+  '보장 범위': 'COVERAGE',
+  '만기': 'MATURITY',
+  '환급금': 'REFUND',
+  '대체상품': 'ALTERNATIVE_PRODUCT',
+}
+
+const renewalResultOptions = ['갱신 유지', '조건 검토 중', '해지 검토', '재상담 예정']
+
+const renewalNextActionOptions = ['갱신 확정 안내', '갱신 서류 전달', '보험료 재산출', '대체상품 제안', '재상담 예약', '만기 재안내']
+
+const terminationReasonOptions = [
+  '보험료 부담',
+  '갱신 후 보험료 인상 부담',
+  '경제적 사정',
+  '보장 불만족',
+  '중복 가입',
+  '설계사 서비스 불만',
+  '관리 부족 불만',
+  '대체 상품 검토 중',
+  '기타',
+]
+
+const terminationRetentionPlanOptions = [
+  '보험료 감액 설계',
+  '특약 조정',
+  '보장 리모델링',
+  '납입 유예 검토',
+  '대체 상품 제안',
+  '유지 권유',
+  '기타',
+]
+
+const terminationCustomerIntentOptions = [
+  '즉시 해지 희망',
+  '해지 검토 중',
+  '유지 검토 중',
+  '가족과 상의 예정',
+  '추후 재상담 희망',
+]
+
+const terminationPossibilityOptions = [
+  { label: '낮음', value: 'LOW' },
+  { label: '보통', value: 'MEDIUM' },
+  { label: '높음', value: 'HIGH' },
+]
+
+const cancelRetentionPossibilityCodeMap = {
+  '높음': 'HIGH',
+  '중간': 'MEDIUM',
+  '낮음': 'LOW',
+}
+
+const terminationResultOptions = ['유지', '해지 진행', '해지 보류', '재상담 예정']
+
+const terminationNextActionOptions = ['재상담 예약', '대체상품 제안', '해지 서류 안내', '가족 동반 상담', '없음']
+
+const cancelBooleanFields = [
+  { key: 'premiumBurden', label: '보험료 부담' },
+  { key: 'renewalPremiumBurden', label: '갱신 보험료 부담' },
+  { key: 'paymentDifficulty', label: '납입 유지 어려움' },
+  { key: 'coverageDissatisfaction', label: '보장 불만' },
+  { key: 'duplicateInsurance', label: '중복 가입' },
+  { key: 'productRemodelingReview', label: '상품 리모델링 검토' },
+  { key: 'comparingOtherCompany', label: '타사 상품 비교' },
+  { key: 'movingToOtherCompany', label: '타사 이동 예정' },
+  { key: 'plannerContactDissatisfaction', label: '설계사 연락 불만' },
+  { key: 'managementDissatisfaction', label: '관리 부족 불만' },
+]
+
+const isSubmitting = ref(false)
+const message = ref('')
+const messageType = ref('error')
+const draftCount = ref(0)
+const customerMode = ref('EXISTING')
+const isHydratingDraft = ref(false)
+const customerKeyword = ref('')
+const customers = ref([])
+const customerSearchTouched = ref(false)
+const selectedCustomer = ref(null)
+const contracts = ref([])
+const proposedProductKeyword = ref('')
+const proposedProductOptions = ref([])
+const selectedProposedProducts = ref([])
+const showProductOptions = ref(false)
+const isProductsLoading = ref(false)
+const selectedDisease = ref('')
+const addressSearchKeyword = ref('')
+const showAddressResults = ref(false)
+const isAddressSearchLoading = ref(false)
+const addressSearchMessage = ref('')
+const emailLocalPart = ref('')
+const emailDomainSelected = ref(emailDomainOptions[0])
+const emailDomainCustom = ref('')
+const diseaseOptions = ref([...fallbackDiseaseOptions])
+
+const form = reactive({
+  consultationType: 'NEW_CONTRACT',
+  consultationChannel: 'VISIT',
+  consultedAt: toLocalInputValue(new Date()),
+  consultationContent: '',
+  specialNote: '',
+  nextScheduledAt: '',
+  contractId: '',
+})
+
+const customerInfo = reactive({
+  customerName: '',
+  customerGender: '',
+  customerBirthDate: '',
+  customerPhone: '',
+  customerEmail: '',
+  customerZipcode: '',
+  customerAddressRoad: '',
+  customerAddressDetail: '',
+  customerJob: '',
+  customerJobCustom: '',
+  customerCompanyName: '',
+  customerAnnualIncome: '',
+  customerAssetSize: '',
+  customerDebtStatus: '',
+  customerIsSmoker: false,
+  customerIsDrinker: false,
+  customerMaritalStatus: '',
+  customerDependentsCount: '',
+  underlyingDiseases: [],
+})
+
+const newDetail = reactive({
+  monthlyIncome: '',
+  hasExistingInsurance: false,
+  monthlyInsurancePremium: '',
+  existingInsuranceNote: '',
+  insurancePriority: '',
+  coverageTypes: [],
+})
+
+const claimDetail = reactive({
+  claimType: '',
+  claimReasonDetail: '',
+  incidentDate: '',
+  hospitalName: '',
+  diagnosisOrTreatment: '',
+  hospitalizationStatus: '',
+  surgeryStatus: '',
+  claimAmount: '',
+  reviewItems: [],
+  result: '',
+  nextActions: [],
+})
+
+const renewalDetail = reactive({
+  desiredRenewalDate: '',
+  expectedPremium: '',
+  renewalScheduledDate: '',
+  currentPremium: '',
+  renewalPremium: '',
+  changeType: '변경 없음',
+  changeDetail: '',
+  premiumChangeReasons: [],
+  customerReaction: '',
+  renewalInterests: [],
+  result: '',
+  nextActions: [],
+  decisionExpectedDate: '',
+})
+
+const cancelDetail = reactive({
+  premiumBurden: false,
+  renewalPremiumBurden: false,
+  paymentDifficulty: false,
+  coverageDissatisfaction: false,
+  duplicateInsurance: false,
+  productRemodelingReview: false,
+  comparingOtherCompany: false,
+  movingToOtherCompany: false,
+  plannerContactDissatisfaction: false,
+  managementDissatisfaction: false,
+  retentionPossibility: '',
+  reviewReasons: [],
+  reasonDetail: '',
+  retentionPlans: [],
+  customerIntent: '',
+  result: '',
+  nextActions: [],
+})
+
+const isEditMode = computed(() => route.name === 'consultation-draft-edit')
+const isNewContract = computed(() => form.consultationType === 'NEW_CONTRACT')
+const isProspectNewContract = computed(() => isNewContract.value && customerMode.value === 'PROSPECT')
+const needsExistingCustomer = computed(() => !isNewContract.value || customerMode.value === 'EXISTING')
+const needsContract = computed(() => ['CLAIM', 'RENEWAL', 'TERMINATION'].includes(form.consultationType))
+const noteSectionNumber = computed(() => {
+  if (form.consultationType === 'NEW_CONTRACT') return 4
+  if (form.consultationType === 'CLAIM') return 7
+  if (form.consultationType === 'RENEWAL') return 10
+  if (form.consultationType === 'TERMINATION') return 9
+  return needsContract.value ? 3 : 2
+})
+const typeTitle = computed(() => ({
+  NEW_CONTRACT: '신규 가입 상담',
+  CLAIM: '보험금 청구 상담',
+  RENEWAL: '갱신 상담',
+  TERMINATION: '해지 상담',
+})[form.consultationType])
+const filteredAddressOptions = computed(() => {
+  const keyword = addressSearchKeyword.value.trim().toLowerCase()
+  if (!keyword) return addressOptions
+  return addressOptions.filter((item) => (
+    item.road.toLowerCase().includes(keyword) ||
+    item.jibun.toLowerCase().includes(keyword) ||
+    item.zipcode.includes(keyword)
+  ))
+})
+const customerAddressText = computed(() => {
+  return [
+    customerInfo.customerAddressRoad,
+    customerInfo.customerAddressDetail,
+  ].filter(Boolean).join(' ') || '-'
+})
+const customerJobText = computed(() => {
+  return [
+    customerInfo.customerCompanyName,
+    customerInfo.customerJobCustom || customerInfo.customerJob,
+  ].filter(Boolean).join(' / ') || '-'
+})
+const filteredProposedProducts = computed(() => {
+  const keyword = proposedProductKeyword.value.trim().toLowerCase()
+  if (!keyword) return proposedProductOptions.value
+
+  return proposedProductOptions.value.filter((product) => {
+    const searchable = [
+      product.insuranceProductName,
+      product.productName,
+      product.name,
+      product.insuranceCompanyName,
+      product.companyName,
+      product.insurer,
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    return searchable.includes(keyword)
+  })
+})
+const renewalPremiumChangeRate = computed(() => {
+  const currentPremium = Number(String(renewalDetail.currentPremium || '').replace(/[^\d]/g, ''))
+  const renewalPremium = Number(String(renewalDetail.renewalPremium || '').replace(/[^\d]/g, ''))
+  if (!currentPremium || !renewalPremium) return ''
+
+  const rate = ((renewalPremium - currentPremium) / currentPremium) * 100
+  const prefix = rate > 0 ? '+' : ''
+  return `${prefix}${rate.toFixed(1)}%`
+})
+
+watch(
+  () => form.consultationType,
+  () => {
+    if (!isNewContract.value) customerMode.value = 'EXISTING'
+    form.contractId = ''
+    contracts.value = []
+  },
+)
+
+watch(customerMode, async (nextMode, previousMode) => {
+  if (isHydratingDraft.value) return
+  if (nextMode === previousMode) return
+
+  customers.value = []
+  customerSearchTouched.value = false
+  selectedCustomer.value = null
+  form.contractId = ''
+  contracts.value = []
+  resetCustomerInfo()
+
+  if (nextMode === 'EXISTING') {
+    await loadCustomers()
+  }
+})
+
+watch(
+  () => newDetail.hasExistingInsurance,
+  (hasExistingInsurance) => {
+    if (!hasExistingInsurance) {
+      newDetail.monthlyInsurancePremium = ''
+      newDetail.existingInsuranceNote = ''
+    }
+  },
+)
+
+watch(
+  () => selectedCustomer.value?.customerId,
+  async (customerId) => {
+    form.contractId = ''
+    contracts.value = []
+    if (customerId && needsContract.value) await loadContracts(customerId)
+  },
+)
+
+watch(needsContract, async (value) => {
+  form.contractId = ''
+  contracts.value = []
+  if (value && selectedCustomer.value?.customerId) await loadContracts(selectedCustomer.value.customerId)
+})
+
+watch(
+  () => [emailLocalPart.value, emailDomainSelected.value, emailDomainCustom.value],
+  () => {
+    const domain = emailDomainSelected.value === 'custom' ? emailDomainCustom.value.trim() : emailDomainSelected.value
+    customerInfo.customerEmail = emailLocalPart.value && domain ? `${emailLocalPart.value.trim()}@${domain}` : ''
+  },
+)
+
+onMounted(async () => {
+  if (isEditMode.value) {
+    await hydrateDraft()
+  } else {
+    await restoreInProgressDraft()
+  }
+  await loadDraftCount()
+  if (needsExistingCustomer.value && !customerSearchTouched.value) {
+    await loadCustomers()
+  }
+})
+
+function selectType(type) {
+  form.consultationType = type
+}
+
+async function selectCustomerMode(mode) {
+  if (customerMode.value === mode) {
+    if (mode === 'EXISTING' && !customerSearchTouched.value) {
+      await loadCustomers()
+    }
+    return
+  }
+
+  customerMode.value = mode
+}
+
+function openDraftList() {
+  saveInProgressDraft()
+  router.push({ name: 'consultation-drafts' })
+}
+
+async function loadCustomers() {
+  customerSearchTouched.value = true
+
+  try {
+    customers.value = await loadAllCustomers()
+  } catch {
+    customers.value = []
+  }
+}
+
+async function loadAllCustomers() {
+  const baseParams = {
+    size: 100,
+    ...(customerKeyword.value ? { customerName: customerKeyword.value } : {}),
+  }
+  const allCustomers = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const response = await getCustomers({ ...baseParams, page })
+    const pageResult = response?.result?.customers ?? response?.result
+    const rows = extractCustomerRows(pageResult)
+    allCustomers.push(...rows)
+
+    totalPages = Number(pageResult?.totalPages ?? pageResult?.totalPage ?? totalPages)
+    if (!rows.length || page >= 50) break
+    page += 1
+  } while (page <= totalPages)
+
+  return dedupeCustomers(allCustomers)
+}
+
+function extractCustomerRows(pageResult) {
+  if (Array.isArray(pageResult?.content)) return pageResult.content
+  if (Array.isArray(pageResult?.customers)) return pageResult.customers
+  if (Array.isArray(pageResult)) return pageResult
+  return []
+}
+
+function dedupeCustomers(rows) {
+  const customerMap = new Map()
+  rows.forEach((customer) => {
+    const key = customer.customerId || customer.id || `${customer.customerName}-${customer.customerPhone || customer.phoneNumber || ''}`
+    if (key && !customerMap.has(key)) customerMap.set(key, customer)
+  })
+  return [...customerMap.values()]
+}
+
+async function selectCustomer(customer) {
+  const normalizedCustomer = {
+    ...customer,
+    customerId: customer.customerId,
+    customerName: customer.customerName,
+    customerPhone: customer.customerPhone,
+    phoneNumber: customer.phoneNumber,
+  }
+
+  selectedCustomer.value = normalizedCustomer
+  applyCustomerToInfo(normalizedCustomer)
+
+  try {
+    const response = await getCustomerDetail(customer.customerId)
+    const detail = response?.result?.customer ?? response?.result ?? response
+    selectedCustomer.value = {
+      ...normalizedCustomer,
+      ...detail,
+      customerId: detail.customerId ?? normalizedCustomer.customerId,
+    }
+    applyCustomerToInfo(selectedCustomer.value)
+  } catch {
+    // 검색 결과에 포함된 기본 정보만 사용합니다.
+  }
+}
+
+async function loadContracts(customerId) {
+  try {
+    const response = await getCustomerContracts(customerId)
+    contracts.value = Array.isArray(response?.result) ? response.result : []
+  } catch {
+    contracts.value = []
+  }
+}
+
+async function hydrateDraft() {
+  const draft = await loadDraft(route.params.draftId)
+  if (!draft) {
+    message.value = '임시저장 상담일지를 찾을 수 없습니다.'
+    return
+  }
+
+  await applyDraftToForm(draft)
+}
+
+async function restoreInProgressDraft() {
+  const rawDraft = window.sessionStorage.getItem(IN_PROGRESS_DRAFT_KEY)
+  if (!rawDraft) return
+
+  try {
+    await applyDraftToForm(JSON.parse(rawDraft))
+    window.sessionStorage.removeItem(IN_PROGRESS_DRAFT_KEY)
+  } catch {
+    window.sessionStorage.removeItem(IN_PROGRESS_DRAFT_KEY)
+  }
+}
+
+function saveInProgressDraft() {
+  window.sessionStorage.setItem(IN_PROGRESS_DRAFT_KEY, JSON.stringify(buildDraftPayload()))
+}
+
+async function applyDraftToForm(draft) {
+  isHydratingDraft.value = true
+
+  try {
+    Object.assign(form, {
+      consultationType: draft.consultationType || 'NEW_CONTRACT',
+      consultationChannel: draft.consultationChannel || 'VISIT',
+      consultedAt: draft.consultedAt || toLocalInputValue(new Date()),
+      consultationContent: draft.consultationContent || draft.specialNote || '',
+      specialNote: draft.specialNote || draft.consultationContent || '',
+      nextScheduledAt: draft.nextScheduledAt || '',
+      contractId: draft.contractId || '',
+    })
+
+    customerMode.value = getDraftCustomerMode(draft)
+    selectedCustomer.value = draft.selectedCustomer || null
+
+    if (draft.customerInfo) {
+      Object.assign(customerInfo, draft.customerInfo)
+      customerInfo.customerGender = normalizeGender(customerInfo.customerGender)
+      customerInfo.underlyingDiseases = normalizeUnderlyingDiseaseCodes(draft.customerInfo.underlyingDiseases)
+      hydrateEmailFields(draft.customerInfo.customerEmail)
+    }
+
+    Object.assign(newDetail, draft.newDetail || {})
+    if (!Array.isArray(newDetail.coverageTypes)) {
+      newDetail.coverageTypes = splitCommaList(draft.newDetail?.coverageTypesText)
+    }
+    newDetail.coverageTypes = normalizeArrayField(newDetail.coverageTypes).map(getCoverageTypeCode)
+    selectedProposedProducts.value = Array.isArray(draft.selectedProposedProducts) ? draft.selectedProposedProducts : []
+    Object.assign(claimDetail, draft.claimDetail || {})
+    if (!claimDetail.claimReasonDetail && draft.claimDetail?.claimReason) {
+      claimDetail.claimReasonDetail = draft.claimDetail.claimReason
+    }
+    if (!Array.isArray(claimDetail.reviewItems)) claimDetail.reviewItems = []
+    if (!Array.isArray(claimDetail.nextActions)) claimDetail.nextActions = []
+    Object.assign(renewalDetail, draft.renewalDetail || {})
+    renewalDetail.premiumChangeReasons = normalizeArrayField(renewalDetail.premiumChangeReasons)
+    renewalDetail.renewalInterests = normalizeArrayField(
+      renewalDetail.renewalInterests ??
+      draft.renewalDetail?.interests ??
+      draft.renewalDetail?.customerInterests,
+    )
+    renewalDetail.nextActions = normalizeArrayField(renewalDetail.nextActions)
+    Object.assign(cancelDetail, draft.cancelDetail || {})
+    if (!Array.isArray(cancelDetail.reviewReasons)) cancelDetail.reviewReasons = []
+    if (!Array.isArray(cancelDetail.retentionPlans)) cancelDetail.retentionPlans = []
+    if (!Array.isArray(cancelDetail.nextActions)) cancelDetail.nextActions = []
+  } finally {
+    await nextTick()
+    isHydratingDraft.value = false
+  }
+}
+
+async function loadDraft(draftId) {
+  try {
+    const response = await getConsultationDraftFromApi(draftId)
+    const draft = normalizeDraftResponse(response?.result ?? response)
+    if (draft) return draft
+  } catch {
+    // 서버 임시저장 조회 실패 시 로컬 임시저장을 사용합니다.
+  }
+
+  return getConsultationDraft(draftId)
+}
+
+function getDraftCustomerMode(draft) {
+  if (draft.customerMode) return draft.customerMode
+  if (draft.consultationType === 'NEW_CONTRACT' && draft.customerInfo && !draft.selectedCustomer) return 'PROSPECT'
+  return 'EXISTING'
+}
+
+function hydrateEmailFields(emailValue) {
+  const email = String(emailValue || '')
+  if (!email.includes('@')) return
+  const [localPart, domain] = email.split('@')
+  emailLocalPart.value = localPart
+  if (emailDomainOptions.includes(domain)) {
+    emailDomainSelected.value = domain
+    emailDomainCustom.value = ''
+  } else {
+    emailDomainSelected.value = 'custom'
+    emailDomainCustom.value = domain
+  }
+}
+
+function buildDraftPayload() {
+  const specialNote = form.specialNote || ''
+
+  return {
+    consultationType: form.consultationType,
+    consultationChannel: form.consultationChannel,
+    consultedAt: form.consultedAt,
+    consultationContent: specialNote,
+    specialNote,
+    nextScheduledAt: form.nextScheduledAt,
+    contractId: form.contractId,
+    customerMode: customerMode.value,
+    selectedCustomer: selectedCustomer.value,
+    customerInfo: { ...customerInfo },
+    newDetail: { ...newDetail },
+    selectedProposedProducts: selectedProposedProducts.value,
+    claimDetail: buildClaimDraftDetail(),
+    renewalDetail: buildRenewalDraftDetail(),
+    cancelDetail: { ...cancelDetail },
+    customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
+  }
+}
+
+function buildRenewalDraftDetail() {
+  return {
+    renewalReason: getRenewalReason(),
+    desiredRenewalDate: renewalDetail.desiredRenewalDate,
+    expectedPremium: renewalDetail.expectedPremium,
+    renewalScheduledDate: renewalDetail.renewalScheduledDate,
+    currentPremium: renewalDetail.currentPremium,
+    renewalPremium: renewalDetail.renewalPremium,
+    changeType: renewalDetail.changeType,
+    changeDetail: renewalDetail.changeDetail,
+    premiumChangeReasons: renewalDetail.premiumChangeReasons,
+    customerReaction: renewalDetail.customerReaction,
+    renewalInterests: renewalDetail.renewalInterests,
+    result: renewalDetail.result,
+    nextActions: renewalDetail.nextActions,
+    decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate),
+  }
+}
+
+function buildClaimDraftDetail() {
+  return {
+    claimType: claimDetail.claimType,
+    claimReasonDetail: claimDetail.claimReasonDetail,
+    incidentDate: claimDetail.incidentDate,
+    hospitalName: claimDetail.hospitalName,
+    diagnosisOrTreatment: claimDetail.diagnosisOrTreatment,
+    hospitalizationStatus: claimDetail.hospitalizationStatus,
+    surgeryStatus: claimDetail.surgeryStatus,
+    claimAmount: claimDetail.claimAmount,
+    reviewItems: claimDetail.reviewItems,
+    result: claimDetail.result,
+    nextActions: claimDetail.nextActions,
+  }
+}
+
+async function saveDraft() {
+  const draftPayload = buildDraftPayload()
+
+  try {
+    const apiPayload = buildDraftApiPayload(draftPayload)
+    const response = await saveConsultationDraftToApi(apiPayload)
+    const savedDraft = normalizeDraftResponse({
+      ...draftPayload,
+      ...(response?.result ?? response),
+      draftData: (response?.result ?? response)?.draftData ?? draftPayload,
+    })
+    if (savedDraft) {
+      saveConsultationDraft(savedDraft, savedDraft.id)
+      await loadDraftCount()
+      messageType.value = 'success'
+      message.value = '상담일지를 임시저장했습니다.'
+      if (!isEditMode.value || route.params.draftId !== savedDraft.id) {
+        router.replace({ name: 'consultation-draft-edit', params: { draftId: savedDraft.id } })
+      }
+      return
+    }
+    throw new Error('임시저장 응답에 draftId가 없습니다.')
+  } catch (error) {
+    console.error('임시저장 실패', {
+      payload: buildDraftApiPayload(draftPayload),
+      response: error.response?.data,
+      status: error.response?.status,
+    })
+    messageType.value = 'error'
+    message.value = getApiErrorMessage(error) || '임시저장을 DB에 저장하지 못했습니다.'
+  }
+}
+
+async function loadDraftCount() {
+  try {
+    const response = await getConsultationDraftsFromApi()
+    const rawDrafts = Array.isArray(response?.result)
+      ? response.result
+      : Array.isArray(response)
+        ? response
+        : []
+    draftCount.value = rawDrafts.length
+  } catch {
+    draftCount.value = 0
+  }
+}
+
+function buildDraftApiPayload(draftPayload) {
+  const payload = {
+    customerId: draftPayload.selectedCustomer?.customerId || draftPayload.customerId || null,
+    contractId: draftPayload.contractId || null,
+    consultationType: draftPayload.consultationType,
+    consultationChannel: draftPayload.consultationChannel,
+    consultedAt: toApiDateTime(draftPayload.consultedAt),
+    specialNote: draftPayload.specialNote || null,
+    nextScheduledAt: draftPayload.nextScheduledAt ? toApiDateTime(draftPayload.nextScheduledAt) : null,
+    draftData: draftPayload,
+  }
+
+  return removeEmptyFields(payload)
+}
+
+async function deleteCurrentDraft() {
+  const shouldDelete = window.confirm('임시저장 상담일지를 삭제할까요?')
+  if (!shouldDelete) return
+
+  try {
+    await deleteConsultationDraftFromApi(route.params.draftId)
+  } catch {
+    // 로컬 삭제는 계속 진행합니다.
+  }
+
+  deleteConsultationDraft(route.params.draftId)
+  router.push({ name: 'consultation-drafts' })
+}
+
+async function deleteDraftAfterSubmit(draftId) {
+  if (!draftId) return true
+
+  try {
+    await deleteConsultationDraftFromApi(draftId)
+  } catch (error) {
+    if (error.response?.status !== 404) {
+      console.error('최종 저장 후 임시저장 삭제 실패', {
+        draftId,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
+      return false
+    }
+  }
+
+  deleteConsultationDraft(draftId)
+  await loadDraftCount()
+  return true
+}
+
+async function submitConsultation() {
+  const validationMessage = validateForm()
+  if (validationMessage) {
+    messageType.value = 'error'
+    message.value = validationMessage
+    return
+  }
+
+  isSubmitting.value = true
+  const payload = buildSubmitPayload()
+  const draftIdToDelete = isEditMode.value ? route.params.draftId : null
+
+  try {
+    const response = await createConsultation(payload)
+    saveCompletedConsultation(buildCompletedConsultationRecord(payload, response))
+    const isDraftDeleted = await deleteDraftAfterSubmit(draftIdToDelete)
+    if (!isDraftDeleted) {
+      messageType.value = 'error'
+      message.value = '상담일지는 저장됐지만 임시저장 데이터 삭제에 실패했습니다. 임시저장 목록에서 다시 삭제해주세요.'
+      return
+    }
+    messageType.value = 'success'
+    message.value = '상담일지를 저장했습니다.'
+    window.setTimeout(() => router.push({ name: 'fp-consultations' }), 500)
+  } catch (error) {
+    console.error('상담일지 저장 실패', {
+      payload,
+      response: error.response?.data,
+      status: error.response?.status,
+    })
+    messageType.value = 'error'
+    message.value = getApiErrorMessage(error)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+function buildCompletedConsultationRecord(payload, response) {
+  const consultationId = response?.result?.consultationId ?? response?.consultationId
+  return {
+    consultationId,
+    customerName: selectedCustomer.value?.customerName || customerInfo.customerName,
+    customerId: payload.customerId,
+    contractId: payload.contractId,
+    consultationType: payload.consultationType,
+    consultationChannel: payload.consultationChannel,
+    consultedAt: payload.consultedAt,
+    nextScheduledAt: payload.nextScheduledAt,
+    specialNote: payload.specialNote,
+    consultationContent: payload.specialNote,
+    newDetail: form.consultationType === 'NEW_CONTRACT' ? { ...newDetail } : undefined,
+    claimDetail: form.consultationType === 'CLAIM' ? buildClaimDraftDetail() : undefined,
+    renewalDetail: form.consultationType === 'RENEWAL' ? buildRenewalDraftDetail() : undefined,
+    cancelDetail: form.consultationType === 'TERMINATION' ? { ...cancelDetail } : undefined,
+    fpName: '',
+  }
+}
+
+function getApiErrorMessage(error) {
+  const data = error.response?.data
+  const details = data?.result?.errors ?? data?.errors ?? data?.fieldErrors
+  const detailMessage = Array.isArray(details)
+    ? details.map((item) => item.defaultMessage || item.message || `${item.field}: ${item.reason || item.rejectedValue || ''}`).filter(Boolean).join(', ')
+    : ''
+
+  if (detailMessage) {
+    return data?.message ? `${data.message}: ${detailMessage}` : detailMessage
+  }
+
+  return [
+    data?.message,
+    error.message,
+    '상담일지 저장에 실패했습니다.',
+  ].filter(Boolean)[0]
+}
+
+function removeEmptyFields(source) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => {
+      if (value === null || value === undefined) return false
+      if (typeof value === 'string' && value.trim() === '') return false
+      if (Array.isArray(value) && value.length === 0) return false
+      return true
+    }),
+  )
+}
+
+function buildSubmitPayload() {
+  const specialNote = form.specialNote || ''
+  const payload = {
+    consultationType: form.consultationType,
+    consultationChannel: form.consultationChannel,
+    consultedAt: toApiDateTime(form.consultedAt),
+    specialNote,
+  }
+
+  if (form.nextScheduledAt) {
+    payload.nextScheduledAt = toApiDateTime(form.nextScheduledAt)
+  }
+
+  if (needsContract.value && form.contractId) {
+    payload.contractId = form.contractId
+  }
+
+  if (isProspectNewContract.value) {
+    payload.customerInfo = buildCustomerInfoPayload()
+  } else {
+    payload.customerId = selectedCustomer.value?.customerId
+  }
+
+  if (form.consultationType === 'NEW_CONTRACT') {
+    payload.newDetail = buildNewContractDetailPayload()
+  }
+
+  if (form.consultationType === 'CLAIM') {
+    payload.claimDetail = {
+      claimType: claimDetail.claimType || null,
+      claimReasonDetail: claimDetail.claimReasonDetail || null,
+      incidentDate: claimDetail.incidentDate || null,
+      hospitalName: claimDetail.hospitalName || null,
+      diagnosisOrTreatment: claimDetail.diagnosisOrTreatment || null,
+      hospitalizationStatus: claimDetail.hospitalizationStatus || null,
+      surgeryStatus: claimDetail.surgeryStatus || null,
+      claimAmount: parseMoneyOrNull(claimDetail.claimAmount),
+      reviewItems: claimDetail.reviewItems,
+      result: claimDetail.result || null,
+      nextActions: claimDetail.nextActions,
+    }
+  }
+
+  if (form.consultationType === 'RENEWAL') {
+    payload.renewalDetail = {
+      renewalReason: getRenewalReason(),
+      renewalScheduledDate: toDateOnly(renewalDetail.renewalScheduledDate),
+      currentPremium: parseMoneyOrNull(renewalDetail.currentPremium),
+      renewalPremium: parseMoneyOrNull(renewalDetail.renewalPremium),
+      premiumChangeRate: calculatePremiumChangeRate(),
+      coverageChangeType: renewalDetail.changeType || null,
+      coverageChangeDetail: renewalDetail.changeDetail || null,
+      premiumChangeReasonTypes: renewalDetail.premiumChangeReasons.map(
+        reason => renewalPremiumReasonCodeMap[reason] || reason
+      ),
+      customerReaction: renewalDetail.customerReaction || null,
+      interestTypes: renewalDetail.renewalInterests.map(
+        interest => renewalInterestCodeMap[interest] || interest
+      ),
+      consultationResult: renewalDetail.result || null,
+      nextActions: joinArrayField(renewalDetail.nextActions),
+      decisionExpectedDate: toDateOnly(renewalDetail.decisionExpectedDate)
+    }
+  }
+
+  if (form.consultationType === 'TERMINATION') {
+    payload.cancelDetail = {
+    ...cancelDetail,
+    reviewReasons: cancelDetail.reviewReasons,
+    reasonDetail: cancelDetail.reasonDetail || null,
+    retentionPlans: cancelDetail.retentionPlans,
+    customerIntent: cancelDetail.customerIntent || null,
+    result: cancelDetail.result || null,
+    retentionPossibility:
+      cancelRetentionPossibilityCodeMap[cancelDetail.retentionPossibility]
+      || cancelDetail.retentionPossibility,
+    nextActions: cancelDetail.nextActions,
+  }
+  }
+
+  return payload
+}
+
+function buildNewContractDetailPayload() {
+  const payload = {
+      monthlyIncome: parseMoneyOrNull(newDetail.monthlyIncome),
+      hasExistingInsurance: Boolean(newDetail.hasExistingInsurance),
+      monthlyInsurancePremium: parseMoneyOrNull(newDetail.monthlyInsurancePremium) ?? 0,
+      existingInsuranceNote: newDetail.existingInsuranceNote || null,
+      insurancePriority: newDetail.insurancePriority || null,
+      coverageTypes: newDetail.coverageTypes.map(getCoverageTypeCode),
+      proposedProductCodes: selectedProposedProducts.value.map(getProductCode).filter(Boolean),
+    }
+
+  return removeEmptyFields(payload)
+}
+
+function buildCustomerInfoPayload() {
+  return removeEmptyFields({
+    customerName: customerInfo.customerName,
+    customerGender: normalizeGender(customerInfo.customerGender) || null,
+    customerBirthDate: customerInfo.customerBirthDate || null,
+    customerPhone: customerInfo.customerPhone || null,
+    customerEmail: customerInfo.customerEmail || null,
+    customerZipcode: customerInfo.customerZipcode || null,
+    customerAddressRoad: customerInfo.customerAddressRoad || null,
+    customerAddressDetail: customerInfo.customerAddressDetail || null,
+    customerJob: customerInfo.customerJob === '기타/직접입력'
+      ? (customerInfo.customerJobCustom || null)
+      : (customerInfo.customerJob || null),
+    customerCompanyName: customerInfo.customerCompanyName || '미입력',
+    customerAnnualIncome: parseMoneyOrNull(customerInfo.customerAnnualIncome),
+    customerAssetSize: parseMoneyOrNull(customerInfo.customerAssetSize) ?? 0,
+    customerDebtStatus: customerInfo.customerDebtStatus || '없음',
+    customerIsSmoker: Boolean(customerInfo.customerIsSmoker),
+    customerIsDrinker: Boolean(customerInfo.customerIsDrinker),
+    customerMaritalStatus: customerInfo.customerMaritalStatus || null,
+    customerDependentsCount: parseIntegerOrNull(customerInfo.customerDependentsCount) ?? 0,
+  })
+}
+
+function validateForm() {
+  if (!form.consultedAt) return '상담 일시를 입력해주세요.'
+  if (needsExistingCustomer.value && !selectedCustomer.value) return '고객을 선택해주세요.'
+  if (!needsExistingCustomer.value) {
+    const customerValidationMessage = validateNewCustomerInfo()
+    if (customerValidationMessage) return customerValidationMessage
+  }
+  if (needsContract.value && !form.contractId) return '계약을 선택해주세요.'
+  if (form.consultationType === 'NEW_CONTRACT' && newDetail.hasExistingInsurance) {
+    if (!newDetail.monthlyInsurancePremium) return '월 보험료 지출액을 입력해주세요.'
+    if (!newDetail.existingInsuranceNote) return '기존 보험 정보를 입력해주세요.'
+  }
+  if (form.consultationType === 'CLAIM') {
+    if (!claimDetail.claimType) return '청구 유형을 선택해주세요.'
+    if (!claimDetail.claimReasonDetail) return '청구 사유를 입력해주세요.'
+    if (!claimDetail.incidentDate) return '발생일 또는 진단일을 입력해주세요.'
+    if (!claimDetail.result) return '상담 결과를 선택해주세요.'
+  }
+  if (form.consultationType === 'RENEWAL') {
+    if (!renewalDetail.renewalScheduledDate) return '갱신 예정일을 선택해주세요.'
+    if (!renewalDetail.currentPremium) return '현재 보험료를 입력해주세요.'
+    if (!renewalDetail.renewalPremium) return '갱신 보험료를 입력해주세요.'
+    if (!renewalDetail.changeType) return '보장 변경 유형을 선택해주세요.'
+    if (!renewalDetail.result) return '상담 결과를 선택해주세요.'
+  }
+  if (form.consultationType === 'TERMINATION') {
+    if (!cancelDetail.reviewReasons.length) return '해지 검토 사유를 선택해주세요.'
+    if (!cancelDetail.reasonDetail) return '해지 사유 상세를 입력해주세요.'
+    if (!cancelDetail.customerIntent) return '고객 의사를 선택해주세요.'
+    if (!cancelDetail.retentionPossibility) return '유지 가능성을 선택해주세요.'
+    if (!cancelDetail.result) return '상담 결과를 선택해주세요.'
+  }
+  return ''
+}
+
+function validateNewCustomerInfo() {
+  const requiredFields = [
+    { value: customerInfo.customerName, label: '고객명' },
+    { value: customerInfo.customerGender, label: '성별' },
+    { value: customerInfo.customerBirthDate, label: '생년월일' },
+    { value: customerInfo.customerPhone, label: '연락처' },
+    { value: customerInfo.customerEmail, label: '이메일' },
+    { value: customerInfo.customerZipcode, label: '우편번호' },
+    { value: customerInfo.customerAddressRoad, label: '도로명주소' },
+    { value: customerInfo.customerAddressDetail, label: '상세주소' },
+    { value: customerInfo.customerJob, label: '직업' },
+    { value: customerInfo.customerAnnualIncome, label: '연 소득' },
+    { value: customerInfo.customerMaritalStatus, label: '혼인 상태' },
+  ]
+
+  if (customerInfo.customerJob === '기타/직접입력') {
+    requiredFields.push({ value: customerInfo.customerJobCustom, label: '직업 직접 입력' })
+  }
+
+  const emptyField = requiredFields.find((field) => String(field.value ?? '').trim() === '')
+  return emptyField ? `신규 고객의 ${emptyField.label}을(를) 입력해주세요.` : ''
+}
+
+function setExistingInsurance(value) {
+  newDetail.hasExistingInsurance = value
+}
+
+function toggleSingleSelection(currentValue, nextValue) {
+  return currentValue === nextValue ? '' : nextValue
+}
+
+function toggleArraySelection(targetArray, value) {
+  const index = targetArray.indexOf(value)
+  if (index >= 0) {
+    targetArray.splice(index, 1)
+    return
+  }
+  targetArray.push(value)
+}
+
+async function loadProposedProducts() {
+  showProductOptions.value = true
+  if (proposedProductOptions.value.length > 0) return
+
+  isProductsLoading.value = true
+
+  try {
+    const response = await getInsuranceProducts({ size: 1000 })
+    const result = response?.result?.products ?? response?.result
+    const rows = Array.isArray(result?.content) ? result.content : result
+    proposedProductOptions.value = Array.isArray(rows) ? rows : []
+  } catch {
+    proposedProductOptions.value = []
+  } finally {
+    isProductsLoading.value = false
+  }
+}
+
+function addProposedProduct(product) {
+  if (selectedProposedProducts.value.length >= 5 || isProductSelected(product)) return
+  selectedProposedProducts.value = [...selectedProposedProducts.value, product]
+}
+
+function removeProposedProduct(product) {
+  const productKey = getProductKey(product)
+  selectedProposedProducts.value = selectedProposedProducts.value.filter((item) => getProductKey(item) !== productKey)
+}
+
+function isProductSelected(product) {
+  const productKey = getProductKey(product)
+  return selectedProposedProducts.value.some((item) => getProductKey(item) === productKey)
+}
+
+function getProductKey(product) {
+  return String(
+    product?.insuranceProductId ??
+    product?.insuranceProductCode ??
+    product?.productId ??
+    product?.productCode ??
+    product?.id ??
+    `${product?.insuranceCompanyName || product?.companyName || ''}-${product?.insuranceProductName || product?.productName || product?.name || ''}`,
+  )
+}
+
+function getProductCode(product) {
+  return String(
+    product?.insuranceProductCode ??
+    product?.productCode ??
+    product?.code ??
+    '',
+  )
+}
+
+function getCoverageTypeCode(coverageType) {
+  return coverageTypeCodeMap[coverageType] || coverageType
+}
+
+function applyCustomerToInfo(customer) {
+  customerInfo.customerName = customer.customerName ?? customer.name ?? ''
+  customerInfo.customerGender = customer.customerGender ?? customer.gender ?? ''
+  customerInfo.customerBirthDate = customer.customerBirthDate ?? customer.birthDate ?? ''
+  customerInfo.customerPhone = formatPhoneDisplay(customer.customerPhone ?? customer.phoneNumber ?? customer.phone ?? '')
+  customerInfo.customerEmail = customer.customerEmail ?? customer.email ?? ''
+  customerInfo.customerZipcode = customer.customerZipcode ?? customer.zipcode ?? ''
+  customerInfo.customerAddressRoad = customer.customerAddressRoad ?? customer.addressRoad ?? customer.address ?? ''
+  customerInfo.customerAddressDetail = customer.customerAddressDetail ?? customer.addressDetail ?? ''
+  customerInfo.customerJob = customer.customerJob ?? customer.job ?? ''
+  customerInfo.customerJobCustom = ''
+  customerInfo.customerCompanyName = customer.customerCompanyName ?? customer.companyName ?? ''
+  selectedCustomer.value.contractCount =
+    customer.contractCount ??
+    customer.contractSummary?.totalContractCount ??
+    selectedCustomer.value.contractCount ??
+    0
+  selectedCustomer.value.lastConsultedAt =
+    customer.lastConsultedAt ??
+    customer.lastConsultationDate ??
+    selectedCustomer.value.lastConsultedAt ??
+    ''
+  hydrateEmailFields(customerInfo.customerEmail)
+}
+
+function resetCustomerInfo() {
+  Object.assign(customerInfo, {
+    customerName: '',
+    customerGender: '',
+    customerBirthDate: '',
+    customerPhone: '',
+    customerEmail: '',
+    customerZipcode: '',
+    customerAddressRoad: '',
+    customerAddressDetail: '',
+    customerJob: '',
+    customerJobCustom: '',
+    customerCompanyName: '',
+    customerAnnualIncome: '',
+    customerAssetSize: '',
+    customerDebtStatus: '',
+    customerIsSmoker: false,
+    customerIsDrinker: false,
+    customerMaritalStatus: '',
+    customerDependentsCount: '',
+    underlyingDiseases: [],
+  })
+}
+
+function getGenderLabel(gender) {
+  const normalizedGender = normalizeGender(gender)
+  if (normalizedGender === 'MALE') return '남성'
+  if (normalizedGender === 'FEMALE') return '여성'
+  return gender || '-'
+}
+
+function normalizeGender(gender) {
+  const value = String(gender || '').trim().toUpperCase()
+  if (['FEMALE', 'FEMAL', 'F', '여성', '여'].includes(value)) return 'FEMALE'
+  if (['MALE', 'M', '남성', '남'].includes(value)) return 'MALE'
+  return value
+}
+
+function updatePhone(rawValue) {
+  customerInfo.customerPhone = formatPhoneDisplay(rawValue)
+}
+
+function updateMoneyField(key, rawValue, target = customerInfo) {
+  target[key] = String(rawValue || '').replace(/[^\d]/g, '')
+}
+
+function formatPhoneDisplay(rawValue) {
+  const digits = String(rawValue || '').replace(/[^\d]/g, '').slice(0, 11)
+  if (digits.length < 4) return digits
+  if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
+function formatMoneyDisplay(rawValue) {
+  const digits = String(rawValue || '').replace(/[^\d]/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
+}
+
+function getDiseaseName(diseaseCode) {
+  return diseaseOptions.value.find((item) => item.diseaseCode === diseaseCode)?.diseaseName || diseaseCode
+}
+
+function normalizeUnderlyingDiseaseCodes(value) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      const rawValue = String(item || '')
+      return diseaseOptions.value.find((option) => option.diseaseName === rawValue)?.diseaseCode || rawValue
+    })
+    .filter(Boolean)
+}
+
+function addDisease() {
+  if (selectedDisease.value === '없음') {
+    customerInfo.underlyingDiseases = []
+    selectedDisease.value = ''
+    return
+  }
+  if (!selectedDisease.value || customerInfo.underlyingDiseases.includes(selectedDisease.value)) return
+  customerInfo.underlyingDiseases = [...customerInfo.underlyingDiseases, selectedDisease.value]
+  selectedDisease.value = ''
+}
+
+function removeDisease(disease) {
+  customerInfo.underlyingDiseases = customerInfo.underlyingDiseases.filter((item) => item !== disease)
+}
+
+function selectAddress(address) {
+  customerInfo.customerZipcode = address.zipcode
+  customerInfo.customerAddressRoad = address.road
+  addressSearchKeyword.value = address.road
+  showAddressResults.value = false
+}
+
+async function openPostcodeSearch() {
+  addressSearchMessage.value = ''
+  isAddressSearchLoading.value = true
+
+  try {
+    await loadPostcodeScript()
+    new window.daum.Postcode({
+      oncomplete(data) {
+        const roadAddress = data.roadAddress || data.address || data.jibunAddress || ''
+        customerInfo.customerZipcode = data.zonecode || ''
+        customerInfo.customerAddressRoad = roadAddress
+        addressSearchKeyword.value = roadAddress
+        customerInfo.customerAddressDetail = ''
+        showAddressResults.value = false
+        addressSearchMessage.value = ''
+      },
+    }).open()
+  } catch {
+    showAddressResults.value = true
+    addressSearchMessage.value = '실제 주소 검색을 불러오지 못했습니다. 현재는 샘플 주소 검색을 사용할 수 있습니다.'
+  } finally {
+    isAddressSearchLoading.value = false
+  }
+}
+
+function loadPostcodeScript() {
+  if (window.daum?.Postcode) return Promise.resolve()
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[src="${POSTCODE_SCRIPT_URL}"]`)
+    if (existingScript) {
+      existingScript.addEventListener('load', resolve, { once: true })
+      existingScript.addEventListener('error', reject, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = POSTCODE_SCRIPT_URL
+    script.async = true
+    script.onload = resolve
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+}
+
+function goBack() {
+  router.push(isEditMode.value ? { name: 'consultation-drafts' } : { name: 'fp-consultations' })
+}
+
+function parseMoneyOrNull(value) {
+  const digits = String(value || '').replace(/[^\d]/g, '')
+  const parsed = Number(digits)
+  return parsed > 0 ? parsed : null
+}
+
+function parseIntegerOrNull(value) {
+  const digits = String(value || '').replace(/[^\d]/g, '')
+  const parsed = Number.parseInt(digits, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function splitCommaList(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function normalizeArrayField(value) {
+  if (Array.isArray(value)) return value
+  return splitCommaList(value)
+}
+
+function joinArrayField(value) {
+  return normalizeArrayField(value).join(',')
+}
+
+function calculatePremiumChangeRate() {
+  const currentPremium = parseMoneyOrNull(renewalDetail.currentPremium)
+  const renewalPremium = parseMoneyOrNull(renewalDetail.renewalPremium)
+
+  if (!currentPremium || !renewalPremium) return null
+
+  return Number((((renewalPremium - currentPremium) / currentPremium) * 100).toFixed(2))
+}
+
+function getRenewalReason() {
+  return renewalDetail.premiumChangeReasons[0] || 'OTHER'
+}
+
+function toLocalInputValue(value) {
+  const date = new Date(value)
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+function toApiDateTime(value) {
+  if (!value) return value
+  const normalizedValue = value.replace(' ', 'T')
+  return normalizedValue.includes('T') ? normalizedValue : `${normalizedValue}T00:00:00`
+}
+
+function toDateOnly(value) {
+  return value ? String(value).slice(0, 10) : null
+}
+</script>
+
+<style scoped>
+.journal-page button {
+  border-radius: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.journal-page button:not(:disabled) {
+  cursor: pointer;
+}
+
+.journal-page button:disabled {
+  cursor: not-allowed;
+}
+
+.journal-breadcrumb button,
+.segmented button,
+.pill,
+.search-control button,
+.stt-actions button,
+.choice-button,
+.option-chip,
+.claim-type-button,
+.checkbox-chip,
+.claim-result-button,
+.address-box__button,
+.add-button,
+.product-option-list button,
+.address-results__item,
+.journal-actions button {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pill.is-active,
+.segmented button.is-active,
+.choice-button.is-active,
+.option-chip.is-active,
+.claim-type-button.is-active,
+.checkbox-chip.is-active,
+.claim-result-button.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.stt-actions button:first-child,
+.subtle-button,
+.outline-button,
+.draft-count-button {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #475569;
+}
+
+.draft-count-button {
+  min-width: 138px;
+  padding: 0 12px;
+}
+
+.draft-count-button:hover:not(:disabled) {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.danger-button {
+  border: 1px solid #ef4444;
+  background: #ffffff;
+  color: #ef4444;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.save-button,
+.add-button {
+  border-color: #f97316;
+  background: #f97316;
+  color: #ffffff;
+}
+
+.prospect-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.selected-customer-panel {
+  padding: 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #fff7ed;
+}
+
+.customer-list {
+  display: grid;
+  gap: 6px;
+  max-height: 270px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.customer-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.customer-list button:hover,
+.customer-list button.is-selected {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.customer-list strong,
+.customer-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-list p {
+  margin: 0;
+  padding: 18px 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.selected-customer-panel dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.selected-customer-panel div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.selected-customer-panel dt {
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.selected-customer-panel dd {
+  min-width: 0;
+  margin: 0;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.choice-row,
+.option-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.option-chip-row--balanced {
+  flex-wrap: nowrap;
+}
+
+.section-help {
+  margin: 0 0 14px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.choice-button,
+.option-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.choice-button.is-active,
+.option-chip.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.option-chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.field.is-disabled {
+  opacity: 0.45;
+}
+
+.field.is-disabled .control {
+  cursor: not-allowed;
+}
+
+.claim-status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.claim-status-grid .field {
+  min-width: 0;
+}
+
+.claim-status-grid .option-chip {
+  flex: 1 1 0;
+  min-width: max-content;
+}
+
+.control--locked {
+  background: #fff7ed;
+  color: #f97316;
+  font-weight: 900;
+  text-align: center;
+}
+
+.renewal-info-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr 0.8fr;
+  gap: 10px;
+}
+
+.renewal-change-layout {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.vertical-choice-row {
+  display: grid;
+  gap: 8px;
+}
+
+.renewal-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.renewal-two-column .form-card {
+  margin: 0;
+}
+
+.renewal-decision-field {
+  max-width: 240px;
+}
+
+.claim-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.claim-type-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 56px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.claim-type-button.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+  box-shadow: inset 0 0 0 1px #fb923c;
+}
+
+.checkbox-chip-row,
+.claim-result-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkbox-chip-row--spaced {
+  column-gap: 16px;
+  row-gap: 10px;
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkbox-chip.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.claim-result-button {
+  min-height: 34px;
+  padding: 0 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.claim-result-button.is-active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.retention-possibility {
+  display: grid;
+  gap: 16px;
+  padding-top: 10px;
+}
+
+.retention-possibility__choices {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.retention-possibility__bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fb7185 0%, #fb923c 50%, #facc15 100%);
+}
+
+.retention-possibility__bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.68);
+  transform-origin: right center;
+}
+
+.retention-possibility__bar span.is-low {
+  transform: scaleX(0.66);
+}
+
+.retention-possibility__bar span.is-medium {
+  transform: scaleX(0.33);
+}
+
+.retention-possibility__bar span.is-high {
+  transform: scaleX(0);
+}
+
+.follow-up-date-control {
+  max-width: 220px;
+}
+
+.product-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+}
+
+.product-search-input {
+  position: relative;
+  min-width: 0;
+}
+
+.product-search-input .v-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  z-index: 1;
+  color: #94a3b8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.product-search-input .control {
+  width: 100%;
+  padding-left: 32px;
+}
+
+.add-button {
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: #f97316;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.product-option-list {
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.product-option-list button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.product-option-list button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.product-option-list strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.product-option-list span,
+.product-option-list p {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.selected-product-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.selected-product-tags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #ea580c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.selected-product-tags button {
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.selected-product-tags p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.email-row {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 5fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.email-row.is-custom-domain {
+  grid-template-columns: minmax(0, 7fr) auto minmax(0, 3fr);
+}
+
+.email-row span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.required-mark {
+  color: #ef4444;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.optional-mark {
+  margin-left: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.address-box {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.address-box__search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 8px;
+}
+
+.address-box__button {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #f97316;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #f97316;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.address-box__button:disabled {
+  opacity: 0.55;
+}
+
+.address-box__message {
+  margin: 0;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.address-results {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.address-results__item {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid #f1f5f9;
+  border-radius: 6px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.address-results__item:hover {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.address-results__item strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.address-results__item span,
+.address-results p {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.address-box__inputs {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.address-box__zipcode {
+  text-align: center;
+}
+
+.disease-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+}
+
+.selected-disease-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selected-disease-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #f97316;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.selected-disease-chip button {
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .option-chip-row--balanced {
+    flex-wrap: wrap;
+  }
+
+  .prospect-grid,
+  .email-row,
+  .address-box__search,
+  .address-box__inputs,
+  .disease-picker,
+  .product-search-row,
+  .claim-type-grid,
+  .claim-status-grid,
+  .renewal-info-grid,
+  .renewal-change-layout,
+  .renewal-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-customer-panel div {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

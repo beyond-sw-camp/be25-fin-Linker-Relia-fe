@@ -1,8 +1,6 @@
 import { USER_ROLES } from './auth'
 
-const ORGANIZATION_API_ROLES = [
-  USER_ROLES.FP,
-  USER_ROLES.BRANCH_MANAGER,
+const ORGANIZATION_ROLES = [
   USER_ROLES.HQ_MANAGER,
   USER_ROLES.SYSTEM_ADMIN,
 ]
@@ -11,18 +9,8 @@ const ORGANIZATION_MENU_SECTION = {
   title: '조직 및 인사 관리',
   icon: 'mdi-domain',
   children: [
-    { title: '조직도 조회', to: { name: 'organization-chart' } },
-    { title: '지점 목록 조회', to: { name: 'organization-branches' } },
-    { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
-  ],
-}
-
-const ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES = {
-  title: '조직 및 인사 관리',
-  icon: 'mdi-domain',
-  children: [
-    { title: '조직도 조회', to: { name: 'organization-chart' } },
-    { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
+    { title: '조직도', to: { name: 'organization-chart' } },
+    { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
   ],
 }
 
@@ -42,13 +30,6 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
-    path: 'customers/fp/interests',
-    name: 'fp-customer-interests',
-    title: '관심 고객 목록',
-    description: '관심 고객 목록을 조회하는 화면입니다.',
-    roles: [USER_ROLES.FP],
-  },
-  {
     path: 'consultations/fp',
     name: 'fp-consultations',
     title: '고객별 상담 목록',
@@ -63,6 +44,13 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
+    path: 'consultations/drafts',
+    name: 'consultation-drafts',
+    title: '임시저장 상담일지 조회',
+    description: '임시저장한 상담일지를 목록으로 조회합니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
     path: 'contracts/fp',
     name: 'fp-contracts',
     title: '보유 계약 목록',
@@ -74,6 +62,13 @@ export const APP_PAGE_SPECS = [
     name: 'contract-create',
     title: '계약 등록',
     description: '설계사가 새 계약을 등록하는 화면입니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
+    path: 'handovers/received',
+    name: 'handover-received',
+    title: '받은 인수인계 목록',
+    description: 'FP가 본인이 인수받은 인수인계 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -98,13 +93,6 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
-    path: 'customers/branch/interests',
-    name: 'branch-customer-interests',
-    title: '지점 관심 고객 목록',
-    description: '지점 관심 고객 목록을 조회하는 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
     path: 'consultations/branch',
     name: 'branch-consultations',
     title: '지점 상담 목록',
@@ -114,7 +102,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'contracts/branch',
     name: 'branch-contracts',
-    title: '전체 계약',
+    title: '지점 계약 목록',
     description: '지점 계약을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
@@ -123,20 +111,6 @@ export const APP_PAGE_SPECS = [
     name: 'handover-requests',
     title: '인수인계 요청 목록',
     description: '지점 인수인계 요청을 관리하는 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/pending',
-    name: 'handover-pending',
-    title: '결재 대기',
-    description: '처리 대기 중인 인수인계 결재 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'handovers/history',
-    name: 'handover-history',
-    title: '인수인계 이력',
-    description: '인수인계 이력을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -168,13 +142,6 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
-    path: 'customers/hq/interests',
-    name: 'hq-customer-interests',
-    title: '전사 관심 고객 목록',
-    description: '전사 관심 고객 목록을 조회하는 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
-  },
-  {
     path: 'contracts/hq',
     name: 'hq-contracts',
     title: '전체 계약 목록',
@@ -198,9 +165,9 @@ export const APP_PAGE_SPECS = [
   {
     path: 'organizations/chart',
     name: 'organization-chart',
-    title: '조직도 조회',
-    description: 'Relia 전체 조직도를 조회합니다.',
-    roles: ORGANIZATION_API_ROLES,
+    title: '조직도',
+    description: '조직 구조를 관리하는 화면입니다.',
+    roles: ORGANIZATION_ROLES,
     props: {
       mode: 'chart',
     },
@@ -210,7 +177,7 @@ export const APP_PAGE_SPECS = [
     name: 'organization-branches',
     title: '지점 목록 조회',
     description: '지점 목록과 지점별 현황을 관리합니다.',
-    roles: ORGANIZATION_API_ROLES,
+    roles: ORGANIZATION_ROLES,
     props: {
       mode: 'branches',
     },
@@ -218,9 +185,9 @@ export const APP_PAGE_SPECS = [
   {
     path: 'advisors/hq',
     name: 'hq-advisors',
-    title: '설계사 목록 조회',
-    description: '전체 설계사 목록을 조회합니다.',
-    roles: ORGANIZATION_API_ROLES,
+    title: '전체 설계사 목록',
+    description: '전사 설계사 목록을 조회하는 화면입니다.',
+    roles: ORGANIZATION_ROLES,
     props: {
       mode: 'fps',
     },
@@ -230,7 +197,7 @@ export const APP_PAGE_SPECS = [
     name: 'organization-branch-advisors',
     title: '지점 설계사 목록 조회',
     description: '선택한 지점에 소속된 설계사 목록을 조회합니다.',
-    roles: ORGANIZATION_API_ROLES,
+    roles: ORGANIZATION_ROLES,
     props: {
       mode: 'fps',
     },
@@ -240,14 +207,14 @@ export const APP_PAGE_SPECS = [
     name: 'insurance-partners',
     title: '제휴 보험사 목록',
     description: '제휴 보험사 목록 관리 화면입니다.',
-    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'insurance/products',
     name: 'insurance-products',
     title: '보험 상품 목록',
     description: '보험 상품 관리 화면입니다.',
-    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'commissions/hq',
@@ -260,15 +227,15 @@ export const APP_PAGE_SPECS = [
     path: 'admin/users',
     name: 'admin-users',
     title: '사용자 관리',
-    description: '시스템 관리자용 사용자 관리 화면입니다.',
+    description: '시스템 관리자의 사용자 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
   },
   {
     path: 'admin/organizations',
     name: 'admin-organizations',
-    title: '조직도 조회',
-    description: 'Relia 전체 조직도를 조회합니다.',
-    roles: ORGANIZATION_API_ROLES,
+    title: '조직 관리',
+    description: '시스템 관리자의 조직 관리 화면입니다.',
+    roles: [USER_ROLES.SYSTEM_ADMIN],
     props: {
       mode: 'chart',
     },
@@ -277,7 +244,7 @@ export const APP_PAGE_SPECS = [
     path: 'admin/roles',
     name: 'admin-roles',
     title: '권한 관리',
-    description: '시스템 관리자용 권한 관리 화면입니다.',
+    description: '시스템 관리자의 권한 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
   },
 ]
@@ -294,7 +261,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
-        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
@@ -310,7 +276,13 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-file-document-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
-        { title: '계약 등록', to: { name: 'contract-create' } },
+      ],
+    },
+    {
+      title: '인수인계',
+      icon: 'mdi-swap-horizontal',
+      children: [
+        { title: '받은 인수인계 목록', to: { name: 'handover-received' } },
       ],
     },
     {
@@ -318,15 +290,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-cash-multiple',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
-      ],
-    },
-    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
       ],
     },
   ],
@@ -341,7 +304,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
-        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
@@ -355,7 +317,7 @@ export const MENU_BY_ROLE = {
       title: '계약 관리',
       icon: 'mdi-file-document-outline',
       children: [
-        { title: '전체 계약', to: { name: 'branch-contracts' } },
+        { title: '지점 계약 목록', to: { name: 'branch-contracts' } },
       ],
     },
     {
@@ -363,8 +325,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-swap-horizontal',
       children: [
         { title: '인수인계 요청 목록', to: { name: 'handover-requests' } },
-        { title: '결재 대기', to: { name: 'handover-pending' } },
-        { title: '인수인계 이력', to: { name: 'handover-history' } },
       ],
     },
     {
@@ -381,15 +341,6 @@ export const MENU_BY_ROLE = {
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
-      ],
-    },
   ],
   [USER_ROLES.HQ_MANAGER]: [
     {
@@ -402,7 +353,6 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
-        { title: '전사 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {
@@ -420,21 +370,13 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '인수인계 모니터링',
+      title: '인수인계 관리',
       icon: 'mdi-monitor-eye',
       children: [
         { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
       ],
     },
-    {
-      title: '조직 및 인사 관리',
-      icon: 'mdi-domain',
-      children: [
-        { title: '조직도 조회', to: { name: 'organization-chart' } },
-        { title: '지점 목록 조회', to: { name: 'organization-branches' } },
-        { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
-      ],
-    },
+    ORGANIZATION_MENU_SECTION,
     {
       title: '보험 상품 관리',
       icon: 'mdi-shield-check-outline',
@@ -461,6 +403,5 @@ export const MENU_BY_ROLE = {
         { title: '권한 관리', to: { name: 'admin-roles' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION,
   ],
 }

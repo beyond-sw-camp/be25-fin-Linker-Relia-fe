@@ -12,6 +12,10 @@ import PlaceholderView from '../views/common/PlaceholderView.vue'
 import BranchCommissionView from '../views/commission/BranchCommissionView.vue'
 import FpCommissionView from '../views/commission/FpCommissionView.vue'
 import HqCommissionView from '../views/commission/HqCommissionView.vue'
+import ConsultationCreateView from '../views/consultation/ConsultationCreateView.vue'
+import ConsultationDetailView from '../views/consultation/ConsultationDetailView.vue'
+import ConsultationDraftListView from '../views/consultation/ConsultationDraftListView.vue'
+import ConsultationListView from '../views/consultation/ConsultationListView.vue'
 import BranchContractListView from '../views/contract/BranchContractListView.vue'
 import ContractCreateView from '../views/contract/ContractCreateView.vue'
 import ContractDetailView from '../views/contract/ContractDetailView.vue'
@@ -19,17 +23,37 @@ import FpContractListView from '../views/contract/FpContractListView.vue'
 import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
-import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
+import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
+import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
+import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
+import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
+import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
 import OrganizationsView from '../views/organizations/OrganizationsView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
+  if (page.name === 'fp-dashboard') {
+    return FpDashboardView
+  }
+
+  if (['branch-dashboard', 'hq-dashboard'].includes(page.name)) {
+    return ManagerDashboardView
+  }
+
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
   }
 
-  if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
-    return InterestCustomerListView
+  if (['fp-consultations', 'branch-consultations', 'hq-consultations'].includes(page.name)) {
+    return ConsultationListView
+  }
+
+  if (page.name === 'consultation-drafts') {
+    return ConsultationDraftListView
+  }
+
+  if (page.name === 'consultation-create') {
+    return ConsultationCreateView
   }
 
   if (page.name === 'fp-contracts') {
@@ -48,6 +72,14 @@ function resolveProtectedComponent(page) {
     return HqContractListView
   }
 
+  if (['handover-requests', 'handover-monitoring'].includes(page.name)) {
+    return HandoverRequestListView
+  }
+
+  if (page.name === 'handover-received') {
+    return HandoverReceivedListView
+  }
+
   if (page.name === 'fp-commissions') {
     return FpCommissionView
   }
@@ -60,7 +92,13 @@ function resolveProtectedComponent(page) {
     return HqCommissionView
   }
 
-  if (['organization-chart', 'organization-branches', 'hq-advisors', 'organization-branch-advisors', 'admin-organizations'].includes(page.name)) {
+  if ([
+    'organization-chart',
+    'organization-branches',
+    'hq-advisors',
+    'organization-branch-advisors',
+    'admin-organizations',
+  ].includes(page.name)) {
     return OrganizationsView
   }
 
@@ -92,8 +130,48 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     },
     meta: {
       requiresAuth: true,
-      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER', 'SYSTEM_ADMIN'],
+      roles: ['HQ_MANAGER', 'SYSTEM_ADMIN'],
       title: '설계사 상세 정보 조회',
+    },
+  },
+  {
+    path: 'handovers/:handoverRequestId',
+    name: 'handover-detail',
+    component: HandoverDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER', 'SYSTEM_ADMIN'],
+      title: '인수인계 요청 상세',
+    },
+  },
+  {
+    path: 'consultations/drafts/:draftId',
+    name: 'consultation-draft-detail',
+    component: ConsultationDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP'],
+      title: '임시저장 상담일지 상세',
+    },
+  },
+  {
+    path: 'consultations/drafts/:draftId/edit',
+    name: 'consultation-draft-edit',
+    component: ConsultationCreateView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP'],
+      title: '임시저장 상담일지 수정',
+    },
+  },
+  {
+    path: 'consultations/:consultationId',
+    name: 'consultation-detail',
+    component: ConsultationDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
+      title: '상담일지 상세',
     },
   },
   {

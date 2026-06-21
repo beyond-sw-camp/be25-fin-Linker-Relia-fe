@@ -62,6 +62,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import { USER_ROLES } from '../../constants/auth'
 import { MENU_BY_ROLE } from '../../constants/navigation'
 import { useAuthStore } from '../../stores/auth'
 
@@ -90,7 +91,29 @@ function isSectionOpen(title) {
 }
 
 function isChildActive(child) {
-  return route.name === child.to.name || route.query.from === child.to.name
+  return route.name === child.to.name ||
+    route.query.from === child.to.name ||
+    getFallbackActiveRouteName() === child.to.name
+}
+
+function getFallbackActiveRouteName() {
+  if (route.name !== 'handover-detail' || route.query.from) {
+    return ''
+  }
+
+  if (authStore.userRole === USER_ROLES.FP) {
+    return 'handover-received'
+  }
+
+  if (authStore.userRole === USER_ROLES.HQ_MANAGER) {
+    return 'handover-monitoring'
+  }
+
+  if (authStore.userRole === USER_ROLES.BRANCH_MANAGER) {
+    return 'handover-requests'
+  }
+
+  return ''
 }
 
 function toggleSection(title) {
@@ -105,7 +128,7 @@ function toggleSection(title) {
 
 <style scoped>
 .app-sidebar {
-  width: 208px;
+  width: 232px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
