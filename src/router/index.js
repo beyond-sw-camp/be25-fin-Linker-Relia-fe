@@ -28,6 +28,8 @@ import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
 import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
 import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
+import InsurancePartnerFormView from '../views/insurance/InsurancePartnerFormView.vue'
+import InsurancePartnersView from '../views/insurance/InsurancePartnersView.vue'
 import OrganizationsView from '../views/organizations/OrganizationsView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
@@ -100,6 +102,14 @@ function resolveProtectedComponent(page) {
     'admin-organizations',
   ].includes(page.name)) {
     return OrganizationsView
+  }
+
+  if (page.name === 'insurance-partners') {
+    return InsurancePartnersView
+  }
+
+  if (['insurance-partner-create', 'insurance-partner-detail'].includes(page.name)) {
+    return InsurancePartnerFormView
   }
 
   return PlaceholderView
@@ -192,6 +202,26 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
       requiresAuth: true,
       roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
       title: '계약 상세',
+    },
+  },
+  {
+    path: 'insurance/partners/new',
+    name: 'insurance-partner-create',
+    component: InsurancePartnerFormView,
+    meta: {
+      requiresAuth: true,
+      roles: ['SYSTEM_ADMIN'],
+      title: '보험사 등록',
+    },
+  },
+  {
+    path: 'insurance/partners/:insuranceCompanyId',
+    name: 'insurance-partner-detail',
+    component: InsurancePartnerFormView,
+    meta: {
+      requiresAuth: true,
+      roles: ['SYSTEM_ADMIN'],
+      title: '보험사 상세',
     },
   },
 ])
