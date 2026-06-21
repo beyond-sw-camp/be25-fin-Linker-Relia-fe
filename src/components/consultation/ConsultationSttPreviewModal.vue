@@ -356,7 +356,7 @@ const structuredPreviewRows = computed(() => {
     ['hasExistingInsurance', '기존 보험 가입', formatBooleanValue(draft.newDetail?.hasExistingInsurance)],
     ['monthlyInsurancePremium', '기존 보험료', formatNumberValue(draft.newDetail?.monthlyInsurancePremium)],
     ['insurancePriority', '보험 우선순위', draft.newDetail?.insurancePriority],
-    ['coverageTypes', '관심 보장', formatListValue(draft.newDetail?.coverageTypes)],
+    ['coverageTypes', '관심 보장', formatCoverageTypeList(draft.newDetail?.coverageTypes)],
     ['proposedProductCodes', '추천 상품', formatListValue(draft.newDetail?.proposedProductCodes)],
     ['claimType', '청구 유형', draft.claimDetail?.claimType],
     ['claimReason', '청구 사유', draft.claimDetail?.claimReason],
@@ -688,6 +688,20 @@ function hasMeaningfulValue(value) {
 
 function formatListValue(value) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : ''
+}
+
+function formatCoverageTypeList(value) {
+  const labelMap = {
+    CANCER: '암 보장',
+    HEART: '심장 보장',
+    LIFE: '생명 보장',
+    DEATH: '사망 보장',
+    LONG_TERM_CARE: '장기요양 보장',
+  }
+
+  return Array.isArray(value)
+    ? value.filter(Boolean).map((item) => labelMap[item] || item).join(', ')
+    : ''
 }
 
 function formatBooleanValue(value) {

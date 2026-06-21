@@ -450,14 +450,14 @@
               <span>관심 보장 분야(복수 선택 가능)</span>
               <div class="option-chip-row">
                 <button
-                  v-for="option in coverageTypeOptions"
-                  :key="option"
+                  v-for="option in coverageTypeOptionItems"
+                  :key="option.value"
                   type="button"
                   class="option-chip"
-                  :class="{ 'is-active': newDetail.coverageTypes.includes(option) }"
-                  @click="toggleArraySelection(newDetail.coverageTypes, option)"
+                  :class="{ 'is-active': newDetail.coverageTypes.includes(option.value) }"
+                  @click="toggleArraySelection(newDetail.coverageTypes, option.value)"
                 >
-                  {{ option }}
+                  {{ option.label }}
                 </button>
               </div>
             </div>
@@ -1146,6 +1146,14 @@ const coverageTypeCodeAliases = {
   '간병': 'LONG_TERM_CARE',
 }
 
+const coverageTypeOptionItems = [
+  { label: '암 보장', value: 'CANCER' },
+  { label: '심장 보장', value: 'HEART' },
+  { label: '생명 보장', value: 'LIFE' },
+  { label: '사망 보장', value: 'DEATH' },
+  { label: '장기요양 보장', value: 'LONG_TERM_CARE' },
+]
+
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
@@ -1615,7 +1623,7 @@ async function applyStructuredDraft(draft) {
         insurancePriorityOptions,
         insurancePriorityAliases,
       ),
-      coverageTypes: normalizeOptionArray(draft.newDetail?.coverageTypes, coverageTypeOptions),
+      coverageTypes: normalizeOptionArray(draft.newDetail?.coverageTypes, coverageTypeOptionItems, coverageTypeCodeAliases),
     })
     selectedProposedProducts.value = await resolveDraftProducts(draft.newDetail?.proposedProductCodes)
   }
@@ -1977,6 +1985,14 @@ function normalizeCompareText(value) {
     .replace(/\s+/g, '')
 }
 
+function getOptionValue(option) {
+  return typeof option === 'object' && option !== null ? option.value : option
+}
+
+function getOptionLabel(option) {
+  return typeof option === 'object' && option !== null ? option.label : option
+}
+
 function normalizeOptionValue(value, options, aliases = {}) {
   if (!value) return ''
 
@@ -1986,8 +2002,12 @@ function normalizeOptionValue(value, options, aliases = {}) {
     return aliasEntry[1]
   }
 
-  const directMatch = options.find((option) => normalizeCompareText(option) === normalizedValue)
-  return directMatch || ''
+  const directMatch = options.find((option) => {
+    const optionValue = getOptionValue(option)
+    const optionLabel = getOptionLabel(option)
+    return normalizeCompareText(optionValue) === normalizedValue || normalizeCompareText(optionLabel) === normalizedValue
+  })
+  return directMatch ? getOptionValue(directMatch) : ''
 }
 
 function normalizeOptionArray(values, options, aliases = {}) {
@@ -2084,9 +2104,7 @@ function formatPhoneDisplay(rawValue) {
 }
 
 function toCoverageTypeCode(value) {
-  const normalizedValue = normalizeCompareText(value)
-  const entry = Object.entries(coverageTypeCodeAliases).find(([alias]) => normalizeCompareText(alias) === normalizedValue)
-  return entry?.[1] || ''
+  return normalizeOptionValue(value, coverageTypeOptionItems, coverageTypeCodeAliases)
 }
 
 function getCoverageTypeCodes(values) {
