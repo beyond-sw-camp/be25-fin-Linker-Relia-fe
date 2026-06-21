@@ -52,7 +52,11 @@
           </div>
         </section>
 
-        <section class="side-card">
+        <section
+          ref="customerSelectionCard"
+          class="side-card"
+          :class="{ 'side-card--attention': showCustomerSelectionGuide && needsExistingCustomer && !selectedCustomer }"
+        >
           <h3>고객 기본 정보</h3>
 
           <div v-if="isNewContract" class="segmented">
@@ -77,6 +81,7 @@
               <span>기존 고객 불러오기</span>
               <div class="search-control">
                 <input
+                  ref="customerSearchInput"
                   v-model.trim="customerKeyword"
                   class="control"
                   placeholder="고객명 검색"
@@ -360,8 +365,9 @@
             <p>녹음한 상담 내용을 바탕으로 상담일지 초안을 작성할 수 있습니다.</p>
           </div>
           <div class="stt-actions">
-            <button type="button" :disabled="!canOpenSttPreview" @click="openSttPreview">AI 녹음 작성</button>
+            <button type="button" @click="openSttPreview">AI 녹음 작성</button>
           </div>
+          <p v-if="!canOpenSttPreview" class="stt-card__hint">AI 녹음 작성을 시작하려면 먼저 좌측에서 고객을 선택해주세요.</p>
         </section>
 
         <section v-if="needsContract" class="form-card">
@@ -1162,6 +1168,9 @@ const customerKeyword = ref('')
 const customers = ref([])
 const customerSearchTouched = ref(false)
 const selectedCustomer = ref(null)
+const showCustomerSelectionGuide = ref(false)
+const customerSelectionCard = ref(null)
+const customerSearchInput = ref(null)
 const contracts = ref([])
 const proposedProductKeyword = ref('')
 const proposedProductOptions = ref([])
@@ -1344,10 +1353,20 @@ watch(customerMode, () => {
   customers.value = []
   customerSearchTouched.value = false
   selectedCustomer.value = null
+  showCustomerSelectionGuide.value = false
   form.contractId = ''
   contracts.value = []
   resetCustomerInfo()
 })
+
+watch(
+  () => selectedCustomer.value?.customerId,
+  (value) => {
+    if (value) {
+      showCustomerSelectionGuide.value = false
+    }
+  },
+)
 
 watch(
   () => newDetail.hasExistingInsurance,
@@ -1539,12 +1558,16 @@ function saveDraft() {
 
 function openSttPreview() {
   if (!canOpenSttPreview.value) {
+    showCustomerSelectionGuide.value = true
     messageType.value = 'error'
-    message.value = '좌측 패널에서 기존 고객을 먼저 선택해야 STT 미리보기를 사용할 수 있습니다.'
+    message.value = '좌측 고객 기본 정보에서 고객을 먼저 선택해주세요.'
     isSttPreviewOpen.value = false
+    customerSelectionCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => customerSearchInput.value?.focus(), 200)
     return
   }
 
+  showCustomerSelectionGuide.value = false
   isSttPreviewOpen.value = true
 }
 
@@ -2202,6 +2225,36 @@ function toApiDateTime(value) {
 </script>
 
 <style scoped>
+.stt-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px 16px;
+}
+
+.stt-card > :nth-child(2) {
+  min-width: 0;
+}
+
+.stt-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.stt-card__hint {
+  grid-column: 2 / -1;
+  margin: -2px 0 0;
+  color: #f97316;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.side-card--attention {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.14);
+}
+
 .prospect-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2678,6 +2731,19 @@ function toApiDateTime(value) {
 }
 
 @media (max-width: 900px) {
+  .stt-card {
+    grid-template-columns: 1fr;
+  }
+
+  .stt-actions {
+    justify-content: flex-start;
+  }
+
+  .stt-card__hint {
+    grid-column: auto;
+    margin-top: -4px;
+  }
+
   .prospect-grid,
   .email-row,
   .address-box__search,
