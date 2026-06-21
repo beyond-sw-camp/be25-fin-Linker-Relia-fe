@@ -356,14 +356,11 @@
         <section class="stt-card">
           <v-icon icon="mdi-microphone-outline" size="18" />
           <div>
-            <strong>STT (녹취 -> 텍스트) 기능 안내</strong>
-            <p>STT 기능을 사용하면 상담 음성을 텍스트로 변환하여 상담일지 작성에 참고할 수 있습니다. 변환된 내용은 반드시 설계사가 검토한 후 최종 저장해야 합니다.</p>
+            <strong>AI 녹음 작성</strong>
+            <p>녹음한 상담 내용을 바탕으로 상담일지 초안을 작성할 수 있습니다.</p>
           </div>
           <div class="stt-actions">
-            <button type="button" :disabled="!canOpenSttPreview" @click="openSttPreview">STT 미리보기 열기</button>
-            <button type="button">STT 녹음 시작</button>
-            <button type="button">변환 내용 불러오기</button>
-            <button type="button">텍스트 검토</button>
+            <button type="button" :disabled="!canOpenSttPreview" @click="openSttPreview">AI 녹음 작성</button>
           </div>
         </section>
 
@@ -1133,6 +1130,22 @@ const insurancePriorityAliases = {
   '보험금 지급 신속': '보험금 지급 신속성',
 }
 
+const coverageTypeCodeAliases = {
+  '암': 'CANCER',
+  '암진단비': 'CANCER',
+  '암 진단비': 'CANCER',
+  '심장': 'HEART',
+  '심장질환': 'HEART',
+  '생명': 'LIFE',
+  '종신': 'LIFE',
+  '사망': 'DEATH',
+  '사망보장': 'DEATH',
+  '사망 보장': 'DEATH',
+  '장기요양': 'LONG_TERM_CARE',
+  '장기 요양': 'LONG_TERM_CARE',
+  '간병': 'LONG_TERM_CARE',
+}
+
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
@@ -1685,6 +1698,7 @@ async function submitConsultation() {
 
 function buildSubmitPayload() {
   const specialNote = form.specialNote || ''
+  const coverageTypeCodes = getCoverageTypeCodes(newDetail.coverageTypes)
   const payload = {
     consultationType: form.consultationType,
     consultationChannel: form.consultationChannel,
@@ -1707,11 +1721,22 @@ function buildSubmitPayload() {
       monthlyInsurancePremium: parseMoneyOrNull(newDetail.monthlyInsurancePremium),
       existingInsuranceNote: newDetail.existingInsuranceNote || null,
       insurancePriority: newDetail.insurancePriority || null,
-      coverageTypes: newDetail.coverageTypes,
-      proposedProductCodes: selectedProposedProducts.value.map(getProductKey).filter(Boolean),
+      coverageTypes: coverageTypeCodes,
+      proposedProductCodes: selectedProposedProducts.value.map(getProductSubmitCode).filter(Boolean),
     }
   }
 
+  if (form.consultationType === 'NEW_CONTRACT') {
+    const invalidCoverageTypes = getInvalidCoverageTypes(newDetail.coverageTypes)
+    if (invalidCoverageTypes.length > 0) {
+      return `관심 보장 중 저장 형식으로 변환할 수 없는 값이 있습니다: ${invalidCoverageTypes.join(', ')}`
+    }
+
+    const invalidProducts = getInvalidProposedProducts(selectedProposedProducts.value)
+    if (invalidProducts.length > 0) {
+      return '제안 상품 중 실제 상품 코드가 없는 항목이 있습니다. 다시 선택해주세요.'
+    }
+  }
   if (form.consultationType === 'CLAIM') {
     payload.claimDetail = {
       claimType: claimDetail.claimType || null,
@@ -2056,6 +2081,38 @@ function formatPhoneDisplay(rawValue) {
   if (digits.length < 4) return digits
   if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
+function toCoverageTypeCode(value) {
+  const normalizedValue = normalizeCompareText(value)
+  const entry = Object.entries(coverageTypeCodeAliases).find(([alias]) => normalizeCompareText(alias) === normalizedValue)
+  return entry?.[1] || ''
+}
+
+function getCoverageTypeCodes(values) {
+  return Array.isArray(values)
+    ? values.map(toCoverageTypeCode).filter(Boolean)
+    : []
+}
+
+function getInvalidCoverageTypes(values) {
+  return Array.isArray(values)
+    ? values.filter((value) => !toCoverageTypeCode(value))
+    : []
+}
+
+function getProductSubmitCode(product) {
+  return String(
+    product?.insuranceProductCode ??
+    product?.productCode ??
+    '',
+  ).trim()
+}
+
+function getInvalidProposedProducts(products) {
+  return Array.isArray(products)
+    ? products.filter((product) => !getProductSubmitCode(product))
+    : []
 }
 
 function formatMoneyDisplay(rawValue) {
