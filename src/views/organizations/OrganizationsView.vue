@@ -5,6 +5,7 @@
         <h2>{{ pageTitle }}</h2>
         <p>{{ pageDescription }}</p>
       </div>
+
       <div v-if="mode === 'fps'" class="page-header__actions">
         <button class="button button--secondary" type="button" @click="resetFpFilters">
           초기화
@@ -16,38 +17,139 @@
     </header>
 
     <template v-if="mode === 'chart'">
-      <section class="panel">
-        <div class="panel__header">
-          <div>
-            <h3>조직도</h3>
-            <p>본사와 지점의 계층 구조를 조회합니다.</p>
-          </div>
-          <div class="status-tabs" aria-label="조직 상태 필터">
-            <button
-              v-for="option in organizationStatusOptions"
-              :key="option.value"
-              type="button"
-              :class="{ active: organizationStatus === option.value }"
-              @click="changeOrganizationStatus(option.value)"
-            >
-              {{ option.label }}
+      <div class="organization-workspace">
+        <section class="organization-tree-panel panel" aria-label="조직 구조">
+          <div class="organization-tree-panel__header">
+            <div class="tree-title">
+              <span class="mdi mdi-family-tree" aria-hidden="true"></span>
+              <strong>조직 구조</strong>
+            </div>
+            <button class="tree-collapse-button" type="button" aria-label="조직 구조 접기">
+              <span class="mdi mdi-chevron-up" aria-hidden="true"></span>
+              <span class="mdi mdi-chevron-down" aria-hidden="true"></span>
             </button>
+          </div>
+
+          <LoadingState v-if="isOrganizationLoading" compact message="조직 정보를 불러오고 있습니다." />
+          <ErrorState v-else-if="organizationError" :message="organizationError" />
+          <EmptyState v-else-if="organizationRows.length === 0" compact message="조회된 조직 정보가 없습니다." />
+
+          <nav v-else class="organization-tree" aria-label="조직 계층 구조">
+            <div
+              v-for="root in organizationRoots"
+              :key="root.id"
+              class="organization-tree__root"
+            >
+              <button
+                class="tree-root-button"
+                type="button"
+                :class="{ active: selectedOrganizationId === root.id }"
+                :aria-expanded="expandedOrganizationIds.includes(root.id)"
+                @click="toggleOrganization(root.id)"
+              >
+                <span
+                  class="mdi"
+                  :class="expandedOrganizationIds.includes(root.id) ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+                  aria-hidden="true"
+                ></span>
+                <span class="mdi mdi-office-building-outline" aria-hidden="true"></span>
+                <span>
+                  {{ root.organizationName }}
+                  <small>(Headquarters)</small>
+                </span>
+              </button>
+
+              <div
+                v-if="root.children?.length && expandedOrganizationIds.includes(root.id)"
+                class="tree-children"
+              >
+                <button
+                  v-for="branch in root.children"
+                  :key="branch.id"
+                  class="tree-child-button"
+                  type="button"
+                  :class="{ active: selectedOrganizationId === branch.id }"
+                  @click="selectOrganization(branch.id)"
+                >
+                  {{ branch.organizationName }}
+                </button>
+              </div>
+            </div>
+          </nav>
+        </section>
+
+        <section class="organization-list panel">
+        <div class="organization-list__header">
+          <h3>조직 리스트</h3>
+          <div class="organization-list__tools">
+            <span>
+              전체 <strong>{{ formatCount(filteredOrganizationRows.length) }}개</strong> 조직
+            </span>
+            <div class="status-tabs" aria-label="조직 상태 필터">
+              <button
+                v-for="option in organizationStatusOptions"
+                :key="option.value"
+                type="button"
+                :class="{ active: organizationStatus === option.value }"
+                @click="changeOrganizationStatus(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
           </div>
         </div>
 
-        <LoadingState v-if="isOrganizationLoading" message="조직 정보를 불러오고 있습니다." />
-        <ErrorState v-else-if="organizationError" :message="organizationError" />
-        <EmptyState v-else-if="organizations.length === 0" message="조회된 조직 정보가 없습니다." />
-        <div v-else class="organization-tree">
-          <OrganizationNode
-            v-for="organization in organizations"
-            :key="organization.id"
-            :node="organization"
-            :expanded-node-ids="expandedNodeIds"
-            @toggle="toggleNode"
-          />
+        <div class="table-scroll table-scroll--flush">
+          <table>
+            <thead>
+              <tr>
+                <th>조직명</th>
+                <th>조직 코드</th>
+                <th>주소</th>
+                <th>전화번호</th>
+                <th>상태</th>
+                <th class="table-action-cell">관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="organization in paginatedOrganizationRows"
+                :key="organization.id"
+                :class="{ 'clickable-row': organization.organizationType === 'BRANCH' }"
+                @click="goToBranchAdvisors(organization)"
+              >
+                <td>
+                  <strong :class="{ 'text-accent': organization.organizationType === 'HQ' }">
+                    {{ organization.organizationName }}
+                  </strong>
+                </td>
+                <td>{{ organization.organizationCode }}</td>
+                <td>{{ organization.organizationAddress || '-' }}</td>
+                <td>{{ organization.organizationPhone || '-' }}</td>
+                <td><StatusBadge :status="organization.organizationStatus" /></td>
+                <td class="table-action-cell">
+                  <button class="icon-button icon-button--ghost" type="button" aria-label="조직 수정" @click.stop>
+                    <span class="mdi mdi-pencil-outline" aria-hidden="true"></span>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="paginatedOrganizationRows.length === 0">
+                <td colspan="6">
+                  <EmptyState compact message="조회된 조직 정보가 없습니다." />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </section>
+
+        <PaginationBar
+          :page="organizationListPage"
+          :total-pages="organizationListTotalPages"
+          :total-count="filteredOrganizationRows.length"
+          @change="changeOrganizationListPage"
+        />
+        </section>
+      </div>
     </template>
 
     <template v-else-if="mode === 'branches'">
@@ -66,16 +168,22 @@
           <table>
             <thead>
               <tr>
-                <th>조직명</th>
-                <th>조직 코드</th>
-                <th>조직 ID</th>
+                <th>지점명</th>
+                <th>지점 코드</th>
+                <th>주소</th>
+                <th>전화번호</th>
+                <th>상태</th>
+                <th>설계사 수</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="branch in branches" :key="branch.organizationId">
                 <td>{{ branch.organizationName }}</td>
                 <td>{{ branch.organizationCode }}</td>
-                <td>{{ branch.organizationId }}</td>
+                <td>{{ branch.organizationAddress || '-' }}</td>
+                <td>{{ branch.organizationPhone || '-' }}</td>
+                <td><StatusBadge :status="branch.organizationStatus" /></td>
+                <td>{{ formatNullableCount(getBranchAdvisorCount(branch)) }}</td>
               </tr>
             </tbody>
           </table>
@@ -296,7 +404,6 @@ const branches = ref([])
 const fpPage = ref(createEmptyPage(10))
 const fpDetail = ref(null)
 const contractPage = ref(createEmptyPage(10))
-const expandedNodeIds = ref([])
 
 const isOrganizationLoading = ref(false)
 const isBranchesLoading = ref(false)
@@ -311,6 +418,10 @@ const fpDetailError = ref('')
 const contractsError = ref('')
 
 const organizationStatus = ref('')
+const organizationListPage = ref(1)
+const organizationListSize = 5
+const selectedOrganizationId = ref('')
+const expandedOrganizationIds = ref([])
 const detailClosingMonth = ref('')
 
 const fpFilters = reactive({
@@ -333,23 +444,68 @@ const organizationStatusOptions = [
 ]
 
 const pageTitle = computed(() => {
-  if (props.mode === 'chart') return '조직도'
-  if (props.mode === 'branches') return '지점 목록'
+  if (props.mode === 'chart') return '조직도 조회'
+  if (props.mode === 'branches') return '지점 목록 조회'
+  if (props.mode === 'fps' && selectedFpBranchName.value) return `${selectedFpBranchName.value} 설계사 목록`
   if (props.mode === 'fps') return 'FP 목록'
   return 'FP 상세'
 })
 
 const pageDescription = computed(() => {
-  if (props.mode === 'chart') return '조직 트리와 조직 상태를 조회합니다.'
+  if (props.mode === 'chart') return 'Relia 전체 조직도를 조회합니다.'
   if (props.mode === 'branches') return '지점 선택에 사용하는 조직 목록입니다.'
+  if (props.mode === 'fps' && selectedFpBranchName.value) {
+    return `${selectedFpBranchName.value}에 소속된 설계사 목록을 조회합니다.`
+  }
   if (props.mode === 'fps') return '검색 조건으로 FP 실적 목록을 조회합니다.'
   return 'FP 기본 정보, 성과 요약, 계약 목록을 조회합니다.'
+})
+
+const organizationRoots = computed(() => (
+  organizations.value.map((organization) => ({
+    ...organization,
+    children: filterOrganizationsByStatus(Array.isArray(organization.children) ? organization.children : []),
+  }))
+))
+const organizationRows = computed(() => flattenOrganizations(organizations.value))
+
+const filteredOrganizationRows = computed(() => {
+  const selectedOrganization = organizationRows.value.find((organization) => organization.id === selectedOrganizationId.value)
+  const scopedRows = selectedOrganization && selectedOrganization.organizationType !== 'HQ'
+    ? [selectedOrganization]
+    : organizationRows.value
+
+  return organizationStatus.value
+    ? scopedRows.filter((organization) => organization.organizationStatus === organizationStatus.value)
+    : scopedRows
+})
+
+const organizationListTotalPages = computed(() => (
+  Math.max(Math.ceil(filteredOrganizationRows.value.length / organizationListSize), 1)
+))
+
+const paginatedOrganizationRows = computed(() => {
+  const start = (organizationListPage.value - 1) * organizationListSize
+  return filteredOrganizationRows.value.slice(start, start + organizationListSize)
+})
+
+const selectedFpBranchName = computed(() => {
+  if (!fpFilters.organizationId) return ''
+
+  const branch = branches.value.find((item) => String(item.organizationId) === String(fpFilters.organizationId))
+  return branch?.organizationName ?? normalizeQueryValue(route.query.organizationName)
 })
 
 watch(
   () => props.mode,
   () => initializePage(),
 )
+
+watch(organizationListTotalPages, (totalPages) => {
+  if (organizationListPage.value > totalPages) {
+    organizationListPage.value = totalPages
+  }
+})
 
 onMounted(() => {
   initializePage()
@@ -367,6 +523,7 @@ async function initializePage() {
   }
 
   if (props.mode === 'fps') {
+    applyFpFiltersFromQuery()
     await Promise.all([loadBranches(), loadFps()])
     return
   }
@@ -379,10 +536,16 @@ async function loadOrganizations() {
   isOrganizationLoading.value = true
 
   try {
-    organizations.value = await getOrganizations(buildOrganizationParams())
-    expandedNodeIds.value = collectDefaultExpandedIds(organizations.value)
+    organizations.value = await getOrganizations()
+    organizationListPage.value = 1
+    expandedOrganizationIds.value = collectExpandableOrganizationIds(organizations.value)
+    if (!selectedOrganizationId.value) {
+      selectedOrganizationId.value = findDefaultRootOrganizationId(organizations.value)
+    }
   } catch {
     organizations.value = []
+    selectedOrganizationId.value = ''
+    expandedOrganizationIds.value = []
     organizationError.value = '조직 정보를 불러오지 못했습니다.'
   } finally {
     isOrganizationLoading.value = false
@@ -394,7 +557,22 @@ async function loadBranches() {
   isBranchesLoading.value = true
 
   try {
-    branches.value = await getOrganizationsBranches()
+    const branchOptions = await getOrganizationsBranches()
+    if (branchOptions.length > 0) {
+      branches.value = branchOptions.map(normalizeBranch)
+      return
+    }
+
+    const organizationTree = await getOrganizations()
+    const branchNodes = flattenOrganizations(organizationTree)
+      .filter((organization) => organization.organizationType === 'BRANCH')
+
+    if (branchNodes.length > 0) {
+      branches.value = branchNodes.map(normalizeBranch)
+      return
+    }
+
+    branches.value = []
   } catch {
     branches.value = []
     branchesError.value = '지점 목록을 불러오지 못했습니다.'
@@ -457,10 +635,6 @@ async function loadFpContracts(fpId) {
   }
 }
 
-function buildOrganizationParams() {
-  return organizationStatus.value ? { status: organizationStatus.value } : {}
-}
-
 function buildFpParams() {
   return {
     page: fpFilters.page,
@@ -471,13 +645,43 @@ function buildFpParams() {
   }
 }
 
+function applyFpFiltersFromQuery() {
+  const organizationId = normalizeQueryValue(route.params.organizationId) || normalizeQueryValue(route.query.organizationId)
+
+  if (!organizationId) return
+
+  fpFilters.page = 1
+  fpFilters.organizationId = organizationId
+}
+
 function buildDetailParams() {
   return detailClosingMonth.value ? { closingMonth: detailClosingMonth.value } : {}
 }
 
 function changeOrganizationStatus(value) {
   organizationStatus.value = value
-  loadOrganizations()
+  organizationListPage.value = 1
+}
+
+function changeOrganizationListPage(page) {
+  organizationListPage.value = page
+}
+
+function selectOrganization(organizationId) {
+  selectedOrganizationId.value = organizationId
+  organizationListPage.value = 1
+}
+
+function toggleOrganization(organizationId) {
+  selectedOrganizationId.value = organizationId
+  organizationListPage.value = 1
+
+  if (expandedOrganizationIds.value.includes(organizationId)) {
+    expandedOrganizationIds.value = expandedOrganizationIds.value.filter((id) => id !== organizationId)
+    return
+  }
+
+  expandedOrganizationIds.value = [...expandedOrganizationIds.value, organizationId]
 }
 
 function searchFps() {
@@ -511,23 +715,73 @@ function goToFpDetail(fpId) {
   })
 }
 
+function goToBranchAdvisors(organization) {
+  if (organization.organizationType !== 'BRANCH') return
+
+  router.push({
+    name: 'organization-branch-advisors',
+    params: {
+      organizationId: organization.organizationId ?? organization.id,
+    },
+    query: {
+      organizationName: organization.organizationName,
+    },
+  })
+}
+
 function goToFpList() {
   router.push({ name: 'hq-advisors' })
 }
 
-function toggleNode(nodeId) {
-  if (expandedNodeIds.value.includes(nodeId)) {
-    expandedNodeIds.value = expandedNodeIds.value.filter((id) => id !== nodeId)
-    return
-  }
-
-  expandedNodeIds.value = [...expandedNodeIds.value, nodeId]
+function normalizeQueryValue(value) {
+  if (Array.isArray(value)) return value[0] ?? ''
+  return value ? String(value) : ''
 }
 
-function collectDefaultExpandedIds(nodes) {
+function flattenOrganizations(nodes) {
+  return nodes.flatMap((node) => [
+    node,
+    ...flattenOrganizations(Array.isArray(node.children) ? node.children : []),
+  ])
+}
+
+function filterOrganizationsByStatus(nodes) {
+  if (!organizationStatus.value) return nodes
+
+  return nodes
+    .filter((node) => node.organizationStatus === organizationStatus.value)
+    .map((node) => ({
+      ...node,
+      children: filterOrganizationsByStatus(Array.isArray(node.children) ? node.children : []),
+    }))
+}
+
+function normalizeBranch(branch) {
+  return {
+    ...branch,
+    organizationId: branch.organizationId ?? branch.id,
+  }
+}
+
+function getBranchAdvisorCount(branch) {
+  return branch.advisorCount
+    ?? branch.fpCount
+    ?? branch.advisorTotalCount
+    ?? branch.totalAdvisorCount
+    ?? branch.totalFpCount
+    ?? branch.userCount
+    ?? branch.fpUserCount
+    ?? null
+}
+
+function collectExpandableOrganizationIds(nodes) {
   return nodes
     .filter((node) => Array.isArray(node.children) && node.children.length > 0)
     .map((node) => node.id)
+}
+
+function findDefaultRootOrganizationId(nodes) {
+  return nodes[0]?.id ?? ''
 }
 
 function createEmptyPage(size) {
@@ -542,6 +796,11 @@ function createEmptyPage(size) {
 
 function formatCount(value) {
   return Number(value ?? 0).toLocaleString('ko-KR')
+}
+
+function formatNullableCount(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  return formatCount(value)
 }
 
 function formatPercent(value) {
@@ -567,61 +826,6 @@ function formatDate(value) {
   return `${year}.${month}.${day}`
 }
 
-const OrganizationNode = defineComponent({
-  name: 'OrganizationNode',
-  props: {
-    node: {
-      type: Object,
-      required: true,
-    },
-    expandedNodeIds: {
-      type: Array,
-      required: true,
-    },
-  },
-  emits: ['toggle'],
-  setup(componentProps, { emit }) {
-    return () => {
-      const node = componentProps.node
-      const children = Array.isArray(node.children) ? node.children : []
-      const hasChildren = children.length > 0
-      const isExpanded = componentProps.expandedNodeIds.includes(node.id)
-
-      return h('article', { class: 'tree-node-wrap' }, [
-        h('div', { class: ['tree-node', node.organizationType === 'HQ' ? 'tree-node--hq' : 'tree-node--branch'] }, [
-          h('div', { class: 'tree-node__main' }, [
-            h('button', {
-              class: ['tree-toggle', { hidden: !hasChildren }],
-              type: 'button',
-              disabled: !hasChildren,
-              onClick: () => emit('toggle', node.id),
-            }, hasChildren ? (isExpanded ? '-' : '+') : ''),
-            h('div', [
-              h('strong', node.organizationName),
-              h('p', `${node.organizationCode} · ${node.organizationType}`),
-            ]),
-          ]),
-          h('dl', [
-            h('div', [h('dt', '전화번호'), h('dd', node.organizationPhone || '-')]),
-            h('div', [h('dt', '주소'), h('dd', node.organizationAddress || '-')]),
-          ]),
-          h(StatusBadge, { status: node.organizationStatus }),
-        ]),
-        hasChildren && isExpanded
-          ? h('div', { class: 'tree-node__children' }, children.map((child) =>
-              h(OrganizationNode, {
-                key: child.id,
-                node: child,
-                expandedNodeIds: componentProps.expandedNodeIds,
-                onToggle: (id) => emit('toggle', id),
-              }),
-            ))
-          : null,
-      ])
-    }
-  },
-})
-
 const StatusBadge = defineComponent({
   name: 'StatusBadge',
   props: {
@@ -633,8 +837,8 @@ const StatusBadge = defineComponent({
   setup(componentProps) {
     return () => {
       const statusMap = {
-        ACTIVE: ['활성', 'success'],
-        INACTIVE: ['비활성', 'muted'],
+        ACTIVE: ['ACTIVE', 'success'],
+        INACTIVE: ['INACTIVE', 'muted'],
         NORMAL: ['정상', 'success'],
         LAPSED: ['실효', 'danger'],
       }
@@ -737,6 +941,7 @@ const PaginationBar = defineComponent({
             type: 'button',
             disabled: componentProps.page <= 1,
             onClick: () => emit('change', componentProps.page - 1),
+            'aria-label': '이전 페이지',
           }, '<'),
           ...pages.map((page) => h('button', {
             type: 'button',
@@ -747,6 +952,7 @@ const PaginationBar = defineComponent({
             type: 'button',
             disabled: componentProps.page >= totalPages,
             onClick: () => emit('change', componentProps.page + 1),
+            'aria-label': '다음 페이지',
           }, '>'),
         ]),
       ])
@@ -775,20 +981,24 @@ const PaginationBar = defineComponent({
 .page-header h2 {
   margin: 0;
   font-size: 28px;
+  line-height: 1.25;
 }
 
 .page-header p,
 .panel__header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: #3f2a22;
 }
 
 .page-header__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .panel {
+  position: relative;
   padding: 22px;
   border: 1px solid #e8b9a8;
   border-radius: 8px;
@@ -807,10 +1017,13 @@ const PaginationBar = defineComponent({
 
 .button {
   min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 0 16px;
   border: 1px solid transparent;
-  border-radius: 8px;
-  font-weight: 700;
+  border-radius: 2px;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -821,118 +1034,367 @@ const PaginationBar = defineComponent({
 
 .button--secondary {
   border-color: #e2b8a8;
-  background: #ffffff;
+  background: #eef4fb;
   color: #1f2937;
+}
+
+.organization-workspace {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.organization-tree-panel {
+  min-height: 640px;
+  overflow: hidden;
+  padding: 0;
+  background: #ffffff;
+}
+
+.organization-tree-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 10px;
+  border-bottom: 1px solid #e8b9a8;
+}
+
+.tree-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #3f2a22;
+  font-size: 13px;
+}
+
+.tree-title .mdi {
+  color: #f05a1a;
+  font-size: 18px;
+}
+
+.tree-collapse-button {
+  width: 24px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #3f2a22;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tree-collapse-button .mdi {
+  height: 10px;
+  line-height: 10px;
+}
+
+.organization-tree {
+  padding: 18px 12px 24px;
+}
+
+.organization-tree__root {
+  display: grid;
+  gap: 10px;
+}
+
+.tree-root-button,
+.tree-child-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: 0;
+}
+
+.tree-root-button {
+  display: grid;
+  grid-template-columns: 14px 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tree-root-button > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.tree-root-button small {
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tree-root-button .mdi {
+  color: #f05a1a;
+  font-size: 17px;
+}
+
+.tree-children {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 4px 0 0 16px;
+}
+
+.tree-children::before {
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  left: 0;
+  width: 1px;
+  background: #f0c7b8;
+  content: "";
+}
+
+.tree-child-button {
+  position: relative;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.tree-child-button::before {
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  width: 16px;
+  height: 1px;
+  background: #f0c7b8;
+  content: "";
+}
+
+.tree-child-button.active {
+  background: #fff0e9;
+  color: #f05a1a;
+  font-weight: 800;
+}
+
+.org-canvas {
+  min-height: 500px;
+  overflow-x: auto;
+  padding: 26px 30px 46px;
+}
+
+.canvas-toolbar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e8b9a8;
+  background: #ffffff;
+}
+
+.canvas-toolbar__divider {
+  width: 1px;
+  height: 22px;
+  background: #e8b9a8;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #130a06;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.icon-button--ghost {
+  color: #4d2b1c;
+}
+
+.org-chart {
+  min-width: 980px;
+  padding: 14px 10px 0;
+}
+
+.org-chart__roots {
+  display: grid;
+  gap: 44px;
+}
+
+.org-chart__root-group {
+  display: grid;
+  justify-items: center;
+  gap: 78px;
+}
+
+.org-node {
+  width: 180px;
+  min-height: 84px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  border-radius: 2px;
+  text-align: center;
+}
+
+.org-node span {
+  color: #4b332a;
+  font-size: 13px;
+}
+
+.org-node strong {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.org-node--hq {
+  position: relative;
+  width: 280px;
+  min-height: 120px;
+  background: #b33a00;
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(63, 26, 7, 0.18);
+}
+
+.org-node--hq::after {
+  position: absolute;
+  bottom: -78px;
+  left: 50%;
+  width: 2px;
+  height: 78px;
+  background: #b33a00;
+  content: "";
+}
+
+.org-node--hq span {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.org-node--hq strong {
+  font-size: 21px;
+}
+
+.org-node--hq small {
+  width: 84%;
+  padding: 7px 10px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.org-branches {
+  position: relative;
+  width: min-content;
+  display: grid;
+  grid-template-columns: repeat(5, 180px);
+  gap: 62px 44px;
+  padding-top: 62px;
+}
+
+.org-branches::before {
+  position: absolute;
+  top: 0;
+  left: 90px;
+  right: 90px;
+  height: 2px;
+  background: #b33a00;
+  content: "";
+}
+
+.org-node--branch {
+  position: relative;
+  border: 2px solid #e2b8a8;
+  background: #ffffff;
+}
+
+.org-node--branch::before {
+  position: absolute;
+  top: -64px;
+  left: 50%;
+  width: 2px;
+  height: 60px;
+  background: #b33a00;
+  content: "";
+}
+
+.organization-list {
+  overflow: hidden;
+  padding: 0;
+}
+
+.organization-list__header {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 30px;
+  border-bottom: 1px solid #e8b9a8;
+  background: #eaf4ff;
+}
+
+.organization-list__header h3 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.organization-list__tools {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.organization-list__tools span {
+  color: #3f2a22;
+}
+
+.organization-list__tools strong,
+.text-accent {
+  color: #b33a00;
 }
 
 .status-tabs {
   display: flex;
-  gap: 4px;
 }
 
 .status-tabs button {
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 32px;
+  padding: 0 16px;
   border: 1px solid #e8b9a8;
+  border-right: 0;
   background: #ffffff;
-  color: #64748b;
+  color: #4b332a;
   cursor: pointer;
+}
+
+.status-tabs button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.status-tabs button:last-child {
+  border-right: 1px solid #e8b9a8;
+  border-radius: 0 4px 4px 0;
 }
 
 .status-tabs button.active {
-  background: #fff7ed;
+  background: #f8eee8;
   color: #b33a00;
   font-weight: 800;
-}
-
-.organization-tree {
-  display: grid;
-  gap: 12px;
-}
-
-.tree-node-wrap {
-  display: grid;
-  gap: 10px;
-}
-
-.tree-node {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(260px, 2fr) auto;
-  align-items: center;
-  gap: 18px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  border-left-width: 5px;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.tree-node--hq {
-  border-left-color: #b33a00;
-  background: #fff7ed;
-}
-
-.tree-node--branch {
-  border-left-color: #2563eb;
-}
-
-.tree-node__main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.tree-node__main strong {
-  display: block;
-  font-size: 16px;
-}
-
-.tree-node__main p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.tree-toggle {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #ffffff;
-  cursor: pointer;
-  font-weight: 900;
-}
-
-.tree-toggle.hidden {
-  visibility: hidden;
-}
-
-.tree-node dl,
-.fp-profile dl {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-}
-
-.tree-node dt,
-.fp-profile dt {
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.tree-node dd,
-.fp-profile dd {
-  margin: 2px 0 0;
-  color: #334155;
-}
-
-.tree-node__children {
-  display: grid;
-  gap: 10px;
-  margin-left: 32px;
-  padding-left: 18px;
-  border-left: 2px solid #e2e8f0;
 }
 
 .filter-grid {
@@ -973,6 +1435,11 @@ const PaginationBar = defineComponent({
   border-radius: 8px;
 }
 
+.table-scroll--flush {
+  border: 0;
+  border-radius: 0;
+}
+
 table {
   width: 100%;
   min-width: 860px;
@@ -981,20 +1448,26 @@ table {
 
 th,
 td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #edf2f7;
+  padding: 17px 30px;
+  border-bottom: 1px solid #e8b9a8;
   text-align: left;
   white-space: nowrap;
 }
 
 th {
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 12px;
+  background: #f7fbff;
+  color: #3f2a22;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.table-action-cell {
+  width: 82px;
+  text-align: center;
 }
 
 .clickable-row {
@@ -1007,17 +1480,18 @@ tbody tr:last-child td {
 
 .status-badge {
   display: inline-flex;
-  min-height: 24px;
+  min-height: 22px;
   align-items: center;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: 3px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .status-badge--success {
-  background: #dcfce7;
-  color: #15803d;
+  background: #ffd9cb;
+  color: #111827;
 }
 
 .status-badge--danger {
@@ -1031,7 +1505,10 @@ tbody tr:last-child td {
 }
 
 .pagination-bar {
-  margin-top: 16px;
+  min-height: 86px;
+  margin-top: 0;
+  padding: 18px 30px;
+  background: #eaf4ff;
 }
 
 .pagination-bar span {
@@ -1041,20 +1518,20 @@ tbody tr:last-child td {
 
 .pagination-bar__buttons {
   display: flex;
-  gap: 6px;
+  gap: 10px;
 }
 
 .pagination-bar button {
-  min-width: 36px;
-  height: 36px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
+  min-width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   cursor: pointer;
+  font-weight: 800;
 }
 
 .pagination-bar button.active {
-  border-color: #b33a00;
   background: #b33a00;
   color: #ffffff;
 }
@@ -1093,8 +1570,21 @@ tbody tr:last-child td {
 }
 
 .fp-profile dl {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, auto));
   gap: 20px;
+  margin: 0;
+}
+
+.fp-profile dt {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fp-profile dd {
+  margin: 2px 0 0;
+  color: #334155;
 }
 
 .summary-grid {
@@ -1136,7 +1626,7 @@ tbody tr:last-child td {
 
 .state-box--compact {
   min-height: 96px;
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 .state-box--error {
@@ -1159,21 +1649,33 @@ tbody tr:last-child td {
   }
 }
 
+@media (max-width: 1180px) {
+  .org-branches {
+    grid-template-columns: repeat(3, 180px);
+  }
+}
+
 @media (max-width: 1024px) {
   .filter-grid,
   .summary-grid {
     grid-template-columns: 1fr;
   }
 
-  .tree-node {
+  .organization-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .organization-tree-panel {
+    min-height: auto;
   }
 
   .page-header,
   .panel__header,
   .detail-toolbar,
   .pagination-bar,
-  .fp-profile {
+  .fp-profile,
+  .organization-list__header,
+  .organization-list__tools {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1184,6 +1686,19 @@ tbody tr:last-child td {
 
   .fp-profile dl {
     grid-template-columns: 1fr;
+  }
+
+  .org-canvas {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .org-chart {
+    min-width: 720px;
+  }
+
+  .org-branches {
+    grid-template-columns: repeat(2, 180px);
   }
 }
 </style>

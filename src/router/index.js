@@ -60,7 +60,7 @@ function resolveProtectedComponent(page) {
     return HqCommissionView
   }
 
-  if (['organization-chart', 'organization-branches', 'hq-advisors', 'admin-organizations'].includes(page.name)) {
+  if (['organization-chart', 'organization-branches', 'hq-advisors', 'organization-branch-advisors', 'admin-organizations'].includes(page.name)) {
     return OrganizationsView
   }
 

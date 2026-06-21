@@ -12,7 +12,16 @@ const ORGANIZATION_MENU_SECTION = {
   icon: 'mdi-domain',
   children: [
     { title: '조직도 조회', to: { name: 'organization-chart' } },
-    { title: '지점 목록 관리', to: { name: 'organization-branches' } },
+    { title: '지점 목록 조회', to: { name: 'organization-branches' } },
+    { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
+  ],
+}
+
+const ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES = {
+  title: '조직 및 인사 관리',
+  icon: 'mdi-domain',
+  children: [
+    { title: '조직도 조회', to: { name: 'organization-chart' } },
     { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
   ],
 }
@@ -189,8 +198,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'organizations/chart',
     name: 'organization-chart',
-    title: '조직도 시각화',
-    description: 'Relia 전체 조직 및 지점 계층 구조를 조회합니다.',
+    title: '조직도 조회',
+    description: 'Relia 전체 조직도를 조회합니다.',
     roles: ORGANIZATION_API_ROLES,
     props: {
       mode: 'chart',
@@ -199,7 +208,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'organizations/branches',
     name: 'organization-branches',
-    title: '지점 목록 관리',
+    title: '지점 목록 조회',
     description: '지점 목록과 지점별 현황을 관리합니다.',
     roles: ORGANIZATION_API_ROLES,
     props: {
@@ -211,6 +220,16 @@ export const APP_PAGE_SPECS = [
     name: 'hq-advisors',
     title: '설계사 목록 조회',
     description: '전체 설계사 목록을 조회합니다.',
+    roles: ORGANIZATION_API_ROLES,
+    props: {
+      mode: 'fps',
+    },
+  },
+  {
+    path: 'organizations/branches/:organizationId/advisors',
+    name: 'organization-branch-advisors',
+    title: '지점 설계사 목록 조회',
+    description: '선택한 지점에 소속된 설계사 목록을 조회합니다.',
     roles: ORGANIZATION_API_ROLES,
     props: {
       mode: 'fps',
@@ -247,8 +266,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'admin/organizations',
     name: 'admin-organizations',
-    title: '조직도 시각화',
-    description: '시스템 관리자가 조직 구조를 조회합니다.',
+    title: '조직도 조회',
+    description: 'Relia 전체 조직도를 조회합니다.',
     roles: ORGANIZATION_API_ROLES,
     props: {
       mode: 'chart',
@@ -301,7 +320,7 @@ export const MENU_BY_ROLE = {
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION,
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
     {
       title: '보험 상품 관리',
       icon: 'mdi-shield-check-outline',
@@ -362,7 +381,7 @@ export const MENU_BY_ROLE = {
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION,
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
     {
       title: '보험 상품 관리',
       icon: 'mdi-shield-check-outline',
@@ -412,7 +431,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-domain',
       children: [
         { title: '조직도 조회', to: { name: 'organization-chart' } },
-        { title: '지점 목록 관리', to: { name: 'organization-branches' } },
+        { title: '지점 목록 조회', to: { name: 'organization-branches' } },
         { title: '설계사 목록 조회', to: { name: 'hq-advisors' } },
       ],
     },
