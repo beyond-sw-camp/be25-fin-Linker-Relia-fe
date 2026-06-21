@@ -185,25 +185,6 @@
           </div>
         </section>
 
-        <div class="stt-meta-grid">
-          <article>
-            <span>세션 상태</span>
-            <strong>{{ sessionStatus || 'IDLE' }}</strong>
-          </article>
-          <article>
-            <span>소켓 상태</span>
-            <strong>{{ wsConnectionState }}</strong>
-          </article>
-          <article>
-            <span>sessionId</span>
-            <strong>{{ sessionId || '-' }}</strong>
-          </article>
-          <article>
-            <span>상담 유형</span>
-            <strong>{{ sessionForm.consultationType }}</strong>
-          </article>
-        </div>
-
         <v-alert
           v-if="errorMessage || audioDebug.recentError"
           type="error"
@@ -212,113 +193,6 @@
         >
           {{ errorMessage || audioDebug.recentError }}
         </v-alert>
-
-        <details class="stt-details">
-          <summary>상세 디버그 정보</summary>
-
-          <div class="stt-details__content">
-            <section class="stt-detail-card">
-              <h3>Session</h3>
-              <div class="stt-preview-form">
-                <label class="stt-field">
-                  <span>customerId</span>
-                  <input
-                    v-model.trim="sessionForm.customerId"
-                    class="stt-input"
-                    placeholder="nullable"
-                  />
-                </label>
-
-                <label class="stt-field">
-                  <span>consultationType</span>
-                  <select v-model="sessionForm.consultationType" class="stt-input">
-                    <option
-                      v-for="option in consultationTypeOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="stt-preview-actions">
-                <button
-                  type="button"
-                  class="stt-button"
-                  :disabled="!sessionId || isBusy"
-                  @click="refreshSession"
-                >
-                  상태 새로고침
-                </button>
-                <button
-                  type="button"
-                  class="stt-button"
-                  :disabled="!sessionId || isBusy"
-                  @click="reconnectSocket"
-                >
-                  소켓 재연결
-                </button>
-              </div>
-
-              <dl class="stt-status-grid">
-                <div>
-                  <dt>startedAt</dt>
-                  <dd>{{ startedAt || '-' }}</dd>
-                </div>
-                <div>
-                  <dt>endedAt</dt>
-                  <dd>{{ endedAt || '-' }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section class="stt-detail-card">
-              <h3>Audio / Transport</h3>
-              <dl class="stt-status-grid">
-                <div>
-                  <dt>Capture mode</dt>
-                  <dd>{{ audioDebug.capture.mode }}</dd>
-                </div>
-                <div>
-                  <dt>Input sample rate</dt>
-                  <dd>{{ formatSampleRate(audioDebug.capture.inputSampleRate) }}</dd>
-                </div>
-                <div>
-                  <dt>Output sample rate</dt>
-                  <dd>{{ formatSampleRate(audioDebug.transform.outputSampleRate) }}</dd>
-                </div>
-                <div>
-                  <dt>Chunk count</dt>
-                  <dd>{{ audioDebug.transport.chunkCount }}</dd>
-                </div>
-                <div>
-                  <dt>Total bytes</dt>
-                  <dd>{{ formatByteCount(audioDebug.transport.totalBytes) }}</dd>
-                </div>
-                <div>
-                  <dt>Last chunk bytes</dt>
-                  <dd>{{ formatByteCount(audioDebug.transport.lastByteLength) }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section class="stt-detail-card stt-detail-card--wide">
-              <h3>Debug Log</h3>
-              <ul class="stt-log-list">
-                <li v-for="log in audioDebug.logs" :key="log.id">
-                  <strong>[{{ log.stage }}] {{ log.at }}</strong>
-                  <span>{{ log.message }}</span>
-                  <code v-if="log.details">{{ stringifyDetails(log.details) }}</code>
-                </li>
-                <li v-if="audioDebug.logs.length === 0">
-                  <span>No debug entries yet.</span>
-                </li>
-              </ul>
-            </section>
-          </div>
-        </details>
       </div>
     </section>
   </div>
