@@ -7,6 +7,20 @@ const ORGANIZATION_ROLES = [
   USER_ROLES.SYSTEM_ADMIN,
 ]
 
+const INSURANCE_PARTNER_ROLES = [
+  USER_ROLES.FP,
+  USER_ROLES.BRANCH_MANAGER,
+  USER_ROLES.HQ_MANAGER,
+  USER_ROLES.SYSTEM_ADMIN,
+]
+
+const INSURANCE_PRODUCT_ROLES = [
+  USER_ROLES.FP,
+  USER_ROLES.BRANCH_MANAGER,
+  USER_ROLES.HQ_MANAGER,
+  USER_ROLES.SYSTEM_ADMIN,
+]
+
 const ORGANIZATION_MENU_SECTION = {
   title: '조직 및 인사 관리',
   icon: 'mdi-domain',
@@ -14,6 +28,24 @@ const ORGANIZATION_MENU_SECTION = {
     { title: '조직도', to: { name: 'organization-chart' } },
     { title: '지점 목록', to: { name: 'organization-branches' } },
     { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
+  ],
+}
+
+const INSURANCE_PARTNER_MENU_SECTION = {
+  title: '보험 상품 관리',
+  icon: 'mdi-shield-check-outline',
+  children: [
+    { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
+    { title: '보험 상품 목록', to: { name: 'insurance-products' } },
+  ],
+}
+
+const HQ_INSURANCE_MENU_SECTION = {
+  title: '보험 상품 관리',
+  icon: 'mdi-shield-check-outline',
+  children: [
+    { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
+    { title: '보험 상품 목록', to: { name: 'insurance-products' } },
   ],
 }
 
@@ -240,14 +272,14 @@ export const APP_PAGE_SPECS = [
     name: 'insurance-partners',
     title: '제휴 보험사 목록',
     description: '제휴 보험사 목록 관리 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: INSURANCE_PARTNER_ROLES,
   },
   {
     path: 'insurance/products',
     name: 'insurance-products',
     title: '보험 상품 목록',
     description: '보험 상품 관리 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: INSURANCE_PRODUCT_ROLES,
   },
   {
     path: 'commissions/hq',
@@ -327,6 +359,7 @@ export const MENU_BY_ROLE = {
       ],
     },
     ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
+    INSURANCE_PARTNER_MENU_SECTION,
   ],
   [USER_ROLES.BRANCH_MANAGER]: [
     {
@@ -378,6 +411,7 @@ export const MENU_BY_ROLE = {
       ],
     },
     ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
+    INSURANCE_PARTNER_MENU_SECTION,
   ],
   [USER_ROLES.HQ_MANAGER]: [
     {
@@ -415,14 +449,7 @@ export const MENU_BY_ROLE = {
       ],
     },
     ORGANIZATION_MENU_SECTION,
-    {
-      title: '보험 상품 관리',
-      icon: 'mdi-shield-check-outline',
-      children: [
-        { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
-        { title: '보험 상품 목록', to: { name: 'insurance-products' } },
-      ],
-    },
+    HQ_INSURANCE_MENU_SECTION,
     {
       title: '수수료 관리',
       icon: 'mdi-trending-up',
@@ -441,5 +468,6 @@ export const MENU_BY_ROLE = {
         { title: '권한 관리', to: { name: 'admin-roles' } },
       ],
     },
+    HQ_INSURANCE_MENU_SECTION,
   ],
 }

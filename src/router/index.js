@@ -29,6 +29,11 @@ import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
 import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
 import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
+import InsurancePartnerFormView from '../views/insurance/InsurancePartnerFormView.vue'
+import InsurancePartnersView from '../views/insurance/InsurancePartnersView.vue'
+import InsuranceProductCreateView from '../views/insurance/InsuranceProductCreateView.vue'
+import InsuranceProductDetailView from '../views/insurance/InsuranceProductDetailView.vue'
+import InsuranceProductsView from '../views/insurance/InsuranceProductsView.vue'
 import OrganizationsView from '../views/organizations/OrganizationsView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
@@ -105,6 +110,18 @@ function resolveProtectedComponent(page) {
     'admin-organizations',
   ].includes(page.name)) {
     return OrganizationsView
+  }
+
+  if (page.name === 'insurance-partners') {
+    return InsurancePartnersView
+  }
+
+  if (page.name === 'insurance-products') {
+    return InsuranceProductsView
+  }
+
+  if (['insurance-partner-create', 'insurance-partner-detail'].includes(page.name)) {
+    return InsurancePartnerFormView
   }
 
   return PlaceholderView
@@ -202,6 +219,51 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
       requiresAuth: true,
       roles: ['FP', 'BRANCH_MANAGER', 'HQ_MANAGER'],
       title: '계약 상세',
+    },
+  },
+  {
+    path: 'insurance/partners/new',
+    name: 'insurance-partner-create',
+    component: InsurancePartnerFormView,
+    meta: {
+      requiresAuth: true,
+      roles: ['SYSTEM_ADMIN'],
+      title: '보험사 등록',
+    },
+  },
+  {
+    path: 'insurance/partners/:insuranceCompanyId',
+    name: 'insurance-partner-detail',
+    component: InsurancePartnerFormView,
+    meta: {
+      requiresAuth: true,
+      roles: ['SYSTEM_ADMIN'],
+      title: '보험사 상세',
+    },
+  },
+  {
+    path: 'insurance/products/new',
+    name: 'insurance-product-create',
+    component: InsuranceProductCreateView,
+    meta: {
+      requiresAuth: true,
+      roles: [USER_ROLES.SYSTEM_ADMIN],
+      title: '보험 상품 등록',
+    },
+  },
+  {
+    path: 'insurance/products/:insuranceProductId',
+    name: 'insurance-product-detail',
+    component: InsuranceProductDetailView,
+    meta: {
+      requiresAuth: true,
+      roles: [
+        USER_ROLES.FP,
+        USER_ROLES.BRANCH_MANAGER,
+        USER_ROLES.HQ_MANAGER,
+        USER_ROLES.SYSTEM_ADMIN,
+      ],
+      title: '보험 상품 상세',
     },
   },
 ])
