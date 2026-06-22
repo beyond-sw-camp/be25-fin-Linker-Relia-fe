@@ -42,17 +42,17 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
-    path: 'consultations/fp',
-    name: 'fp-consultations',
-    title: '고객별 상담 목록',
-    description: '설계사 관점의 상담 목록 화면입니다.',
+    path: 'customers/fp/interests',
+    name: 'fp-customer-interests',
+    title: '관심 고객 목록',
+    description: '관심 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
     path: 'consultations/new',
     name: 'consultation-create',
-    title: '상담 등록',
-    description: '새 상담을 등록하는 화면입니다.',
+    title: '상담일지 작성',
+    description: '상담 유형에 따라 상담일지를 작성합니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -60,6 +60,13 @@ export const APP_PAGE_SPECS = [
     name: 'consultation-drafts',
     title: '임시저장 상담일지 조회',
     description: '임시저장한 상담일지를 목록으로 조회합니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
+    path: 'consultations/fp',
+    name: 'fp-consultations',
+    title: '상담일지 목록 조회',
+    description: '완전히 등록된 상담일지 목록을 조회합니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -79,8 +86,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'handovers/received',
     name: 'handover-received',
-    title: '받은 인수인계 목록',
-    description: 'FP가 본인이 인수받은 인수인계 목록을 조회하는 화면입니다.',
+    title: '인수받은 고객 목록',
+    description: 'FP가 본인이 인수받은 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -102,6 +109,13 @@ export const APP_PAGE_SPECS = [
     name: 'branch-customers',
     title: '지점 고객 목록',
     description: '지점 전체 고객을 조회하는 화면입니다.',
+    roles: [USER_ROLES.BRANCH_MANAGER],
+  },
+  {
+    path: 'customers/branch/interests',
+    name: 'branch-customer-interests',
+    title: '지점 관심 고객 목록',
+    description: '지점 관심 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -287,8 +301,8 @@ export const MENU_BY_ROLE = {
       title: '상담 관리',
       icon: 'mdi-clipboard-text-outline',
       children: [
-        { title: '고객별 상담 목록', to: { name: 'fp-consultations' } },
-        { title: '상담 등록', to: { name: 'consultation-create' } },
+        { title: '상담일지 작성', to: { name: 'consultation-create' } },
+        { title: '상담일지 목록 조회', to: { name: 'fp-consultations' } },
       ],
     },
     {
@@ -302,7 +316,7 @@ export const MENU_BY_ROLE = {
       title: '인수인계 관리',
       icon: 'mdi-cash-multiple',
       children: [
-        { title: '받은 인수인계 목록', to: { name: 'handover-received' } },
+        { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
       ],
     },
     {
@@ -358,7 +372,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
@@ -411,7 +425,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '수수료 대시보드', to: { name: 'hq-commissions' } },
       ],
