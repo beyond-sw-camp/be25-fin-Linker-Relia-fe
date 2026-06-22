@@ -216,10 +216,16 @@
               </option>
             </select>
           </label>
-          <label class="field">
-            <span>기준월</span>
-            <input v-model="fpFilters.closingMonth" type="month" />
-          </label>
+          <v-text-field
+            v-model="fpFilters.closingMonth"
+            type="month"
+            label="기준월"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :max="latestAvailableClosingMonth"
+            class="organization-month-field"
+          />
         </div>
       </section>
 
@@ -282,10 +288,17 @@
           <button class="button button--secondary" type="button" @click="goToFpList">
             목록으로
           </button>
-          <label class="field field--month">
-            <span>기준월</span>
-            <input v-model="detailClosingMonth" type="month" @change="reloadFpDetail" />
-          </label>
+          <v-text-field
+            v-model="detailClosingMonth"
+            type="month"
+            label="기준월"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :max="latestAvailableClosingMonth"
+            class="organization-month-field organization-month-field--detail"
+            @update:model-value="reloadFpDetail"
+          />
         </div>
 
         <LoadingState v-if="isFpDetailLoading" message="FP 상세 정보를 불러오고 있습니다." />
@@ -315,12 +328,43 @@
           </div>
 
           <div v-if="fpDetail.performanceSummary" class="summary-grid">
-            <SummaryCard label="기준월" :value="fpDetail.performanceSummary.closingMonth" />
-            <SummaryCard label="완료 계약 수" :value="`${formatCount(fpDetail.performanceSummary.completedContractCount)}건`" />
-            <SummaryCard label="신규 계약 수" :value="`${formatCount(fpDetail.performanceSummary.newContractCount)}건`" />
-            <SummaryCard label="유지율" :value="formatPercent(fpDetail.performanceSummary.retentionRate)" />
-            <SummaryCard label="전체 순위" :value="`${formatCount(fpDetail.performanceSummary.totalRank)}위`" />
-            <SummaryCard label="지점 순위" :value="`${formatCount(fpDetail.performanceSummary.branchRank)}위`" />
+            <article class="summary-card">
+              <span class="summary-card__label">유지 계약 총 수</span>
+              <strong class="summary-card__value">
+                {{ formatCount(fpDetail.performanceSummary.completedContractCount) }}<small>건</small>
+              </strong>
+              <p v-if="getPerformanceChangeLabel(fpDetail.performanceSummary)" class="summary-card__trend">
+                {{ getPerformanceChangeLabel(fpDetail.performanceSummary) }}
+              </p>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">이달의 신규 계약</span>
+              <strong class="summary-card__value">
+                {{ formatCount(fpDetail.performanceSummary.newContractCount) }}<small>건</small>
+              </strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">계약 유지율</span>
+              <strong class="summary-card__value">
+                {{ formatPercent(fpDetail.performanceSummary.retentionRate) }}
+              </strong>
+            </article>
+            <article class="summary-card summary-card--rank">
+              <div class="rank-metric">
+                <span class="summary-card__label">전 지점 순위</span>
+                <strong class="summary-card__value">
+                  {{ formatCount(fpDetail.performanceSummary.totalRank) }}<small>등</small>
+                </strong>
+              </div>
+              <div class="rank-divider" aria-hidden="true"></div>
+              <div class="rank-metric">
+                <span class="summary-card__label">지점 내 순위</span>
+                <strong class="summary-card__value summary-card__value--rank-highlight">
+                  <span class="mdi mdi-crown" aria-hidden="true"></span>
+                  {{ formatCount(fpDetail.performanceSummary.branchRank) }}<small>등</small>
+                </strong>
+              </div>
+            </article>
           </div>
           <EmptyState v-else message="해당 기준월 성과 데이터가 없습니다." compact />
         </template>
@@ -422,14 +466,14 @@ const organizationListPage = ref(1)
 const organizationListSize = 5
 const selectedOrganizationId = ref('')
 const expandedOrganizationIds = ref([])
-const detailClosingMonth = ref('')
+const detailClosingMonth = ref(getLatestAvailableClosingMonth())
 
 const fpFilters = reactive({
   page: 1,
   size: 10,
   keyword: '',
   organizationId: '',
-  closingMonth: '',
+  closingMonth: getLatestAvailableClosingMonth(),
 })
 
 const contractFilters = reactive({
@@ -442,6 +486,8 @@ const organizationStatusOptions = [
   { label: '활성', value: 'ACTIVE' },
   { label: '비활성', value: 'INACTIVE' },
 ]
+
+const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
 
 const pageTitle = computed(() => {
   if (props.mode === 'chart') return '조직도 조회'
@@ -693,7 +739,7 @@ function resetFpFilters() {
   fpFilters.page = 1
   fpFilters.keyword = ''
   fpFilters.organizationId = ''
-  fpFilters.closingMonth = ''
+  fpFilters.closingMonth = latestAvailableClosingMonth.value
   loadFps()
 }
 
@@ -817,6 +863,27 @@ function formatPercent(value) {
   })}%`
 }
 
+function getPerformanceChangeLabel(summary) {
+  const rawValue = summary?.contractChangeRate
+    ?? summary?.completedContractChangeRate
+    ?? summary?.monthOverMonthRate
+    ?? summary?.growthRate
+    ?? null
+
+  if (rawValue === null || rawValue === undefined || rawValue === '') return ''
+
+  const value = Number(rawValue)
+  if (!Number.isFinite(value)) return ''
+
+  const prefix = value > 0 ? '▲' : value < 0 ? '▼' : '-'
+  const formattedValue = Math.abs(value).toLocaleString('ko-KR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+
+  return `전월 대비 ${prefix} ${formattedValue}%`
+}
+
 function formatCurrency(value) {
   return `${Number(value ?? 0).toLocaleString('ko-KR')}원`
 }
@@ -831,6 +898,14 @@ function formatDate(value) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}.${month}.${day}`
+}
+
+function getLatestAvailableClosingMonth() {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 1)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
 }
 
 const StatusBadge = defineComponent({
@@ -852,26 +927,6 @@ const StatusBadge = defineComponent({
       const [label, tone] = statusMap[componentProps.status] ?? [componentProps.status || '-', 'muted']
       return h('span', { class: ['status-badge', `status-badge--${tone}`] }, label)
     }
-  },
-})
-
-const SummaryCard = defineComponent({
-  name: 'SummaryCard',
-  props: {
-    label: {
-      type: String,
-      required: true,
-    },
-    value: {
-      type: String,
-      required: true,
-    },
-  },
-  setup(componentProps) {
-    return () => h('article', { class: 'summary-card' }, [
-      h('span', componentProps.label),
-      h('strong', componentProps.value),
-    ])
   },
 })
 
@@ -1436,6 +1491,21 @@ const PaginationBar = defineComponent({
   color: #111827;
 }
 
+.organization-month-field {
+  align-self: end;
+}
+
+.organization-month-field--detail {
+  width: 180px;
+  flex: 0 0 180px;
+  margin-left: auto;
+}
+
+.organization-month-field :deep(.v-field) {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
 .field--month {
   width: 200px;
 }
@@ -1600,28 +1670,76 @@ tbody tr:last-child td {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   margin-top: 20px;
 }
 
 .summary-card {
-  padding: 16px;
-  border: 1px solid #e8eef5;
+  min-height: 124px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
 }
 
-.summary-card span {
-  display: block;
+.summary-card__label {
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.summary-card strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 24px;
+.summary-card__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #111827;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.summary-card__value small {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.summary-card__trend {
+  margin: 0;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-card--rank {
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.rank-metric {
+  display: grid;
+  gap: 12px;
+}
+
+.rank-divider {
+  align-self: stretch;
+  background: #e5e7eb;
+}
+
+.summary-card__value--rank-highlight {
+  color: #111827;
+}
+
+.summary-card__value--rank-highlight .mdi {
+  align-self: start;
+  color: #f59e0b;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .state-box {
@@ -1693,6 +1811,12 @@ tbody tr:last-child td {
 
   .field--month {
     width: 100%;
+  }
+
+  .organization-month-field--detail {
+    width: 100%;
+    flex-basis: auto;
+    margin-left: 0;
   }
 
   .fp-profile dl {

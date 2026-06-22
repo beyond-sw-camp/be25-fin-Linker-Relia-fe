@@ -130,7 +130,12 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     },
     meta: {
       requiresAuth: true,
-      roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
+      roles: [
+        USER_ROLES.FP,
+        USER_ROLES.BRANCH_MANAGER,
+        USER_ROLES.HQ_MANAGER,
+        USER_ROLES.SYSTEM_ADMIN,
+      ],
       title: '설계사 상세 정보 조회',
     },
   },
