@@ -279,6 +279,11 @@ function subscribeNotifications() {
 
   notificationStream = createNotificationStream({
     getAccessToken: () => authStore.accessToken,
+    applyAccessToken: (token) => authStore.setAccessToken(token),
+    onAuthFailure: async () => {
+      authStore.clearAuth()
+      await router.push('/login')
+    },
     onEvent: handleNotificationEvent,
     onError: () => {},
   })
