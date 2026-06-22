@@ -247,7 +247,12 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     component: InsuranceProductDetailView,
     meta: {
       requiresAuth: true,
-      roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
+      roles: [
+        USER_ROLES.FP,
+        USER_ROLES.BRANCH_MANAGER,
+        USER_ROLES.HQ_MANAGER,
+        USER_ROLES.SYSTEM_ADMIN,
+      ],
       title: '보험 상품 상세',
     },
   },

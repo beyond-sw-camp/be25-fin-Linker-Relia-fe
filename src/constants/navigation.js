@@ -13,6 +13,8 @@ const INSURANCE_PARTNER_ROLES = [
 ]
 
 const INSURANCE_PRODUCT_ROLES = [
+  USER_ROLES.FP,
+  USER_ROLES.BRANCH_MANAGER,
   USER_ROLES.HQ_MANAGER,
   USER_ROLES.SYSTEM_ADMIN,
 ]
@@ -31,6 +33,7 @@ const INSURANCE_PARTNER_MENU_SECTION = {
   icon: 'mdi-shield-check-outline',
   children: [
     { title: '제휴 보험사 목록', to: { name: 'insurance-partners' } },
+    { title: '보험 상품 목록', to: { name: 'insurance-products' } },
   ],
 }
 
