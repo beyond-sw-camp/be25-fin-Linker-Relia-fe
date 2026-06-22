@@ -17,7 +17,7 @@
         <button type="button" aria-label="Close" @click="handleClose">×</button>
       </header>
 
-      <div class="stt-preview-modal__body">
+      <div class="stt-preview-modal__body" :class="{ 'stt-preview-modal__body--recording': currentStep === 1 }">
         <div class="stt-stepper">
           <button
             type="button"
@@ -41,7 +41,7 @@
           </button>
         </div>
 
-        <section v-show="currentStep === 1" class="stt-slide">
+        <section v-show="currentStep === 1" class="stt-slide stt-slide--recording">
           <div class="stt-recorder__timer">{{ formattedElapsedTime }}</div>
 
           <div
@@ -57,36 +57,18 @@
             </div>
           </div>
 
-          <div class="stt-recorder__status-pill" :class="statusPillClass">
+          <button
+            type="button"
+            class="stt-recorder__status-pill"
+            :class="statusPillClass"
+            :disabled="!canToggleRecording"
+            @click="handlePrimaryRecorderAction"
+          >
             <span class="stt-recorder__status-dot"></span>
-            {{ statusPillLabel }}
-          </div>
+            {{ primaryRecorderButtonLabel }}
+          </button>
 
           <div class="stt-recorder__actions">
-            <button
-              type="button"
-              class="stt-button stt-button--primary"
-              :disabled="!canStartCombined"
-              @click="handleStart"
-            >
-              녹음 시작
-            </button>
-            <button
-              type="button"
-              class="stt-button"
-              :disabled="!canPauseRecording"
-              @click="pauseRecording"
-            >
-              일시정지
-            </button>
-            <button
-              type="button"
-              class="stt-button stt-button--primary"
-              :disabled="!canResumeRecording"
-              @click="resumeRecording"
-            >
-              다시 시작
-            </button>
             <button
               type="button"
               class="stt-button stt-button--danger"
@@ -290,10 +272,16 @@ const generatedSummaryText = computed(() => {
   )
 })
 const formattedElapsedTime = computed(() => formatElapsedTime(elapsedSeconds.value))
-const statusPillLabel = computed(() => {
-  if (recordingState.value === 'RECORDING') return 'ON'
-  if (recordingState.value === 'PAUSED') return 'PAUSE'
+const canToggleRecording = computed(() => {
+  if (sessionStatus.value === 'PROCESSING') return false
+  if (recordingState.value === 'RECORDING') return canPauseRecording.value
+  if (recordingState.value === 'PAUSED') return canResumeRecording.value
+  return canStartCombined.value
+})
+const primaryRecorderButtonLabel = computed(() => {
   if (sessionStatus.value === 'PROCESSING') return 'PROCESSING'
+  if (recordingState.value === 'RECORDING') return 'STOP'
+  if (recordingState.value === 'PAUSED') return 'START'
   return 'OFF'
 })
 const statusPillClass = computed(() => ({
@@ -464,6 +452,24 @@ async function handleStart() {
   currentStep.value = 1
   await startSession()
   await startRecording()
+}
+
+async function handlePrimaryRecorderAction() {
+  if (sessionStatus.value === 'PROCESSING') {
+    return
+  }
+
+  if (recordingState.value === 'RECORDING') {
+    await pauseRecording()
+    return
+  }
+
+  if (recordingState.value === 'PAUSED') {
+    await resumeRecording()
+    return
+  }
+
+  await handleStart()
 }
 
 function isDraftNotReadyError(error) {
@@ -765,7 +771,7 @@ function formatDateTimeValue(value) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px 28px 20px;
+  padding: 18px 22px 14px;
   background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 60%, #8b5cf6 100%);
   color: #ffffff;
 }
@@ -781,7 +787,7 @@ function formatDateTimeValue(value) {
 
 .stt-preview-modal__header h2 {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 800;
 }
 
@@ -798,10 +804,14 @@ function formatDateTimeValue(value) {
 
 .stt-preview-modal__body {
   display: grid;
-  gap: 22px;
-  padding: 24px 22px 28px;
+  gap: 14px;
+  padding: 16px 18px 18px;
   overflow-y: auto;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 118px);
+}
+
+.stt-preview-modal__body--recording {
+  overflow: hidden;
 }
 
 .stt-stepper {
@@ -857,7 +867,12 @@ function formatDateTimeValue(value) {
 
 .stt-slide {
   display: grid;
-  gap: 22px;
+  gap: 14px;
+}
+
+.stt-slide--recording {
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+  min-height: 0;
 }
 
 .stt-slide--summary {
@@ -867,14 +882,14 @@ function formatDateTimeValue(value) {
 .stt-recorder__timer {
   text-align: center;
   color: #111827;
-  font-size: 54px;
+  font-size: 40px;
   font-weight: 300;
   line-height: 1;
 }
 
 .stt-recorder__mic-shell {
   position: relative;
-  width: min(330px, 70vw);
+  width: min(232px, 34vh, 54vw);
   aspect-ratio: 1;
   margin: 0 auto;
   display: grid;
@@ -918,6 +933,7 @@ function formatDateTimeValue(value) {
   position: relative;
   z-index: 1;
   color: #ffffff;
+  transform: scale(0.82);
 }
 
 .stt-recorder__status-pill {
@@ -925,14 +941,20 @@ function formatDateTimeValue(value) {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
-  padding: 0 24px;
+  min-height: 42px;
+  padding: 0 18px;
   border: 2px solid #f9a8d4;
   border-radius: 999px;
   background: #ffffff;
   color: #ec4899;
-  font-size: 26px;
+  font-size: 18px;
   font-weight: 700;
+  cursor: pointer;
+}
+
+.stt-recorder__status-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .stt-recorder__status-pill.is-on {
@@ -951,8 +973,8 @@ function formatDateTimeValue(value) {
 }
 
 .stt-recorder__status-dot {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   background: currentColor;
   flex-shrink: 0;
@@ -964,17 +986,21 @@ function formatDateTimeValue(value) {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.stt-recorder__actions {
+  display: flex;
 }
 
 .stt-button {
-  min-height: 42px;
-  padding: 0 18px;
+  min-height: 36px;
+  padding: 0 12px;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #ffffff;
   color: #334155;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -998,7 +1024,8 @@ function formatDateTimeValue(value) {
 
 .stt-results {
   display: grid;
-  gap: 14px;
+  gap: 10px;
+  min-height: 0;
 }
 
 .stt-results__header {
@@ -1009,29 +1036,31 @@ function formatDateTimeValue(value) {
 }
 
 .stt-results__header strong {
-  font-size: 24px;
+  font-size: 20px;
   color: #111827;
 }
 
 .stt-results__header span {
   color: #7c3aed;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .stt-results__body {
-  min-height: 240px;
-  padding: 22px 24px;
+  min-height: 92px;
+  max-height: 92px;
+  padding: 12px 14px;
   border: 2px solid #d8b4fe;
   border-radius: 28px;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .stt-results__body p {
   margin: 0;
   color: #374151;
-  font-size: 18px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1307,12 +1336,20 @@ function formatDateTimeValue(value) {
   }
 
   .stt-preview-modal__body {
-    max-height: calc(100vh - 150px);
-    padding: 20px 16px 24px;
+    max-height: calc(100vh - 118px);
+    padding: 16px 14px 18px;
+  }
+
+  .stt-slide--recording {
+    grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   }
 
   .stt-recorder__timer {
-    font-size: 42px;
+    font-size: 32px;
+  }
+
+  .stt-recorder__mic-shell {
+    width: min(210px, 30vh, 52vw);
   }
 
   .stt-stepper,

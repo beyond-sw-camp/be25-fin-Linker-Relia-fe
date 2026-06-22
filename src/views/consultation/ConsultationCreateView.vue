@@ -9,7 +9,12 @@
       <strong>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</strong>
     </nav>
 
-    <form class="journal-workspace" :class="{ 'journal-workspace--focus-main': isSttPreviewOpen }" @submit.prevent="submitConsultation">
+    <form
+      class="journal-workspace"
+      :class="{ 'journal-workspace--focus-main': isSttPreviewOpen }"
+      @submit.prevent="submitConsultation"
+      @keydown.enter.prevent="handleEnterKeydown"
+    >
       <aside class="journal-side" :class="{ 'journal-side--hidden': isSttPreviewOpen }">
         <section class="side-card">
           <h3>상담 정보</h3>
@@ -399,7 +404,7 @@
                   :value="formatMoneyDisplay(newDetail.monthlyIncome)"
                   class="control"
                   inputmode="numeric"
-                  placeholder="5,600,000"
+                  placeholder=""
                   @input="updateMoneyField('monthlyIncome', $event.target.value, newDetail)"
                 />
               </label>
@@ -432,7 +437,7 @@
                   :value="formatMoneyDisplay(newDetail.monthlyInsurancePremium)"
                   class="control"
                   inputmode="numeric"
-                  placeholder="210,000"
+                  placeholder=""
                   :disabled="!newDetail.hasExistingInsurance"
                   @input="updateMoneyField('monthlyInsurancePremium', $event.target.value, newDetail)"
                 />
@@ -1881,6 +1886,19 @@ function setExistingInsurance(value) {
 
 function toggleSingleSelection(currentValue, nextValue) {
   return currentValue === nextValue ? '' : nextValue
+}
+
+function handleEnterKeydown(event) {
+  const target = event.target
+  if (target instanceof HTMLTextAreaElement) {
+    return
+  }
+
+  if (target instanceof HTMLButtonElement) {
+    return
+  }
+
+  event.preventDefault()
 }
 
 function toggleArraySelection(targetArray, value) {
