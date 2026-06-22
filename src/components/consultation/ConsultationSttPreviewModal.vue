@@ -735,25 +735,29 @@ function formatDateTimeValue(value) {
   inset: 0;
   z-index: 1200;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 0;
+  pointer-events: none;
 }
 
 .stt-preview-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.56);
+  background: transparent;
+  pointer-events: none;
 }
 
 .stt-preview-modal__panel {
   position: relative;
-  width: min(880px, 100%);
-  max-height: calc(100vh - 48px);
+  width: min(460px, calc(100vw - 220px));
+  height: 100vh;
   overflow: hidden;
-  border-radius: 28px;
+  border-radius: 0;
   background: #ffffff;
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.26);
+  box-shadow: -24px 0 48px rgba(15, 23, 42, 0.16);
+  pointer-events: auto;
+  border-left: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .stt-preview-modal__header {
@@ -795,9 +799,9 @@ function formatDateTimeValue(value) {
 .stt-preview-modal__body {
   display: grid;
   gap: 22px;
-  padding: 28px;
+  padding: 24px 22px 28px;
   overflow-y: auto;
-  max-height: calc(100vh - 170px);
+  max-height: calc(100vh - 150px);
 }
 
 .stt-stepper {
@@ -1293,12 +1297,13 @@ function formatDateTimeValue(value) {
 
 @media (max-width: 900px) {
   .stt-preview-modal {
-    padding: 12px;
+    justify-content: stretch;
   }
 
   .stt-preview-modal__panel {
-    max-height: calc(100vh - 24px);
-    border-radius: 24px;
+    width: min(100vw, 420px);
+    max-height: 100vh;
+    border-radius: 0;
   }
 
   .stt-preview-modal__body {

@@ -1,5 +1,5 @@
 <template>
-  <section class="journal-page">
+  <section class="journal-page" :class="{ 'journal-page--with-stt': isSttPreviewOpen }">
     <nav class="journal-breadcrumb" aria-label="breadcrumb">
       <button type="button" @click="goBack">
         <v-icon icon="mdi-arrow-left" size="14" />
@@ -9,8 +9,8 @@
       <strong>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</strong>
     </nav>
 
-    <form class="journal-workspace" @submit.prevent="submitConsultation">
-      <aside class="journal-side">
+    <form class="journal-workspace" :class="{ 'journal-workspace--focus-main': isSttPreviewOpen }" @submit.prevent="submitConsultation">
+      <aside class="journal-side" :class="{ 'journal-side--hidden': isSttPreviewOpen }">
         <section class="side-card">
           <h3>상담 정보</h3>
 
@@ -2726,6 +2726,14 @@ function toApiDateTime(value) {
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+.journal-workspace--focus-main {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.journal-workspace--focus-main .journal-side--hidden {
+  display: none;
 }
 
 @media (max-width: 900px) {
