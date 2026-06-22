@@ -372,8 +372,8 @@ async function loadBranchFpFilter() {
     let isOneBasedPage = false
 
     do {
-      const { response, usedPage } = await getOrganizationFpsPage(branch.organizationId, page)
-      const result = response?.result ?? {}
+      const { pageResult, usedPage } = await getOrganizationFpsPage(branch.organizationId, page)
+      const result = pageResult ?? {}
       const content = Array.isArray(result.content) ? result.content : []
 
       fps.push(...content)
@@ -406,18 +406,18 @@ async function getOrganizationFpsPage(organizationId, page) {
   }
 
   try {
-    const response = await getOrganizationFps(params)
-    return { response, usedPage: page }
+    const pageResult = await getOrganizationFps(params)
+    return { pageResult, usedPage: page }
   } catch (error) {
     if (page !== 0 || error.response?.status !== 400) {
       throw error
     }
 
-    const response = await getOrganizationFps({
+    const pageResult = await getOrganizationFps({
       ...params,
       page: 1,
     })
-    return { response, usedPage: 1 }
+    return { pageResult, usedPage: 1 }
   }
 }
 
