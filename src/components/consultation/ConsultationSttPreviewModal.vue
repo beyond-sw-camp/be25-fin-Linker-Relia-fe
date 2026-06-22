@@ -190,6 +190,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { applyConsultationAiNote, getConsultationSttAiDraft } from '../../api/consultationStt'
+import { getInsuranceProducts } from '../../api/insurance'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -257,6 +258,8 @@ const applyErrorMessage = ref('')
 const toastMessage = ref('')
 const toastType = ref('success')
 const toastTimerId = ref(0)
+const insuranceProducts = ref([])
+const isInsuranceProductsLoading = ref(false)
 
 const canStartCombined = computed(() => canStartSession.value && !isBusy.value)
 const canOpenSummaryStep = computed(() => {
@@ -345,7 +348,7 @@ const structuredPreviewRows = computed(() => {
     ['monthlyInsurancePremium', '기존 보험료', formatNumberValue(draft.newDetail?.monthlyInsurancePremium)],
     ['insurancePriority', '보험 우선순위', draft.newDetail?.insurancePriority],
     ['coverageTypes', '관심 보장', formatCoverageTypeList(draft.newDetail?.coverageTypes)],
-    ['proposedProductCodes', '추천 상품', formatListValue(draft.newDetail?.proposedProductCodes)],
+    ['proposedProductCodes', '추천 상품', formatProposedProductList(draft.newDetail?.proposedProductCodes)],
     ['claimType', '청구 유형', draft.claimDetail?.claimType],
     ['claimReason', '청구 사유', draft.claimDetail?.claimReason],
     ['incidentDate', '사고/진단일', draft.claimDetail?.incidentDate],
@@ -565,6 +568,25 @@ async function handleApplyAiDraft() {
   }
 }
 
+async function ensureInsuranceProductsLoaded() {
+  if (insuranceProducts.value.length > 0 || isInsuranceProductsLoading.value) {
+    return
+  }
+
+  isInsuranceProductsLoading.value = true
+
+  try {
+    const response = await getInsuranceProducts({ size: 1000 })
+    const result = response?.result?.products ?? response?.result
+    const rows = Array.isArray(result?.content) ? result.content : result
+    insuranceProducts.value = Array.isArray(rows) ? rows : []
+  } catch {
+    insuranceProducts.value = []
+  } finally {
+    isInsuranceProductsLoading.value = false
+  }
+}
+
 async function applyStructuredDraftToForm() {
   if (!aiStructuredDraft.value) {
     return
@@ -673,6 +695,15 @@ watch(
   },
 )
 
+watch(
+  () => aiStructuredDraft.value?.newDetail?.proposedProductCodes,
+  async (codes) => {
+    if (Array.isArray(codes) && codes.length > 0) {
+      await ensureInsuranceProductsLoaded()
+    }
+  },
+)
+
 onBeforeUnmount(() => {
   stopTimer()
 
@@ -694,6 +725,28 @@ function hasMeaningfulValue(value) {
 
 function formatListValue(value) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : ''
+}
+
+function formatProposedProductList(value) {
+  if (!Array.isArray(value)) {
+    return ''
+  }
+
+  return value
+    .filter(Boolean)
+    .map((code) => {
+      const normalizedCode = String(code).trim()
+      const matched = insuranceProducts.value.find((product) => (
+        String(
+          product?.insuranceProductCode ??
+          product?.productCode ??
+          '',
+        ).trim() === normalizedCode
+      ))
+
+      return matched?.insuranceProductName || matched?.productName || matched?.name || normalizedCode
+    })
+    .join(', ')
 }
 
 function formatCoverageTypeList(value) {
