@@ -15,6 +15,21 @@ export async function getInsuranceProducts(params) {
   return response.data
 }
 
+export async function getInsuranceManagementProducts(params) {
+  const response = await authApi.get('/insurance-management/products', { params })
+  return response.data
+}
+
+export async function getInsuranceManagementProductDetail(insuranceProductId) {
+  const response = await authApi.get(`/insurance-management/products/${insuranceProductId}`)
+  return response.data
+}
+
+export async function updateInsuranceManagementProduct(insuranceProductId, payload) {
+  const response = await authApi.patch(`/insurance-management/products/${insuranceProductId}`, payload)
+  return response.data
+}
+
 export async function getInsuranceManagementCompanies(params) {
   const response = await authApi.get('/insurance-management/companies', { params })
   return response.data

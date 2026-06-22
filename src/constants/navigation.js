@@ -12,6 +12,11 @@ const INSURANCE_PARTNER_ROLES = [
   USER_ROLES.SYSTEM_ADMIN,
 ]
 
+const INSURANCE_PRODUCT_ROLES = [
+  USER_ROLES.HQ_MANAGER,
+  USER_ROLES.SYSTEM_ADMIN,
+]
+
 const ORGANIZATION_MENU_SECTION = {
   title: '조직 및 인사 관리',
   icon: 'mdi-domain',
@@ -238,7 +243,7 @@ export const APP_PAGE_SPECS = [
     name: 'insurance-products',
     title: '보험 상품 목록',
     description: '보험 상품 관리 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: INSURANCE_PRODUCT_ROLES,
   },
   {
     path: 'commissions/hq',
@@ -422,6 +427,6 @@ export const MENU_BY_ROLE = {
         { title: '권한 관리', to: { name: 'admin-roles' } },
       ],
     },
-    INSURANCE_PARTNER_MENU_SECTION,
+    HQ_INSURANCE_MENU_SECTION,
   ],
 }
