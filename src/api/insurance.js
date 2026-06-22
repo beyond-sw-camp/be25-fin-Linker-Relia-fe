@@ -30,6 +30,31 @@ export async function updateInsuranceManagementProduct(insuranceProductId, paylo
   return response.data
 }
 
+export async function createInsuranceManagementProduct(payload) {
+  const response = await authApi.post('/insurance-management/products', payload)
+  return response.data
+}
+
+export async function getInsuranceManagementCategories() {
+  const response = await authApi.get('/insurance-management/categories')
+  return response.data
+}
+
+export async function createInsuranceManagementCategory(payload) {
+  const response = await authApi.post('/insurance-management/categories', payload)
+  return response.data
+}
+
+export async function updateInsuranceManagementCategory(insuranceCategoryId, payload) {
+  const response = await authApi.patch(`/insurance-management/categories/${insuranceCategoryId}`, payload)
+  return response.data
+}
+
+export async function deleteInsuranceManagementCategory(insuranceCategoryId) {
+  const response = await authApi.delete(`/insurance-management/categories/${insuranceCategoryId}`)
+  return response.data
+}
+
 export async function getInsuranceManagementCompanies(params) {
   const response = await authApi.get('/insurance-management/companies', { params })
   return response.data
