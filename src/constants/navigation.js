@@ -154,6 +154,13 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
+    path: 'customers/hq/interests',
+    name: 'hq-customer-interests',
+    title: '전체 관심 고객 목록',
+    description: '전체 관심 고객 목록을 조회하는 화면입니다.',
+    roles: [USER_ROLES.HQ_MANAGER],
+  },
+  {
     path: 'contracts/hq',
     name: 'hq-contracts',
     title: '전체 계약 목록',
@@ -273,6 +280,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
+        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
@@ -291,15 +299,15 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '인수인계',
-      icon: 'mdi-swap-horizontal',
+      title: '인수인계 관리',
+      icon: 'mdi-cash-multiple',
       children: [
         { title: '받은 인수인계 목록', to: { name: 'handover-received' } },
       ],
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
@@ -317,6 +325,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
+        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
@@ -367,6 +376,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
+        { title: '전체 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {

@@ -97,7 +97,7 @@
                 <th v-if="showLifecycleDateColumn">{{ lifecycleDateColumnLabel }}</th>
                 <template v-else>
                   <th>보유 계약 수</th>
-                  <th>월 납입 보험료</th>
+                  <th>월 납입 보험료 합계</th>
                 </template>
                 <th>최근 상담일시</th>
                 <th v-if="!showLifecycleDateColumn">다음 상담일시</th>

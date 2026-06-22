@@ -56,6 +56,11 @@ button {
   color: #111827;
 }
 
+.journal-page--with-stt {
+  max-width: calc(1120px - 484px);
+  margin-right: 484px;
+}
+
 .journal-breadcrumb {
   display: flex;
   align-items: center;
@@ -785,6 +790,12 @@ button {
   .journal-actions {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .journal-page--with-stt {
+    max-width: 1120px;
+    width: auto;
+    margin-right: auto;
   }
 }
 
