@@ -1279,21 +1279,6 @@ const advisorTableColumns = computed(() => {
 })
 
 const topPerformers = computed(() => {
-  if (isBranchRankingView.value) {
-    return [
-      {
-        eyebrow: '전 지점 1위 설계사',
-        name: overallTopAdvisor.value?.name ?? '-',
-        meta: overallTopAdvisor.value?.branchName ?? '-',
-      },
-      {
-        eyebrow: '지점 1위',
-        name: branchRankingItems.value[0]?.organizationName ?? '-',
-        meta: branchRankingItems.value[0]?.commissionAmount ?? '-',
-      },
-    ]
-  }
-
   if (!isAllBranchSelected.value) {
     return [
       {
