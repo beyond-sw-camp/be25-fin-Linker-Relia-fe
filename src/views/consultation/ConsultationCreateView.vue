@@ -1613,8 +1613,8 @@ async function applyStructuredDraft(draft) {
       customerJob: draft.customerInfo.customerJob || '',
       customerJobCustom: '',
       customerCompanyName: draft.customerInfo.customerCompanyName || '',
-      customerAnnualIncome: draft.customerInfo.customerAnnualIncome ?? '',
-      customerAssetSize: draft.customerInfo.customerAssetSize ?? '',
+      customerAnnualIncome: normalizeAiMoneyValue(draft.customerInfo.customerAnnualIncome),
+      customerAssetSize: normalizeAiMoneyValue(draft.customerInfo.customerAssetSize),
       customerDebtStatus: draft.customerInfo.customerDebtStatus || '',
       customerIsSmoker: Boolean(draft.customerInfo.customerIsSmoker),
       customerIsDrinker: Boolean(draft.customerInfo.customerIsDrinker),
@@ -1640,9 +1640,9 @@ async function applyStructuredDraft(draft) {
     }
 
     Object.assign(newDetail, {
-      monthlyIncome: draft.newDetail?.monthlyIncome ?? '',
+      monthlyIncome: normalizeAiMoneyValue(draft.newDetail?.monthlyIncome),
       hasExistingInsurance: Boolean(draft.newDetail?.hasExistingInsurance),
-      monthlyInsurancePremium: draft.newDetail?.monthlyInsurancePremium ?? '',
+      monthlyInsurancePremium: normalizeAiMoneyValue(draft.newDetail?.monthlyInsurancePremium),
       existingInsuranceNote: draft.newDetail?.existingInsuranceNote || '',
       insurancePriority: normalizeOptionValue(
         draft.newDetail?.insurancePriority,
@@ -1659,7 +1659,7 @@ async function applyStructuredDraft(draft) {
       claimType: normalizeOptionValue(draft.claimDetail.claimType, claimTypeOptions),
       claimReason: draft.claimDetail.claimReason || '',
       incidentDate: draft.claimDetail.incidentDate || '',
-      claimAmount: draft.claimDetail.claimAmount ?? '',
+      claimAmount: normalizeAiMoneyValue(draft.claimDetail.claimAmount),
       reviewItems: normalizeOptionArray(draft.claimDetail.reviewItems, claimReviewOptions),
       result: normalizeOptionValue(draft.claimDetail.result, claimResultOptions),
       nextActions: normalizeOptionArray(draft.claimDetail.nextActions, claimNextActionOptions),
@@ -1670,10 +1670,10 @@ async function applyStructuredDraft(draft) {
     Object.assign(renewalDetail, {
       renewalReason: draft.renewalDetail.renewalReason || '',
       desiredRenewalDate: draft.renewalDetail.desiredRenewalDate || '',
-      expectedPremium: draft.renewalDetail.expectedPremium ?? '',
+      expectedPremium: normalizeAiMoneyValue(draft.renewalDetail.expectedPremium),
       renewalScheduledDate: draft.renewalDetail.renewalScheduledDate || '',
-      currentPremium: draft.renewalDetail.currentPremium ?? '',
-      renewalPremium: draft.renewalDetail.renewalPremium ?? '',
+      currentPremium: normalizeAiMoneyValue(draft.renewalDetail.currentPremium),
+      renewalPremium: normalizeAiMoneyValue(draft.renewalDetail.renewalPremium),
       changeType: normalizeOptionValue(draft.renewalDetail.changeType, renewalChangeTypeOptions),
       changeDetail: draft.renewalDetail.changeDetail || '',
       premiumChangeReasons: normalizeOptionArray(draft.renewalDetail.premiumChangeReasons, renewalPremiumReasonOptions),
@@ -2022,6 +2022,18 @@ function normalizeCompareText(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '')
+}
+
+function normalizeAiMoneyValue(value) {
+  if (value === null || value === undefined || value === '') return ''
+
+  const digits = String(value).replace(/[^\d]/g, '')
+  if (!digits) return ''
+
+  const parsed = Number(digits)
+  if (!Number.isFinite(parsed)) return ''
+
+  return String(parsed < 100000 ? parsed * 10000 : parsed)
 }
 
 function getOptionValue(option) {

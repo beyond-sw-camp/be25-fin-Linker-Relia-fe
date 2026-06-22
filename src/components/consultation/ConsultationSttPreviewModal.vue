@@ -338,24 +338,24 @@ const structuredPreviewRows = computed(() => {
     ['nextScheduledAt', '다음 일정', formatDateTimeValue(draft.nextScheduledAt)],
     ['customerName', '고객명', draft.customerInfo?.customerName],
     ['customerPhone', '연락처', draft.customerInfo?.customerPhone],
-    ['customerAnnualIncome', '연소득', formatNumberValue(draft.customerInfo?.customerAnnualIncome)],
+    ['customerAnnualIncome', '연소득', formatMoneyValue(draft.customerInfo?.customerAnnualIncome)],
     ['customerJob', '직업', draft.customerInfo?.customerJob],
     ['customerCompanyName', '직장명', draft.customerInfo?.customerCompanyName],
     ['customerMaritalStatus', '혼인 상태', draft.customerInfo?.customerMaritalStatus],
     ['underlyingDiseaseCodes', '기저 질환', formatListValue(draft.customerInfo?.underlyingDiseaseCodes)],
-    ['monthlyIncome', '월 소득', formatNumberValue(draft.newDetail?.monthlyIncome)],
+    ['monthlyIncome', '월 소득', formatMoneyValue(draft.newDetail?.monthlyIncome)],
     ['hasExistingInsurance', '기존 보험 가입', formatBooleanValue(draft.newDetail?.hasExistingInsurance)],
-    ['monthlyInsurancePremium', '기존 보험료', formatNumberValue(draft.newDetail?.monthlyInsurancePremium)],
+    ['monthlyInsurancePremium', '기존 보험료', formatMoneyValue(draft.newDetail?.monthlyInsurancePremium)],
     ['insurancePriority', '보험 우선순위', draft.newDetail?.insurancePriority],
     ['coverageTypes', '관심 보장', formatCoverageTypeList(draft.newDetail?.coverageTypes)],
     ['proposedProductCodes', '추천 상품', formatProposedProductList(draft.newDetail?.proposedProductCodes)],
     ['claimType', '청구 유형', draft.claimDetail?.claimType],
     ['claimReason', '청구 사유', draft.claimDetail?.claimReason],
     ['incidentDate', '사고/진단일', draft.claimDetail?.incidentDate],
-    ['claimAmount', '청구 금액', formatNumberValue(draft.claimDetail?.claimAmount)],
+    ['claimAmount', '청구 금액', formatMoneyValue(draft.claimDetail?.claimAmount)],
     ['renewalScheduledDate', '갱신 예정일', draft.renewalDetail?.renewalScheduledDate],
-    ['currentPremium', '현재 보험료', formatNumberValue(draft.renewalDetail?.currentPremium)],
-    ['renewalPremium', '갱신 보험료', formatNumberValue(draft.renewalDetail?.renewalPremium)],
+    ['currentPremium', '현재 보험료', formatMoneyValue(draft.renewalDetail?.currentPremium)],
+    ['renewalPremium', '갱신 보험료', formatMoneyValue(draft.renewalDetail?.renewalPremium)],
     ['changeType', '변경 유형', draft.renewalDetail?.changeType],
     ['reviewReasons', '해지 검토 사유', formatListValue(draft.cancelDetail?.reviewReasons)],
     ['customerIntent', '고객 의사', draft.cancelDetail?.customerIntent],
@@ -767,6 +767,23 @@ function formatBooleanValue(value) {
   if (value === true) return '예'
   if (value === false) return '아니오'
   return ''
+}
+
+function normalizeMoneyValue(value) {
+  if (value === null || value === undefined || value === '') return null
+
+  const digits = String(value).replace(/[^\d]/g, '')
+  if (!digits) return null
+
+  const parsed = Number(digits)
+  if (!Number.isFinite(parsed)) return null
+
+  return parsed < 100000 ? parsed * 10000 : parsed
+}
+
+function formatMoneyValue(value) {
+  const normalized = normalizeMoneyValue(value)
+  return normalized === null ? '' : normalized.toLocaleString('ko-KR')
 }
 
 function formatNumberValue(value) {
