@@ -5,11 +5,7 @@
     </div>
 
     <div class="app-header__actions">
-      <button class="app-header__icon-button" type="button" aria-label="알림">
-        <v-badge dot color="#f97316" offset-x="2" offset-y="2">
-          <v-icon icon="mdi-bell-outline" size="20" />
-        </v-badge>
-      </button>
+      <NotificationBell />
 
       <div class="app-header__profile">
         <div class="app-header__avatar">
@@ -47,6 +43,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getBranchOrganizations } from '../../api/organizations'
 import { ROLE_LABELS, USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
+import NotificationBell from './NotificationBell.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -163,26 +160,17 @@ async function logout() {
   gap: 10px;
 }
 
-.app-header__icon-button,
 .app-header__menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: #6b7280;
   cursor: pointer;
-}
-
-.app-header__icon-button {
-  width: 36px;
-  height: 36px;
-}
-
-.app-header__menu-trigger {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
 }
 
 .app-header__profile {
