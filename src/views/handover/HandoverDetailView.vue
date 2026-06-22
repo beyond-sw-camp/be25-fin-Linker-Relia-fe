@@ -262,7 +262,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -332,6 +332,19 @@ const assignRangeLabel = computed(() => {
 onMounted(() => {
   loadDetail()
 })
+
+watch(
+  () => route.params.handoverRequestId,
+  (handoverRequestId, previousHandoverRequestId) => {
+    if (!handoverRequestId || handoverRequestId === previousHandoverRequestId) {
+      return
+    }
+
+    resetRejectModal()
+    resetAssignModal()
+    loadDetail()
+  },
+)
 
 async function loadDetail() {
   errorMessage.value = ''

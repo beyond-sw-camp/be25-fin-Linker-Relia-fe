@@ -23,6 +23,7 @@ import FpContractListView from '../views/contract/FpContractListView.vue'
 import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
+import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
 import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
 import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
@@ -47,6 +48,10 @@ function resolveProtectedComponent(page) {
 
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
+  }
+
+  if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
+    return InterestCustomerListView
   }
 
   if (['fp-consultations', 'branch-consultations', 'hq-consultations'].includes(page.name)) {
@@ -147,7 +152,12 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     },
     meta: {
       requiresAuth: true,
-      roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
+      roles: [
+        USER_ROLES.FP,
+        USER_ROLES.BRANCH_MANAGER,
+        USER_ROLES.HQ_MANAGER,
+        USER_ROLES.SYSTEM_ADMIN,
+      ],
       title: '설계사 상세 정보 조회',
     },
   },
