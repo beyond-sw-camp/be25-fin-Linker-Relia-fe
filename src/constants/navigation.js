@@ -257,17 +257,15 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '인수인계',
-      icon: 'mdi-swap-horizontal',
-      title: '수수료 관리',
-      icon: 'mdi-trending-up',
+      title: '인수인계 관리',
+      icon: 'mdi-cash-multiple',
       children: [
         { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
       ],
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-cash-multiple',
+      icon: 'mdi-trending-up',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
