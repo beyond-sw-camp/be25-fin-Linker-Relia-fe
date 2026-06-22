@@ -144,8 +144,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'customers/hq/interests',
     name: 'hq-customer-interests',
-    title: '전사 관심 고객 목록',
-    description: '전사 관심 고객 목록을 조회하는 화면입니다.',
+    title: '전체 관심 고객 목록',
+    description: '전체 관심 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
@@ -239,6 +239,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '설계사 고객 목록', to: { name: 'fp-customers' } },
+        { title: '관심 고객 목록', to: { name: 'fp-customer-interests' } },
       ],
     },
     {
@@ -282,6 +283,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '지점 고객 목록', to: { name: 'branch-customers' } },
+        { title: '지점 관심 고객 목록', to: { name: 'branch-customer-interests' } },
       ],
     },
     {
@@ -331,6 +333,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-account-group-outline',
       children: [
         { title: '전체 고객 목록', to: { name: 'hq-customers' } },
+        { title: '전체 관심 고객 목록', to: { name: 'hq-customer-interests' } },
       ],
     },
     {
