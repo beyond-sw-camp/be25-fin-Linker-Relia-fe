@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { DEFAULT_ROUTE_BY_ROLE } from '../constants/auth'
+import { DEFAULT_ROUTE_BY_ROLE, USER_ROLES } from '../constants/auth'
 import { APP_PAGE_SPECS } from '../constants/navigation'
 import AppLayout from '../layouts/AppLayout.vue'
 import AuthLayout from '../layouts/AuthLayout.vue'
@@ -23,12 +23,12 @@ import FpContractListView from '../views/contract/FpContractListView.vue'
 import HqContractListView from '../views/contract/HqContractListView.vue'
 import CustomerDetailView from '../views/customer/CustomerDetailView.vue'
 import CustomerListView from '../views/customer/CustomerListView.vue'
-import InterestCustomerListView from '../views/customer/InterestCustomerListView.vue'
+import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
+import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
 import HandoverDetailView from '../views/handover/HandoverDetailView.vue'
 import HandoverReceivedListView from '../views/handover/HandoverReceivedListView.vue'
 import HandoverRequestListView from '../views/handover/HandoverRequestListView.vue'
-import FpDashboardView from '../views/dashboard/FpDashboardView.vue'
-import ManagerDashboardView from '../views/dashboard/ManagerDashboardView.vue'
+import OrganizationsView from '../views/organizations/OrganizationsView.vue'
 import ForbiddenView from '../views/system/ForbiddenView.vue'
 
 function resolveProtectedComponent(page) {
@@ -42,10 +42,6 @@ function resolveProtectedComponent(page) {
 
   if (['fp-customers', 'branch-customers', 'hq-customers'].includes(page.name)) {
     return CustomerListView
-  }
-
-  if (['fp-customer-interests', 'branch-customer-interests', 'hq-customer-interests'].includes(page.name)) {
-    return InterestCustomerListView
   }
 
   if (['fp-consultations', 'branch-consultations', 'hq-consultations'].includes(page.name)) {
@@ -96,6 +92,16 @@ function resolveProtectedComponent(page) {
     return HqCommissionView
   }
 
+  if ([
+    'organization-chart',
+    'organization-branches',
+    'hq-advisors',
+    'organization-branch-advisors',
+    'admin-organizations',
+  ].includes(page.name)) {
+    return OrganizationsView
+  }
+
   return PlaceholderView
 }
 
@@ -107,6 +113,7 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
     description: page.description,
     roles: page.roles,
+    ...page.props,
   },
   meta: {
     requiresAuth: true,
@@ -114,6 +121,19 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
     title: page.title,
   },
 })).concat([
+  {
+    path: 'organizations/fps/:fpId',
+    name: 'organization-fp-detail',
+    component: OrganizationsView,
+    props: {
+      mode: 'fp-detail',
+    },
+    meta: {
+      requiresAuth: true,
+      roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
+      title: '설계사 상세 정보 조회',
+    },
+  },
   {
     path: 'handovers/:handoverRequestId',
     name: 'handover-detail',

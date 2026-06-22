@@ -37,19 +37,97 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { ROLE_LABELS } from '../../constants/auth'
+import { getBranchOrganizations } from '../../api/organizations'
+import { ROLE_LABELS, USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 import NotificationBell from './NotificationBell.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const resolvedOrganizationName = ref('')
 
-const pageTitle = computed(() => route.meta.title ?? '대시보드')
+const BRANCH_SCOPED_TITLE_BY_ROUTE = {
+  'branch-dashboard': '대시보드',
+  'branch-customers': '고객 목록',
+  'branch-contracts': '계약 목록',
+  'branch-consultations': '상담 목록',
+  'handover-requests': '인수인계 현황',
+  'branch-commissions': '수수료 관리',
+}
+
+const pageTitle = computed(() => {
+  if (isBranchScopedRoute.value) {
+    const organizationName = getOrganizationName()
+    const titleSuffix = BRANCH_SCOPED_TITLE_BY_ROUTE[route.name]
+
+    if (organizationName && titleSuffix) return `${organizationName} ${titleSuffix}`
+  }
+
+  return route.meta.title ?? '대시보드'
+})
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
+const isBranchScopedRoute = computed(() => (
+  Object.keys(BRANCH_SCOPED_TITLE_BY_ROUTE).includes(route.name) &&
+  authStore.userRole === USER_ROLES.BRANCH_MANAGER
+))
+
+onMounted(resolveOrganizationName)
+
+watch(
+  () => [authStore.organizationName, authStore.accessToken, authStore.userRole, route.name],
+  resolveOrganizationName,
+)
+
+async function resolveOrganizationName() {
+  resolvedOrganizationName.value = ''
+  if (!isBranchScopedRoute.value || getOrganizationName()) return
+  const tokenProfile = parseTokenProfile(authStore.accessToken)
+  if (!tokenProfile.organizationId && !tokenProfile.organizationCode) return
+
+  try {
+    const response = await getBranchOrganizations()
+    const branches = Array.isArray(response?.result) ? response.result : []
+    const branch = branches.find((item) => (
+      item.organizationId === tokenProfile.organizationId ||
+      item.organizationCode === tokenProfile.organizationCode
+    ))
+    resolvedOrganizationName.value = branch?.organizationName ?? ''
+  } catch {
+    resolvedOrganizationName.value = ''
+  }
+}
+
+function getOrganizationName() {
+  return authStore.organizationName || authStore.user?.organizationName || resolvedOrganizationName.value
+}
+
+function parseTokenProfile(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) {
+    return { organizationId: '', organizationCode: '' }
+  }
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(token.split('.')[1]))
+    return {
+      organizationId: payload.organizationId ?? payload.orgId ?? '',
+      organizationCode: payload.organizationCode ?? payload.orgCode ?? '',
+    }
+  } catch {
+    return { organizationId: '', organizationCode: '' }
+  }
+}
+
+function decodeBase64Url(value) {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+  return decodeURIComponent(
+    Array.from(window.atob(padded), (char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''),
+  )
+}
 
 async function logout() {
   await authStore.logout()

@@ -11,6 +11,19 @@
     <section class="filter-panel">
       <h3>검색 및 필터</h3>
       <div class="filter-grid">
+        <v-select
+          v-if="showBranchFilter"
+          v-model="filters.organizationCode"
+          :items="branches"
+          item-title="title"
+          item-value="value"
+          label="지점 선택"
+          variant="outlined"
+          density="compact"
+          hide-details
+          :loading="isLoadingBranches"
+          :disabled="isLoadingBranches"
+        />
         <v-text-field
           v-model="filters.customerName"
           label="고객명"
@@ -56,7 +69,20 @@
           density="compact"
           hide-details
         />
+        <v-select
+          v-model="filters.sortOrder"
+          :items="sortOptions"
+          item-title="label"
+          item-value="value"
+          label="정렬"
+          variant="outlined"
+          density="compact"
+          hide-details
+        />
       </div>
+      <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="compact">
+        {{ branchErrorMessage || branchFpErrorMessage }}
+      </v-alert>
       <div class="filter-actions">
         <v-btn class="search-button" @click="searchConsultations">
           <v-icon icon="mdi-magnify" size="16" />
@@ -150,20 +176,32 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getConsultations } from '../../api/consultations'
+import { getOrganizationFps } from '../../api/organizations'
 import { USER_ROLES } from '../../constants/auth'
 import {
   getConsultationChannelLabel,
   getConsultationTypeLabel,
 } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
+import { useBranchFilter } from '../../composables/useBranchFilter'
 import { formatDateTime } from '../../utils/formatters'
+import { getSavedConsultations } from '../../utils/consultationDrafts'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const LIST_STATE_STORAGE_KEY = 'consultation-list-state'
+const {
+  branches,
+  showBranchFilter,
+  isLoadingBranches,
+  branchErrorMessage,
+  initializeBranchFilter,
+} = useBranchFilter(authStore)
 
 const consultationTypeOptions = [
   { label: '전체', value: '' },
@@ -179,29 +217,54 @@ const channelOptions = [
   { label: '메시지', value: 'MESSAGE' },
   { label: '온라인', value: 'ONLINE' },
 ]
+const sortOptions = [
+  { label: '최신 상담일순', value: 'latest' },
+  { label: '오래된 상담일순', value: 'oldest' },
+  { label: '다음 상담 예정일순', value: 'nextSchedule' },
+]
 
 const filters = reactive({
+  organizationCode: '',
   consultationType: '',
   consultationChannel: '',
   customerName: '',
   startedAt: '',
   endedAt: '',
+  sortOrder: 'latest',
 })
 
 const consultationRows = ref([])
+const localCompletedRows = ref([])
+const branchFpFilter = ref(null)
+const branchFpErrorMessage = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const totalElements = ref(0)
-const totalPages = ref(0)
 const isLoading = ref(false)
+const isResettingFilters = ref(false)
+const isRestoringListState = ref(false)
 const errorMessage = ref('')
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
-const visibleRows = computed(() => consultationRows.value.filter((row) => {
+const selectedBranchOption = computed(() => {
+  if (!filters.organizationCode) return null
+  return branches.value.find((branch) => branch.value === filters.organizationCode) ?? null
+})
+const allRows = computed(() => mergeConsultationRows(consultationRows.value, localCompletedRows.value))
+const filteredRows = computed(() => sortRows(allRows.value.filter((row) => {
+  if (showBranchFilter.value && filters.organizationCode && !matchesOrganization(row, filters.organizationCode)) return false
   if (filters.consultationType && row.consultationType !== filters.consultationType) return false
   if (filters.consultationChannel && row.consultationChannel !== filters.consultationChannel) return false
+  if (filters.customerName.trim() && !String(row.customerName || '').includes(filters.customerName.trim())) return false
+  if (filters.startedAt && toDateOnly(row.consultedAt) < filters.startedAt) return false
+  if (filters.endedAt && toDateOnly(row.consultedAt) > filters.endedAt) return false
   return true
-}))
+})))
+const visibleRows = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredRows.value.slice(start, start + pageSize.value)
+})
+const totalElements = computed(() => filteredRows.value.length)
+const totalPages = computed(() => Math.ceil(totalElements.value / pageSize.value))
 const metrics = computed(() => [
   { icon: 'mdi-file-document-outline', value: totalElements.value.toLocaleString('ko-KR'), label: '전체 상담일지' },
   { icon: 'mdi-calendar-check-outline', value: visibleRows.value.length.toLocaleString('ko-KR'), label: '현재 표시' },
@@ -216,43 +279,146 @@ const rangeLabel = computed(() => {
 })
 
 watch(
-  () => filters.consultationType,
+  () => [
+    filters.consultationType,
+    filters.organizationCode,
+    filters.consultationChannel,
+    filters.startedAt,
+    filters.endedAt,
+    filters.sortOrder,
+  ],
   () => {
+    if (isRestoringListState.value) return
     currentPage.value = 1
-    loadConsultations()
   },
 )
 
 watch(
-  () => filters.consultationChannel,
+  () => filters.customerName,
   () => {
+    if (isRestoringListState.value) return
     currentPage.value = 1
-    loadConsultations()
   },
 )
 
-onMounted(() => {
+watch(
+  () => filters.organizationCode,
+  async () => {
+    if (isRestoringListState.value) return
+    if (isResettingFilters.value) return
+    currentPage.value = 1
+    await loadBranchFpFilter()
+    await loadConsultations()
+  },
+)
+
+onMounted(async () => {
+  await initializeBranchFilter()
+  await restoreListState()
+  await loadBranchFpFilter()
+  localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   loadConsultations()
 })
 
 async function searchConsultations() {
   currentPage.value = 1
+  await loadBranchFpFilter()
   await loadConsultations()
 }
 
 async function resetFilters() {
-  filters.consultationType = ''
-  filters.consultationChannel = ''
-  filters.customerName = ''
-  filters.startedAt = ''
-  filters.endedAt = ''
-  currentPage.value = 1
-  await loadConsultations()
+  isResettingFilters.value = true
+
+  try {
+    filters.consultationType = ''
+    filters.organizationCode = ''
+    filters.consultationChannel = ''
+    filters.customerName = ''
+    filters.startedAt = ''
+    filters.endedAt = ''
+    filters.sortOrder = 'latest'
+    branchFpFilter.value = null
+    currentPage.value = 1
+    clearListState()
+    await loadConsultations()
+  } finally {
+    isResettingFilters.value = false
+  }
 }
 
 async function changePage(page) {
   currentPage.value = page
   await loadConsultations()
+}
+
+async function loadBranchFpFilter() {
+  branchFpFilter.value = null
+  branchFpErrorMessage.value = ''
+
+  if (!showBranchFilter.value || !filters.organizationCode) {
+    return
+  }
+
+  const branch = selectedBranchOption.value
+
+  if (!branch?.organizationId) {
+    return
+  }
+
+  try {
+    const fps = []
+    let page = 0
+    let totalPages = 1
+    let isOneBasedPage = false
+
+    do {
+      const { pageResult, usedPage } = await getOrganizationFpsPage(branch.organizationId, page)
+      const result = pageResult ?? {}
+      const content = Array.isArray(result.content) ? result.content : []
+
+      fps.push(...content)
+      totalPages = Number(result.totalPages ?? result.totalPage ?? 1) || 1
+      isOneBasedPage = usedPage === 1 && page === 0
+      page = usedPage + 1
+    } while ((isOneBasedPage ? page <= totalPages : page < totalPages) && page < 20)
+
+    branchFpFilter.value = {
+      fpIds: new Set(fps.map((fp) => fp.id ?? fp.userId ?? fp.fpId).filter(Boolean)),
+      fpNames: new Set(fps.map((fp) => fp.userName ?? fp.fpName ?? fp.name).filter(Boolean)),
+    }
+  } catch (error) {
+    branchFpFilter.value = {
+      fpIds: new Set(),
+      fpNames: new Set(),
+    }
+    branchFpErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '지점 설계사 목록을 불러오지 못했습니다.'
+  }
+}
+
+async function getOrganizationFpsPage(organizationId, page) {
+  const params = {
+    organizationId,
+    page,
+    size: 1000,
+  }
+
+  try {
+    const pageResult = await getOrganizationFps(params)
+    return { pageResult, usedPage: page }
+  } catch (error) {
+    if (page !== 0 || error.response?.status !== 400) {
+      throw error
+    }
+
+    const pageResult = await getOrganizationFps({
+      ...params,
+      page: 1,
+    })
+    return { pageResult, usedPage: 1 }
+  }
 }
 
 async function loadConsultations() {
@@ -266,14 +432,9 @@ async function loadConsultations() {
     const rows = Array.isArray(pageResult.content) ? pageResult.content : pageResult
 
     consultationRows.value = Array.isArray(rows) ? rows.map(normalizeConsultation) : []
-    currentPage.value = Number(pageResult.page ?? currentPage.value)
-    pageSize.value = Number(pageResult.size ?? pageSize.value)
-    totalElements.value = Number(pageResult.totalElements ?? consultationRows.value.length)
-    totalPages.value = Number(pageResult.totalPages ?? (consultationRows.value.length > 0 ? 1 : 0))
+    localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   } catch (error) {
     consultationRows.value = []
-    totalElements.value = 0
-    totalPages.value = 0
     errorMessage.value =
       error.response?.data?.message ||
       error.message ||
@@ -285,21 +446,17 @@ async function loadConsultations() {
 
 function buildParams() {
   const params = {
-    page: Math.max(currentPage.value, 1),
-    size: pageSize.value,
+    page: 0,
+    size: 1000,
   }
 
-  if (filters.consultationType) {
-    params.consultationType = filters.consultationType
-    params.type = filters.consultationType
+  if (showBranchFilter.value && filters.organizationCode) {
+    params.organizationCode = filters.organizationCode
+
+    if (selectedBranchOption.value?.organizationId) {
+      params.organizationId = selectedBranchOption.value.organizationId
+    }
   }
-  if (filters.consultationChannel) {
-    params.consultationChannel = filters.consultationChannel
-    params.channel = filters.consultationChannel
-  }
-  if (filters.customerName.trim()) params.customerName = filters.customerName.trim()
-  if (filters.startedAt) params.startedAt = filters.startedAt
-  if (filters.endedAt) params.endedAt = filters.endedAt
 
   return params
 }
@@ -325,7 +482,18 @@ function normalizeConsultation(consultation) {
     consultationChannel,
     customerName: consultation.customerName ?? consultation.customer?.customerName,
     contractCode: consultation.contractCode ?? consultation.contract?.contractCode,
+    fpId: consultation.fpId ?? consultation.fp?.id ?? consultation.fp?.fpId ?? consultation.fp?.userId,
     fpName: consultation.fpName ?? consultation.fp?.userName,
+    organizationCode:
+      consultation.organizationCode ??
+      consultation.branchCode ??
+      consultation.fp?.organizationCode ??
+      consultation.organization?.organizationCode,
+    organizationName:
+      consultation.organizationName ??
+      consultation.branchName ??
+      consultation.fp?.organizationName ??
+      consultation.organization?.organizationName,
   }
 }
 
@@ -336,11 +504,87 @@ function goToCreate() {
 function goToDetail(consultation) {
   const consultationId = consultation.consultationId ?? consultation.id
   if (!consultationId) return
+  saveListState()
   router.push({ name: 'consultation-detail', params: { consultationId } })
+}
+
+function saveListState() {
+  window.sessionStorage.setItem(LIST_STATE_STORAGE_KEY, JSON.stringify({
+    routeName: route.name,
+    filters: { ...filters },
+    currentPage: currentPage.value,
+  }))
+}
+
+async function restoreListState() {
+  const rawState = window.sessionStorage.getItem(LIST_STATE_STORAGE_KEY)
+  if (!rawState) return
+
+  try {
+    const state = JSON.parse(rawState)
+    if (state?.routeName !== route.name) return
+
+    isRestoringListState.value = true
+    Object.assign(filters, state.filters || {})
+    currentPage.value = Number(state.currentPage) || 1
+    await nextTick()
+  } catch {
+    // 저장된 목록 상태가 깨져 있으면 무시하고 기본값으로 조회합니다.
+  } finally {
+    isRestoringListState.value = false
+    clearListState()
+  }
+}
+
+function clearListState() {
+  window.sessionStorage.removeItem(LIST_STATE_STORAGE_KEY)
 }
 
 function getConsultationKey(consultation) {
   return consultation.consultationId ?? `${consultation.customerId}-${consultation.consultedAt}`
+}
+
+function sortRows(rows) {
+  return [...rows].sort((a, b) => {
+    if (filters.sortOrder === 'oldest') {
+      return getTime(a.consultedAt) - getTime(b.consultedAt)
+    }
+    if (filters.sortOrder === 'nextSchedule') {
+      return getTime(a.nextScheduledAt, Number.MAX_SAFE_INTEGER) - getTime(b.nextScheduledAt, Number.MAX_SAFE_INTEGER)
+    }
+    return getTime(b.consultedAt) - getTime(a.consultedAt)
+  })
+}
+
+function getTime(value, fallback = 0) {
+  const time = new Date(value || '').getTime()
+  return Number.isNaN(time) ? fallback : time
+}
+
+function toDateOnly(value) {
+  return value ? String(value).slice(0, 10) : ''
+}
+
+function matchesOrganization(row, organizationCode) {
+  if (!organizationCode) return true
+  if (row.organizationCode) return row.organizationCode === organizationCode
+
+  const filter = branchFpFilter.value
+
+  if (!filter) return true
+
+  return (
+    (row.fpId && filter.fpIds.has(row.fpId)) ||
+    (row.fpName && filter.fpNames.has(row.fpName))
+  )
+}
+
+function mergeConsultationRows(serverRows, localRows) {
+  const serverIds = new Set(serverRows.map((row) => row.consultationId).filter(Boolean))
+  return [
+    ...serverRows,
+    ...localRows.filter((row) => !serverIds.has(row.consultationId)),
+  ]
 }
 </script>
 
@@ -400,7 +644,7 @@ function getConsultationKey(consultation) {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
 }
 

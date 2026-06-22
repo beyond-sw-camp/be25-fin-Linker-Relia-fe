@@ -28,6 +28,8 @@
       </article>
     </section>
 
+    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
     <section class="list-panel">
       <div class="list-table">
         <table>
@@ -40,6 +42,7 @@
               <th>상담일시</th>
               <th>상태</th>
               <th>수정</th>
+              <th>삭제</th>
             </tr>
           </thead>
           <tbody>
@@ -64,9 +67,18 @@
                   수정
                 </button>
               </td>
+              <td>
+                <button
+                  type="button"
+                  class="row-action row-action--danger"
+                  @click.stop="deleteDraft(draft.id)"
+                >
+                  삭제
+                </button>
+              </td>
             </tr>
             <tr v-if="!drafts.length">
-              <td colspan="7" class="empty">임시저장된 상담일지가 없습니다.</td>
+              <td colspan="8" class="empty">임시저장된 상담일지가 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -79,12 +91,20 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import {
+  deleteConsultationDraftFromApi,
+  getConsultationDraftsFromApi,
+} from '../../api/consultations'
 import { getConsultationChannelLabel, getConsultationTypeLabel } from '../../constants/customer'
-import { getConsultationDrafts } from '../../utils/consultationDrafts'
+import {
+  deleteConsultationDraft,
+  normalizeDraftResponse,
+} from '../../utils/consultationDrafts'
 import { formatDateTime } from '../../utils/formatters'
 
 const router = useRouter()
 const drafts = ref([])
+const errorMessage = ref('')
 
 const todayCount = computed(() => {
   const today = new Date().toISOString().slice(0, 10)
@@ -92,9 +112,41 @@ const todayCount = computed(() => {
 })
 const editableCount = computed(() => drafts.value.length)
 
-onMounted(() => {
-  drafts.value = getConsultationDrafts()
+onMounted(async () => {
+  await loadDrafts()
 })
+
+async function loadDrafts() {
+  errorMessage.value = ''
+  try {
+    const response = await getConsultationDraftsFromApi()
+    const rawDrafts = Array.isArray(response?.result)
+      ? response.result
+      : Array.isArray(response)
+        ? response
+        : []
+    drafts.value = rawDrafts
+      .map(normalizeDraftResponse)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+  } catch (error) {
+    drafts.value = []
+    errorMessage.value = error.response?.data?.message || error.message || '서버 임시저장 목록을 불러오지 못했습니다.'
+  }
+}
+
+async function deleteDraft(draftId) {
+  const shouldDelete = window.confirm('임시저장 상담일지를 삭제할까요?')
+  if (!shouldDelete) return
+  try {
+    await deleteConsultationDraftFromApi(draftId)
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || error.message || '서버 임시저장 삭제에 실패했습니다.'
+    return
+  }
+  deleteConsultationDraft(draftId)
+  await loadDrafts()
+}
 </script>
 
 <style scoped>
@@ -126,6 +178,16 @@ onMounted(() => {
   background: #f97316;
   color: #ffffff;
   box-shadow: none;
+}
+
+.error-message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .summary-strip {
@@ -236,6 +298,11 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.row-action--danger {
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .empty {

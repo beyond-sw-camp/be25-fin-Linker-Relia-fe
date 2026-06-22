@@ -1,11 +1,25 @@
 import { USER_ROLES } from './auth'
 
+const ORGANIZATION_ROLES = [
+  USER_ROLES.HQ_MANAGER,
+  USER_ROLES.SYSTEM_ADMIN,
+]
+
+const ORGANIZATION_MENU_SECTION = {
+  title: '조직 및 인사 관리',
+  icon: 'mdi-domain',
+  children: [
+    { title: '조직도', to: { name: 'organization-chart' } },
+    { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
+  ],
+}
+
 export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/fp',
     name: 'fp-dashboard',
-    title: '한화금융서비스 보험 설계사 대시보드',
-    description: '설계사가 로그인하면 최초로 보이는 내 대시보드 화면입니다.',
+    title: '내 대시보드',
+    description: 'FP 사용자의 기본 진입 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -16,17 +30,17 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
-    path: 'customers/fp/interests',
-    name: 'fp-customer-interests',
-    title: '관심 고객 목록',
-    description: '관심 고객 목록을 조회하는 화면입니다.',
+    path: 'consultations/fp',
+    name: 'fp-consultations',
+    title: '고객별 상담 목록',
+    description: '설계사 관점의 상담 목록 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
     path: 'consultations/new',
     name: 'consultation-create',
-    title: '상담일지 작성',
-    description: '상담 유형에 따라 상담일지를 작성합니다.',
+    title: '상담 등록',
+    description: '새 상담을 등록하는 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -34,13 +48,6 @@ export const APP_PAGE_SPECS = [
     name: 'consultation-drafts',
     title: '임시저장 상담일지 조회',
     description: '임시저장한 상담일지를 목록으로 조회합니다.',
-    roles: [USER_ROLES.FP],
-  },
-  {
-    path: 'consultations/fp',
-    name: 'fp-consultations',
-    title: '상담일지 목록 조회',
-    description: '완전히 등록된 상담일지 목록을 조회합니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -58,17 +65,17 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.FP],
   },
   {
+    path: 'handovers/received',
+    name: 'handover-received',
+    title: '받은 인수인계 목록',
+    description: 'FP가 본인이 인수받은 인수인계 목록을 조회하는 화면입니다.',
+    roles: [USER_ROLES.FP],
+  },
+  {
     path: 'commissions/fp',
     name: 'fp-commissions',
     title: '설계사 지급 수수료 현황',
     description: '설계사 수수료 지급 현황 화면입니다.',
-    roles: [USER_ROLES.FP],
-  },
-  {
-    path: 'handovers/received',
-    name: 'handover-received',
-    title: '인수받은 고객 목록',
-    description: 'FP가 본인이 인수받은 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.FP],
   },
   {
@@ -83,13 +90,6 @@ export const APP_PAGE_SPECS = [
     name: 'branch-customers',
     title: '지점 고객 목록',
     description: '지점 전체 고객을 조회하는 화면입니다.',
-    roles: [USER_ROLES.BRANCH_MANAGER],
-  },
-  {
-    path: 'customers/branch/interests',
-    name: 'branch-customer-interests',
-    title: '지점 관심 고객 목록',
-    description: '지점 관심 고객 목록을 조회하는 화면입니다.',
     roles: [USER_ROLES.BRANCH_MANAGER],
   },
   {
@@ -142,13 +142,6 @@ export const APP_PAGE_SPECS = [
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
-    path: 'customers/hq/interests',
-    name: 'hq-customer-interests',
-    title: '전사 관심 고객 목록',
-    description: '전사 관심 고객 목록을 조회하는 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
-  },
-  {
     path: 'contracts/hq',
     name: 'hq-contracts',
     title: '전체 계약 목록',
@@ -174,28 +167,54 @@ export const APP_PAGE_SPECS = [
     name: 'organization-chart',
     title: '조직도',
     description: '조직 구조를 관리하는 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: ORGANIZATION_ROLES,
+    props: {
+      mode: 'chart',
+    },
+  },
+  {
+    path: 'organizations/branches',
+    name: 'organization-branches',
+    title: '지점 목록 조회',
+    description: '지점 목록과 지점별 현황을 관리합니다.',
+    roles: ORGANIZATION_ROLES,
+    props: {
+      mode: 'branches',
+    },
   },
   {
     path: 'advisors/hq',
     name: 'hq-advisors',
     title: '전체 설계사 목록',
     description: '전사 설계사 목록을 조회하는 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: ORGANIZATION_ROLES,
+    props: {
+      mode: 'fps',
+    },
+  },
+  {
+    path: 'organizations/branches/:organizationId/advisors',
+    name: 'organization-branch-advisors',
+    title: '지점 설계사 목록 조회',
+    description: '선택한 지점에 소속된 설계사 목록을 조회합니다.',
+    roles: ORGANIZATION_ROLES,
+    props: {
+      mode: 'fps',
+    },
   },
   {
     path: 'insurance/partners',
     name: 'insurance-partners',
     title: '제휴 보험사 목록',
     description: '제휴 보험사 목록 관리 화면입니다.',
-    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'insurance/products',
     name: 'insurance-products',
     title: '보험 상품 목록',
     description: '보험 상품 관리 화면입니다.',
-    roles: [USER_ROLES.FP, USER_ROLES.BRANCH_MANAGER, USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER],
   },
   {
     path: 'commissions/hq',
@@ -217,6 +236,9 @@ export const APP_PAGE_SPECS = [
     title: '조직 관리',
     description: '시스템 관리자의 조직 관리 화면입니다.',
     roles: [USER_ROLES.SYSTEM_ADMIN],
+    props: {
+      mode: 'chart',
+    },
   },
   {
     path: 'admin/roles',
@@ -243,16 +265,15 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '상담 관리',
-      icon: 'mdi-calendar-text-outline',
+      icon: 'mdi-clipboard-text-outline',
       children: [
-        { title: '상담일지 작성', to: { name: 'consultation-create' } },
-        { title: '임시저장된 상담일지 조회', to: { name: 'consultation-drafts' } },
-        { title: '상담일지 목록 조회', to: { name: 'fp-consultations' } },
+        { title: '고객별 상담 목록', to: { name: 'fp-consultations' } },
+        { title: '상담 등록', to: { name: 'consultation-create' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-briefcase-outline',
+      icon: 'mdi-file-document-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
       ],
@@ -260,10 +281,8 @@ export const MENU_BY_ROLE = {
     {
       title: '인수인계',
       icon: 'mdi-swap-horizontal',
-      title: '수수료 관리',
-      icon: 'mdi-trending-up',
       children: [
-        { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
+        { title: '받은 인수인계 목록', to: { name: 'handover-received' } },
       ],
     },
     {
@@ -289,14 +308,14 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '상담 관리',
-      icon: 'mdi-calendar-text-outline',
+      icon: 'mdi-clipboard-text-outline',
       children: [
         { title: '지점 상담 목록', to: { name: 'branch-consultations' } },
       ],
     },
     {
       title: '계약 관리',
-      icon: 'mdi-briefcase-outline',
+      icon: 'mdi-file-document-outline',
       children: [
         { title: '지점 계약 목록', to: { name: 'branch-contracts' } },
       ],
@@ -317,7 +336,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-trending-up',
+      icon: 'mdi-cash-multiple',
       children: [
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
@@ -338,14 +357,14 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '계약 관리',
-      icon: 'mdi-briefcase-outline',
+      icon: 'mdi-file-document-outline',
       children: [
         { title: '전체 계약 목록', to: { name: 'hq-contracts' } },
       ],
     },
     {
       title: '상담 관리',
-      icon: 'mdi-calendar-text-outline',
+      icon: 'mdi-clipboard-text-outline',
       children: [
         { title: '전체 상담 목록', to: { name: 'hq-consultations' } },
       ],
@@ -357,14 +376,7 @@ export const MENU_BY_ROLE = {
         { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
       ],
     },
-    {
-      title: '조직 및 인사 관리',
-      icon: 'mdi-domain',
-      children: [
-        { title: '조직도', to: { name: 'organization-chart' } },
-        { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
-      ],
-    },
+    ORGANIZATION_MENU_SECTION,
     {
       title: '보험 상품 관리',
       icon: 'mdi-shield-check-outline',
@@ -375,7 +387,7 @@ export const MENU_BY_ROLE = {
     },
     {
       title: '수수료 관리',
-      icon: 'mdi-trending-up',
+      icon: 'mdi-cash-multiple',
       children: [
         { title: '수수료 대시보드', to: { name: 'hq-commissions' } },
       ],

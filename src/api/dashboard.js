@@ -1,5 +1,30 @@
 import { authApi } from './axios'
 
+export async function getDashboardClosingMonths() {
+  const response = await authApi.get('/dashboard/filters/closing-months')
+  return response.data
+}
+
+export async function getOrganizationDashboardSummary(params) {
+  const response = await authApi.get('/dashboard/organization/summary', { params })
+  return response.data
+}
+
+export async function getOrganizationDashboardContractDistribution(params) {
+  const response = await authApi.get('/dashboard/organization/contracts/distribution', { params })
+  return response.data
+}
+
+export async function getOrganizationDashboardFpRankings(params) {
+  const response = await authApi.get('/dashboard/organization/rankings/fps', { params })
+  return response.data
+}
+
+export async function getOrganizationDashboardBranchRankings(params) {
+  const response = await authApi.get('/dashboard/organization/rankings/branches', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data
