@@ -902,7 +902,7 @@
           </label>
           <label class="field">
             <span>후속 상담 예정일 (선택)</span>
-            <input v-model="form.nextScheduledAt" class="control follow-up-date-control" type="date" />
+            <input v-model="form.nextScheduledAt" class="control follow-up-date-control" type="datetime-local" />
           </label>
         </section>
 
@@ -1478,7 +1478,7 @@ function hydrateDraft() {
     consultedAt: draft.consultedAt || toLocalInputValue(new Date()),
     consultationContent: draft.consultationContent || draft.specialNote || '',
     specialNote: draft.specialNote || draft.consultationContent || '',
-    nextScheduledAt: draft.nextScheduledAt || '',
+    nextScheduledAt: draft.nextScheduledAt ? toLocalInputValue(draft.nextScheduledAt) : '',
     contractId: draft.contractId || '',
   })
 
@@ -1593,7 +1593,7 @@ async function applyStructuredDraft(draft) {
     consultedAt: draft.consultedAt ? toLocalInputValue(draft.consultedAt) : form.consultedAt,
     consultationContent: draft.consultationContent || draft.summaryText || draft.specialNote || '',
     specialNote: draft.specialNote || draft.summaryText || draft.consultationContent || '',
-    nextScheduledAt: draft.nextScheduledAt ? toDateInputValue(draft.nextScheduledAt) : '',
+    nextScheduledAt: draft.nextScheduledAt ? toLocalInputValue(draft.nextScheduledAt) : '',
     contractId: draft.contractId || '',
   })
 
