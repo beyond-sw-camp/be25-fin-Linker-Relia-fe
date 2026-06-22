@@ -12,6 +12,7 @@ const ORGANIZATION_MENU_SECTION = {
   icon: 'mdi-domain',
   children: [
     { title: '조직도', to: { name: 'organization-chart' } },
+    { title: '지점 목록', to: { name: 'organization-branches' } },
     { title: '전체 설계사 목록', to: { name: 'hq-advisors' } },
   ],
 }
