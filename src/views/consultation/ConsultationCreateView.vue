@@ -1559,8 +1559,6 @@ function saveDraft() {
 function openSttPreview() {
   if (!canOpenSttPreview.value) {
     showCustomerSelectionGuide.value = true
-    messageType.value = 'error'
-    message.value = '좌측 고객 기본 정보에서 고객을 먼저 선택해주세요.'
     isSttPreviewOpen.value = false
     customerSelectionCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     window.setTimeout(() => customerSearchInput.value?.focus(), 200)
