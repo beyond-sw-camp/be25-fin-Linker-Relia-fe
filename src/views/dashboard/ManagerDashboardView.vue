@@ -280,6 +280,7 @@ const branchRankingErrorMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const distribution = ref(createEmptyOrganizationDistribution())
 const topAdvisorRankingItems = ref([])
+const topAdvisorRankingRequestId = ref(0)
 
 const chartColors = ['#f97316', '#f59e0b', '#2563eb', '#0f766e', '#4f46e5', '#ec4899', '#14b8a6', '#64748b']
 
@@ -614,11 +615,19 @@ async function loadOrganizationAdvisorRankings() {
 }
 
 async function loadTopAdvisorRanking() {
+  const requestId = ++topAdvisorRankingRequestId.value
+
   try {
     const response = await getOrganizationDashboardFpRankings(buildTopAdvisorRankingParams())
-    topAdvisorRankingItems.value = normalizeAdvisorRankingItems(response?.result)
+    const items = normalizeAdvisorRankingItems(response?.result)
+
+    if (requestId === topAdvisorRankingRequestId.value) {
+      topAdvisorRankingItems.value = items
+    }
   } catch {
-    topAdvisorRankingItems.value = []
+    if (requestId === topAdvisorRankingRequestId.value) {
+      topAdvisorRankingItems.value = []
+    }
   }
 }
 
