@@ -869,7 +869,9 @@ function formatNullableCount(value) {
 
 function formatRank(value) {
   if (value === null || value === undefined || value === '') return '-'
-  return `${formatCount(value)}위`
+  const rank = Number(value)
+  if (!Number.isFinite(rank) || rank < 1) return '-'
+  return `${formatCount(rank)}위`
 }
 
 function formatPercent(value) {
