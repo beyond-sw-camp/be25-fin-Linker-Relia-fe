@@ -175,6 +175,24 @@
             <span><i class="chart-legend__dot chart-legend__dot--orange"></i>계약 건수</span>
             <span><i class="chart-legend__dot chart-legend__dot--blue"></i>신규 고객</span>
           </div>
+          <div v-if="monthlyTrendSummaryRows.length" class="chart-summary-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ summaryTableLabels.month }}</th>
+                  <th>{{ summaryTableLabels.contractCount }}</th>
+                  <th>{{ summaryTableLabels.customerCount }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in monthlyTrendSummaryRows" :key="row.month">
+                  <td>{{ row.label }}</td>
+                  <td>{{ row.contractCount }}</td>
+                  <td>{{ row.customerCount }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section class="panel chart-panel">
@@ -194,6 +212,14 @@
               <g class="line-chart__grid">
                 <line v-for="y in [20, 60, 100, 140]" :key="`fee-h-${y}`" x1="24" :y1="y" x2="500" :y2="y" />
                 <line v-for="point in commissionTrendPoints" :key="`fee-v-${point.x}`" :x1="point.x" y1="16" :x2="point.x" y2="145" />
+                <line
+                  v-if="showCommissionZeroLine"
+                  class="line-chart__zero-line"
+                  x1="24"
+                  :y1="commissionZeroLineY"
+                  x2="500"
+                  :y2="commissionZeroLineY"
+                />
               </g>
               <polyline :points="commissionTrendPolyline" fill="none" stroke="#16a34a" stroke-width="3" />
               <circle
@@ -219,6 +245,25 @@
               <strong>{{ commissionTooltip.label }}</strong>
               <span><i class="chart-legend__dot chart-legend__dot--green"></i>수수료 {{ commissionTooltip.amount }}원</span>
             </div>
+          </div>
+          <div class="chart-legend">
+            <span><i class="chart-legend__dot chart-legend__dot--green"></i>{{ summaryTableLabels.commission }}</span>
+          </div>
+          <div v-if="commissionTrendSummaryRows.length" class="chart-summary-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ summaryTableLabels.month }}</th>
+                  <th>{{ summaryTableLabels.commission }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in commissionTrendSummaryRows" :key="row.month">
+                  <td>{{ row.label }}</td>
+                  <td>{{ row.amount }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -323,6 +368,12 @@ const currentBranchName = computed(() => authStore.organizationName || authStore
 const branchDisplayText = computed(
   () => `\uC18C\uC18D \uC9C0\uC810 ${currentBranchName.value}`,
 )
+const summaryTableLabels = {
+  month: '\uC6D4',
+  contractCount: '\uACC4\uC57D \uAC74\uC218',
+  customerCount: '\uACE0\uAC1D \uC218',
+  commission: '\uC218\uC218\uB8CC',
+}
 
 const metrics = computed(() => [
   {
@@ -487,22 +538,69 @@ const monthlyTrendPolyline = computed(() => ({
   customers: monthlyTrendPoints.value.customers.map((point) => `${point.x},${point.y}`).join(' '),
 }))
 
+const monthlyTrendSummaryRows = computed(() =>
+  monthlyTrendItems.value.map((item) => ({
+    month: item.month,
+    label: item.label,
+    contractCount: `${formatCount(item.newContractCount)}\uAC74`,
+    customerCount: `${formatCount(item.customerCount)}\uBA85`,
+  })),
+)
+
 const commissionTrendItems = computed(() => commissionTrend.value.monthlyTrends)
 const hasCommissionTrendValue = computed(() =>
-  commissionTrendItems.value.some((item) => item.netCommissionAmount > 0),
+  commissionTrendItems.value.some((item) => item.netCommissionAmount !== 0),
 )
+
+const commissionTrendRange = computed(() => {
+  const values = commissionTrendItems.value.map((item) => item.netCommissionAmount)
+  const minValue = Math.min(...values, 0)
+  const maxValue = Math.max(...values, 0)
+
+  if (minValue === maxValue) {
+    if (minValue === 0) {
+      return { min: 0, max: 1 }
+    }
+
+    return {
+      min: Math.min(minValue, 0),
+      max: Math.max(maxValue, 0),
+    }
+  }
+
+  return {
+    min: minValue,
+    max: maxValue,
+  }
+})
 
 const commissionTrendPoints = computed(() => {
   const items = commissionTrendItems.value
-  const maxValue = Math.max(...items.map((item) => item.netCommissionAmount), 1)
+  const range = commissionTrendRange.value
 
   return items.map((item, index) =>
-    buildMonthlyTrendPoint(item, index, items.length, item.netCommissionAmount, maxValue),
+    buildRangeTrendPoint(item, index, items.length, item.netCommissionAmount, range.min, range.max),
   )
 })
 
 const commissionTrendPolyline = computed(() =>
   commissionTrendPoints.value.map((point) => `${point.x},${point.y}`).join(' '),
+)
+
+const showCommissionZeroLine = computed(
+  () => commissionTrendRange.value.min < 0 && commissionTrendRange.value.max > 0,
+)
+
+const commissionZeroLineY = computed(() =>
+  calculateTrendYPosition(0, commissionTrendRange.value.min, commissionTrendRange.value.max),
+)
+
+const commissionTrendSummaryRows = computed(() =>
+  commissionTrendItems.value.map((item) => ({
+    month: item.month,
+    label: item.label,
+    amount: `${formatCurrencyNumber(item.netCommissionAmount)}\uC6D0`,
+  })),
 )
 
 onMounted(() => {
@@ -782,10 +880,8 @@ function createEmptyCommissionTrend() {
 function buildMonthlyTrendPoint(item, index, length, value, maxValue) {
   const minX = 24
   const maxX = 499
-  const minY = 20
-  const maxY = 140
   const x = length <= 1 ? minX : minX + ((maxX - minX) / (length - 1)) * index
-  const y = maxY - (toNumber(value) / Math.max(maxValue, 1)) * (maxY - minY)
+  const y = calculateTrendYPosition(toNumber(value), 0, Math.max(maxValue, 1))
 
   return {
     month: item.month,
@@ -796,6 +892,33 @@ function buildMonthlyTrendPoint(item, index, length, value, maxValue) {
     x: Math.round(x),
     y: Math.round(y),
   }
+}
+
+function buildRangeTrendPoint(item, index, length, value, minValue, maxValue) {
+  const minX = 24
+  const maxX = 499
+  const x = length <= 1 ? minX : minX + ((maxX - minX) / (length - 1)) * index
+  const y = calculateTrendYPosition(toNumber(value), minValue, maxValue)
+
+  return {
+    month: item.month,
+    label: item.label,
+    value: toNumber(value),
+    x: Math.round(x),
+    y: Math.round(y),
+  }
+}
+
+function calculateTrendYPosition(value, minValue, maxValue) {
+  const minY = 20
+  const maxY = 140
+  const range = maxValue - minValue
+
+  if (range <= 0) {
+    return maxY
+  }
+
+  return minY + ((maxValue - value) / range) * (maxY - minY)
 }
 
 function showTrendTooltip(point) {
@@ -1378,7 +1501,7 @@ function toDateInputValue(date) {
 
 .line-chart {
   width: 100%;
-  height: 170px;
+  height: 170px;
 }
 
 .line-chart-wrap {
@@ -1398,6 +1521,43 @@ function toDateInputValue(date) {
 .line-chart__point:hover {
   stroke: #ffffff;
   stroke-width: 2px;
+}
+
+.chart-summary-table {
+  margin-top: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.chart-summary-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.chart-summary-table th,
+.chart-summary-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.chart-summary-table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.chart-summary-table td {
+  color: #111827;
+  font-weight: 600;
+}
+
+.chart-summary-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .line-chart__labels text {
