@@ -117,7 +117,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="contract in contracts.items" :key="contract.contractId">
+                  <tr
+                    v-for="contract in contracts.items"
+                    :key="contract.contractId"
+                    class="detail-table__row detail-table__row--clickable"
+                    @click="goToContractDetail(contract)"
+                  >
                     <td>{{ contract.insuranceCompanyName }}</td>
                     <td>{{ contract.insuranceProductName }}</td>
                     <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
@@ -151,7 +156,12 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="consultation in consultations.items" :key="consultation.consultationId">
+                    <tr
+                      v-for="consultation in consultations.items"
+                      :key="consultation.consultationId"
+                      class="detail-table__row detail-table__row--clickable"
+                      @click="goToConsultationDetail(consultation)"
+                    >
                       <td>{{ consultation.consultationSequence }}</td>
                       <td>{{ formatDateTime(consultation.consultedAt) }}</td>
                       <td>{{ getConsultationTypeLabel(consultation.consultationType) }}</td>
@@ -485,6 +495,46 @@ onMounted(async () => {
   await Promise.all([loadCustomer(), loadContracts(), loadBriefing()])
 })
 
+function goToConsultationDetail(consultation) {
+  const consultationId = consultation?.consultationId ?? consultation?.id
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+
+  if (!consultationId) {
+    consultations.errorMessage = '상담 상세 조회에 필요한 상담 ID가 없습니다.'
+    return
+  }
+
+  router.push({
+    name: 'consultation-detail',
+    params: { consultationId },
+    query: {
+      from: 'customer-detail',
+      customerId: customerId.value,
+      returnFrom: from,
+    },
+  })
+}
+
+function goToContractDetail(contract) {
+  const contractId = contract?.contractId ?? contract?.id
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+
+  if (!contractId) {
+    contracts.errorMessage = '계약 상세 조회에 필요한 계약 ID가 없습니다.'
+    return
+  }
+
+  router.push({
+    name: 'contract-detail',
+    params: { contractId },
+    query: {
+      from: 'customer-detail',
+      customerId: customerId.value,
+      returnFrom: from,
+    },
+  })
+}
+
 function goBack() {
   const from = route.query.from
 
@@ -786,6 +836,14 @@ function formatDDay(value) {
   font-size: 12px;
   font-weight: 700;
   color: #64748b;
+}
+
+.detail-table__row--clickable {
+  cursor: pointer;
+}
+
+.detail-table__row--clickable:hover td {
+  background: #f8fafc;
 }
 
 .briefing-box {

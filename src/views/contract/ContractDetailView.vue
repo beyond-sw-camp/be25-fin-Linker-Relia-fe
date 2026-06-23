@@ -178,6 +178,20 @@ async function loadContractDetail() {
 function goToContractList() {
   const from = route.query.from
 
+  if (from === 'customer-detail' && typeof route.query.customerId === 'string') {
+    const target = {
+      name: 'customer-detail',
+      params: { customerId: route.query.customerId },
+    }
+
+    if (typeof route.query.returnFrom === 'string' && route.query.returnFrom.length > 0) {
+      target.query = { from: route.query.returnFrom }
+    }
+
+    router.push(target)
+    return
+  }
+
   if (typeof from === 'string' && ['fp-contracts', 'branch-contracts', 'hq-contracts'].includes(from)) {
     router.push({ name: from })
     return
