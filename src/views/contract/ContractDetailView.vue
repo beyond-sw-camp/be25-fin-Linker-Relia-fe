@@ -303,16 +303,14 @@ function getContractStatusLabel(status) {
 function getCustomerStatusBadgeClass(status) {
   if (status === '계약 고객' || status === 'CONTRACTED') return 'contract-detail-badge--success'
   if (status === '잠재 고객' || status === 'PROSPECT') return 'contract-detail-badge--info'
-  if (status === '완료 고객' || status === 'COMPLETED') return 'contract-detail-badge--warning'
-  if (status === '해지 고객' || status === 'TERMINATED') return 'contract-detail-badge--neutral'
+  if (status === '종료 고객' || status === 'CLOSED') return 'contract-detail-badge--neutral'
   return 'contract-detail-badge--neutral'
 }
 
 function getCustomerStatusLabel(status) {
   if (status === 'CONTRACTED') return '계약 고객'
   if (status === 'PROSPECT') return '잠재 고객'
-  if (status === 'COMPLETED') return '완료 고객'
-  if (status === 'TERMINATED') return '해지 고객'
+  if (status === 'CLOSED') return '종료 고객'
   return status || '-'
 }
 

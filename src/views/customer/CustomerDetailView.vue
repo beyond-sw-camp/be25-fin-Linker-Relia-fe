@@ -105,34 +105,68 @@
             <div v-else-if="contracts.isLoading" class="detail-state">
               <v-progress-circular indeterminate color="#f97316" />
             </div>
-            <div v-else-if="contracts.items.length > 0" class="detail-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>보험사명</th>
-                    <th>상품명</th>
-                    <th>월 보험료</th>
-                    <th>계약 시작일</th>
-                    <th>계약 상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="contract in contracts.items"
-                    :key="contract.contractId"
-                    class="detail-table__row detail-table__row--clickable"
-                    @click="goToContractDetail(contract)"
+            <template v-else>
+              <div class="contracts-toolbar">
+                <div class="contracts-toolbar__filters" role="tablist" aria-label="계약 상태 필터">
+                  <button
+                    v-for="option in contractStatusOptions"
+                    :key="option.value || 'ALL'"
+                    type="button"
+                    class="contracts-toolbar__filter"
+                    :class="{
+                      'contracts-toolbar__filter--active': contracts.params.contractStatus === option.value,
+                    }"
+                    @click="changeContractStatus(option.value)"
                   >
-                    <td>{{ contract.insuranceCompanyName }}</td>
-                    <td>{{ contract.insuranceProductName }}</td>
-                    <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
-                    <td>{{ formatDate(contract.contractStartedAt) }}</td>
-                    <td>{{ getContractStatusLabel(contract.contractStatus) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else class="detail-empty">보유 계약이 없습니다.</div>
+                    {{ option.label }}
+                  </button>
+                </div>
+                <span class="contracts-toolbar__count">
+                  총 {{ contracts.page.totalElements.toLocaleString('ko-KR') }}건
+                </span>
+              </div>
+
+              <div v-if="contracts.items.length > 0" class="detail-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>보험사명</th>
+                      <th>상품명</th>
+                      <th>월 보험료</th>
+                      <th>계약 시작일</th>
+                      <th>계약 종료일</th>
+                      <th>계약 상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="contract in contracts.items"
+                      :key="contract.contractId"
+                      class="detail-table__row detail-table__row--clickable"
+                      @click="goToContractDetail(contract)"
+                    >
+                      <td>{{ contract.insuranceCompanyName }}</td>
+                      <td>{{ contract.insuranceProductName }}</td>
+                      <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
+                      <td>{{ formatDate(contract.contractStartDate) }}</td>
+                      <td>{{ formatDate(contract.contractEndDate) }}</td>
+                      <td>{{ getContractStatusLabel(contract.contractStatus) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div v-if="contracts.items.length > 0" class="detail-pagination">
+                <v-pagination
+                  :model-value="contractPageNumber"
+                  :length="Math.max(contracts.page.totalPages, 1)"
+                  total-visible="7"
+                  rounded="circle"
+                  @update:model-value="changeContractPage"
+                />
+              </div>
+              <div v-else class="detail-empty detail-empty--compact">보유 계약이 없습니다.</div>
+            </template>
           </template>
 
           <template v-else-if="activeTab === 'consultations'">
@@ -304,6 +338,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  CONTRACT_STATUS_OPTIONS,
   getConsultationChannelLabel,
   getConsultationTypeLabel,
   getContractStatusLabel,
@@ -339,6 +374,8 @@ const {
   loadBriefing,
   createBriefing,
   loadFpHistories,
+  changeContractPage,
+  changeContractStatus,
   changeConsultationPage,
   changeFpHistoryPage,
 } = useCustomerDetail(customerId)
@@ -349,6 +386,7 @@ const detailTabs = [
   { label: 'AI 브리핑 요약', value: 'briefing' },
   { label: '설계사 변경 이력', value: 'history' },
 ]
+const contractStatusOptions = CONTRACT_STATUS_OPTIONS
 
 const summaryCards = computed(() => [
   {
@@ -364,16 +402,28 @@ const summaryCards = computed(() => [
     icon: 'mdi-cash-multiple',
   },
   {
-    label: '정상 계약 수',
-    value: customer.value?.contractSummary?.activeContractCount ?? 0,
+    label: '유지 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.MAINTENANCE ?? 0,
     unit: '건',
     icon: 'mdi-check-circle-outline',
   },
   {
-    label: '만기 임박 계약 수',
-    value: customer.value?.contractSummary?.maturityDueContractCount ?? 0,
+    label: '만기 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.COMPLETED ?? 0,
     unit: '건',
-    icon: 'mdi-clock-fast',
+    icon: 'mdi-calendar-check-outline',
+  },
+  {
+    label: '해지 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.TERMINATED ?? 0,
+    unit: '건',
+    icon: 'mdi-close-circle-outline',
+  },
+  {
+    label: '실효 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.LAPSED ?? 0,
+    unit: '건',
+    icon: 'mdi-alert-circle-outline',
   },
 ])
 
@@ -390,6 +440,7 @@ const customerCompanyText = computed(() => {
 
 const consultationPageNumber = computed(() => consultations.page.page || 1)
 const fpHistoryPageNumber = computed(() => fpHistories.page.page || 1)
+const contractPageNumber = computed(() => contracts.page.page || 1)
 
 const interestDetailCards = computed(() => {
   const detail = customer.value
@@ -725,7 +776,7 @@ function formatDDay(value) {
 
 .customer-detail__summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -801,6 +852,43 @@ function formatDDay(value) {
   padding: 16px 4px 4px;
 }
 
+.contracts-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.contracts-toolbar__filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.contracts-toolbar__filter {
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.contracts-toolbar__filter--active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.contracts-toolbar__count {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .detail-state,
 .detail-empty {
   display: grid;
@@ -808,6 +896,10 @@ function formatDDay(value) {
   gap: 10px;
   min-height: 220px;
   color: #64748b;
+}
+
+.detail-empty--compact {
+  min-height: 120px;
 }
 
 .detail-table {
@@ -1069,20 +1161,12 @@ function formatDDay(value) {
 }
 
 @media (max-width: 1200px) {
-  .customer-detail__summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .customer-profile {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .customer-detail__summary {
-    grid-template-columns: 1fr;
-  }
-
   .customer-profile__meta {
     grid-template-columns: 1fr;
   }

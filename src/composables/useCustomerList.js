@@ -54,10 +54,10 @@ export function useCustomerList(authStore) {
     try {
       const response = await getCustomers(buildCustomerParams(filters, showBranchFilter.value))
       const result = response?.result ?? {}
-      const customersResult = result.customers ?? {}
+      const customersResult = result.customers ?? result
 
       customerPage.value = normalizePage(customersResult)
-      summary.value = normalizeSummary(result.summary)
+      summary.value = normalizeSummary(result.summary ?? result.customerSummary ?? result.summaryInfo)
     } catch (error) {
       customerPage.value = createEmptyPage()
       summary.value = createEmptySummary()
@@ -133,27 +133,24 @@ function buildCustomerParams(filters, includeOrganizationCode) {
 
 function normalizePage(result) {
   return {
-    content: Array.isArray(result.content) ? result.content : [],
-    page: Number(result.page ?? 1),
-    size: Number(result.size ?? DEFAULT_PAGE_SIZE),
-    totalElements: Number(result.totalElements ?? 0),
-    totalPages: Number(result.totalPages ?? 0),
-    numberOfElements: Number(result.numberOfElements ?? 0),
-    hasNext: Boolean(result.hasNext),
-    hasPrevious: Boolean(result.hasPrevious),
-    first: Boolean(result.first),
-    last: Boolean(result.last),
-    empty: Boolean(result.empty),
+    content: Array.isArray(result?.content) ? result.content.map(normalizeCustomerRow) : [],
+    page: Number(result?.page ?? result?.number ?? 1),
+    size: Number(result?.size ?? DEFAULT_PAGE_SIZE),
+    totalElements: Number(result?.totalElements ?? 0),
+    totalPages: Number(result?.totalPages ?? 0),
+    numberOfElements: Number(result?.numberOfElements ?? 0),
+    hasNext: Boolean(result?.hasNext),
+    hasPrevious: Boolean(result?.hasPrevious),
+    first: Boolean(result?.first),
+    last: Boolean(result?.last),
+    empty: Boolean(result?.empty),
   }
 }
 
 function normalizeSummary(summary) {
   return {
     totalCustomerCount: Number(summary?.totalCustomerCount ?? 0),
-    contractedCustomerCount: Number(summary?.contractedCustomerCount ?? 0),
     prospectCustomerCount: Number(summary?.prospectCustomerCount ?? 0),
-    completedCustomerCount: Number(summary?.completedCustomerCount ?? 0),
-    terminatedCustomerCount: Number(summary?.terminatedCustomerCount ?? 0),
   }
 }
 
@@ -176,9 +173,10 @@ function createEmptyPage() {
 function createEmptySummary() {
   return {
     totalCustomerCount: 0,
-    contractedCustomerCount: 0,
     prospectCustomerCount: 0,
-    completedCustomerCount: 0,
-    terminatedCustomerCount: 0,
   }
+}
+
+function normalizeCustomerRow(customer) {
+  return { ...customer }
 }

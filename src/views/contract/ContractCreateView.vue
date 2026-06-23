@@ -582,8 +582,7 @@ function getApiErrorMessage(error, fallback) {
 function getCustomerStatusLabel(status) {
   if (status === 'PROSPECT') return '잠재 고객'
   if (status === 'CONTRACTED') return '계약 고객'
-  if (status === 'TERMINATED') return '해지 고객'
-  if (status === 'COMPLETED') return '만기 고객'
+  if (status === 'CLOSED') return '종료 고객'
   return status
 }
 
@@ -645,8 +644,7 @@ function normalizeCustomer(customer) {
 function getCustomerStatusBadgeClass(status) {
   if (status === 'PROSPECT') return 'contract-create-badge--prospect'
   if (status === 'CONTRACTED') return 'contract-create-badge--contracted'
-  if (status === 'TERMINATED') return 'contract-create-badge--terminated'
-  if (status === 'COMPLETED') return 'contract-create-badge--completed'
+  if (status === 'CLOSED') return 'contract-create-badge--neutral'
   return 'contract-create-badge--neutral'
 }
 

@@ -15,8 +15,8 @@ export async function getCustomerDetail(customerId) {
   return response.data
 }
 
-export async function getCustomerContracts(customerId) {
-  const response = await authApi.get(`/customers/${customerId}/contracts`)
+export async function getCustomerContracts(customerId, params) {
+  const response = await authApi.get(`/customers/${customerId}/contracts`, { params })
   return response.data
 }
 

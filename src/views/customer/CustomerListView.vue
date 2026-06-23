@@ -94,13 +94,10 @@
                 <th>지점명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
-                <th v-if="showLifecycleDateColumn">{{ lifecycleDateColumnLabel }}</th>
-                <template v-else>
-                  <th>보유 계약 수</th>
-                  <th>월 납입 보험료 합계</th>
-                </template>
+                <th>보유 계약 수</th>
+                <th>월 납입 보험료 합계</th>
                 <th>최근 상담일시</th>
-                <th v-if="!showLifecycleDateColumn">다음 상담일시</th>
+                <th>다음 상담일시</th>
                 <th>고객 등급</th>
                 <th>고객 상태</th>
               </tr>
@@ -115,13 +112,10 @@
                 <td>{{ customer.organizationName || '-' }}</td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
                 <td>{{ formatPhone(customer.customerPhone) }}</td>
-                <td v-if="showLifecycleDateColumn">{{ formatDate(getLifecycleDateValue(customer)) }}</td>
-                <template v-else>
-                  <td>{{ customer.contractCount ?? 0 }}</td>
-                  <td>{{ formatCurrency(customer.monthlyPremium) }}</td>
-                </template>
+                <td>{{ customer.contractCount ?? 0 }}</td>
+                <td>{{ formatCurrency(customer.monthlyPremium) }}</td>
                 <td>{{ formatDateTime(customer.lastConsultedAt) }}</td>
-                <td v-if="!showLifecycleDateColumn">{{ formatDateTime(customer.nextConsultedAt) }}</td>
+                <td>{{ formatDateTime(customer.nextConsultedAt) }}</td>
                 <td>{{ getCustomerGradeLabel(customer.customerGrade) }}</td>
                 <td>{{ getCustomerStatusLabel(customer.customerStatus) }}</td>
               </tr>
@@ -184,22 +178,6 @@ const {
 
 const statusOptions = CUSTOMER_STATUS_OPTIONS
 
-const showLifecycleDateColumn = computed(() =>
-  filters.customerStatus === 'COMPLETED' || filters.customerStatus === 'TERMINATED',
-)
-
-const lifecycleDateColumnLabel = computed(() => {
-  if (filters.customerStatus === 'COMPLETED') {
-    return '만기일'
-  }
-
-  if (filters.customerStatus === 'TERMINATED') {
-    return '해지일'
-  }
-
-  return ''
-})
-
 const summaryCards = computed(() => [
   {
     label: '전체 고객 수',
@@ -209,32 +187,11 @@ const summaryCards = computed(() => [
     icon: 'mdi-account-group-outline',
   },
   {
-    label: '계약 유지 고객 수',
-    value: summary.value.contractedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#16a34a',
-    tone: '#ecfdf3',
-    icon: 'mdi-file-document-check-outline',
-  },
-  {
     label: '잠재 고객 수',
     value: summary.value.prospectCustomerCount.toLocaleString('ko-KR'),
     accent: '#f59e0b',
     tone: '#fff7ed',
     icon: 'mdi-account-search-outline',
-  },
-  {
-    label: '만기 고객 수',
-    value: summary.value.completedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#8b5cf6',
-    tone: '#f5f3ff',
-    icon: 'mdi-calendar-check-outline',
-  },
-  {
-    label: '해지 고객 수',
-    value: summary.value.terminatedCustomerCount.toLocaleString('ko-KR'),
-    accent: '#ef4444',
-    tone: '#fff1f2',
-    icon: 'mdi-close-circle-outline',
   },
 ])
 
@@ -252,17 +209,6 @@ function goToCustomerDetail(customerId) {
   })
 }
 
-function getLifecycleDateValue(customer) {
-  if (filters.customerStatus === 'COMPLETED') {
-    return customer.contractEndDate
-  }
-
-  if (filters.customerStatus === 'TERMINATED') {
-    return customer.terminatedAt
-  }
-
-  return null
-}
 </script>
 
 <style scoped>

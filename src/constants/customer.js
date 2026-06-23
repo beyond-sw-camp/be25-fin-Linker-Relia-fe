@@ -1,8 +1,13 @@
 export const CUSTOMER_STATUS_OPTIONS = [
-  { label: '계약 유지', value: 'CONTRACTED' },
   { label: '잠재 고객', value: 'PROSPECT' },
+]
+
+export const CONTRACT_STATUS_OPTIONS = [
+  { label: '전체', value: '' },
+  { label: '유지', value: 'MAINTENANCE' },
   { label: '만기', value: 'COMPLETED' },
   { label: '해지', value: 'TERMINATED' },
+  { label: '실효', value: 'LAPSED' },
 ]
 
 export const INTEREST_REASON_OPTIONS = [
@@ -13,9 +18,8 @@ export const INTEREST_REASON_OPTIONS = [
 
 export const CUSTOMER_STATUS_LABELS = Object.freeze({
   PROSPECT: '잠재 고객',
-  CONTRACTED: '계약 유지',
-  COMPLETED: '만기',
-  TERMINATED: '해지',
+  CONTRACTED: '계약 고객',
+  CLOSED: '종료 고객',
 })
 
 export const INTEREST_REASON_LABELS = Object.freeze({
