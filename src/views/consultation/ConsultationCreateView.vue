@@ -189,22 +189,19 @@
 
               <div class="field field--wide">
                 <span>이메일</span>
-                <div class="email-row">
+                <div class="email-row" :class="{ 'is-custom-domain': emailDomainSelected === 'custom' }">
                   <input v-model.trim="emailLocalPart" class="control" placeholder="email" />
                   <span>@</span>
                   <input
-                    v-if="emailDomainMode === 'custom'"
+                    v-if="emailDomainSelected === 'custom'"
                     v-model.trim="emailDomainCustom"
-                    class="control"
+                    class="control email-domain-custom"
                     placeholder="domain.com"
                   />
-                  <select v-else v-model="emailDomainSelected" class="control">
+                  <select v-model="emailDomainSelected" class="control email-domain-select">
                     <option v-for="option in emailDomainOptions" :key="option" :value="option">
                       {{ option }}
                     </option>
-                  </select>
-                  <select v-model="emailDomainMode" class="control email-row__mode">
-                    <option value="selected">도메인 선택</option>
                     <option value="custom">직접 입력</option>
                   </select>
                 </div>
@@ -332,13 +329,11 @@
               <div class="field field--wide">
                 <span>기저질환</span>
                 <div class="disease-picker">
-                  <select v-model="selectedDisease" class="control">
+                  <select v-model="selectedDisease" class="control" @change="addDisease">
                     <option value="">기저질환 선택</option>
+                    <option value="없음">없음</option>
                     <option v-for="option in diseaseOptions" :key="option" :value="option">{{ option }}</option>
                   </select>
-                  <button type="button" class="address-box__button" @click="addDisease">
-                    추가
-                  </button>
                 </div>
                 <div class="selected-disease-list">
                   <span v-for="disease in customerInfo.underlyingDiseases" :key="disease" class="selected-disease-chip">
@@ -540,13 +535,13 @@
             <div class="claim-type-grid">
               <button
                 v-for="option in claimTypeOptions"
-                :key="option"
+                :key="option.value"
                 type="button"
                 class="claim-type-button"
-                :class="{ 'is-active': claimDetail.claimType === option }"
-                @click="claimDetail.claimType = toggleSingleSelection(claimDetail.claimType, option)"
+                :class="{ 'is-active': claimDetail.claimType === option.value }"
+                @click="claimDetail.claimType = toggleSingleSelection(claimDetail.claimType, option.value)"
               >
-                {{ option }}
+                {{ option.label }}
               </button>
             </div>
           </section>
@@ -561,6 +556,40 @@
               <label class="field">
                 <span>발생일 또는 진단일</span>
                 <input v-model="claimDetail.incidentDate" class="control" type="date" />
+              </label>
+              <label class="field">
+                <span>병원명</span>
+                <input v-model.trim="claimDetail.hospitalName" class="control" />
+              </label>
+              <label class="field">
+                <span>진단/치료</span>
+                <input v-model.trim="claimDetail.diagnosisOrTreatment" class="control" />
+              </label>
+              <label class="field">
+                <span>입원 여부</span>
+                <select v-model="claimDetail.hospitalizationStatus" class="control">
+                  <option value="">선택</option>
+                  <option
+                    v-for="option in hospitalizationStatusOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+              <label class="field">
+                <span>수술 여부</span>
+                <select v-model="claimDetail.surgeryStatus" class="control">
+                  <option value="">선택</option>
+                  <option
+                    v-for="option in surgeryStatusOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
               </label>
             </div>
           </section>
@@ -1028,7 +1057,26 @@ const coverageTypeOptions = ['진단비', '실손 의료비', '수술비', '사�
 
 const insurancePriorityOptions = ['보험료 저렴한 곳', '보장 범위가 넓은 곳', '보험금 지급 신속성', '기타']
 
-const claimTypeOptions = ['실손의료비 보장', '입원 보장', '통원 보장', '수술 보장', '진단 보장', '상해 보장']
+const claimTypeOptions = [
+  { label: '실손의료비 보장', value: 'MEDICAL_EXPENSE' },
+  { label: '입원 보장', value: 'HOSPITALIZATION' },
+  { label: '통원 보장', value: 'OUTPATIENT' },
+  { label: '수술 보장', value: 'SURGERY' },
+  { label: '진단 보장', value: 'DIAGNOSIS' },
+  { label: '상해 보장', value: 'INJURY' },
+]
+const claimTypeValues = claimTypeOptions.map((option) => option.value)
+
+const hospitalizationStatusOptions = [
+  { label: '입원', value: 'HOSPITALIZED' },
+  { label: '통원', value: 'OUTPATIENT' },
+  { label: '해당 없음', value: 'NONE' },
+]
+
+const surgeryStatusOptions = [
+  { label: '수술함', value: 'SURGERY' },
+  { label: '수술 안 함', value: 'NONE' },
+]
 
 const claimReviewOptions = ['보장 대상 여부', '면책/감액 기간 여부', '약관상 제외 가능성', '기존 청구 이력 여부']
 
@@ -1057,6 +1105,8 @@ const terminationReasonOptions = [
   '설계사 서비스 불만',
   '관리 부족 불만',
   '대체 상품 검토 중',
+  '타사 상품 비교 중',
+  '타사 이동 예정',
   '기타',
 ]
 
@@ -1100,6 +1150,26 @@ const cancelBooleanFields = [
   { key: 'plannerContactDissatisfaction', label: '설계사 연락 불만' },
   { key: 'managementDissatisfaction', label: '관리 부족 불만' },
 ]
+
+const terminationReasonBooleanMap = {
+  '보험료 부담': 'premiumBurden',
+  '갱신 보험료 부담': 'renewalPremiumBurden',
+  '갱신 후 보험료 인상 부담': 'renewalPremiumBurden',
+  '경제적 사정': 'paymentDifficulty',
+  '경제적 사정/납입 유지 어려움': 'paymentDifficulty',
+  '납입 유지 어려움': 'paymentDifficulty',
+  '보장 불만': 'coverageDissatisfaction',
+  '보장 불만족': 'coverageDissatisfaction',
+  '중복 가입': 'duplicateInsurance',
+  '상품 리모델링 검토': 'productRemodelingReview',
+  '대체 상품 검토 중': 'productRemodelingReview',
+  '타사 상품 비교 중': 'comparingOtherCompany',
+  '타사 상품 비교': 'comparingOtherCompany',
+  '타사 이동 예정': 'movingToOtherCompany',
+  '설계사 연락 불만': 'plannerContactDissatisfaction',
+  '설계사 서비스 불만': 'plannerContactDissatisfaction',
+  '관리 부족 불만': 'managementDissatisfaction',
+}
 
 const consultationTypeAliases = {
   '신규': 'NEW_CONTRACT',
@@ -1188,7 +1258,6 @@ const showAddressResults = ref(false)
 const emailLocalPart = ref('')
 const emailDomainSelected = ref(emailDomainOptions[0])
 const emailDomainCustom = ref('')
-const emailDomainMode = ref('selected')
 
 const form = reactive({
   consultationType: 'NEW_CONTRACT',
@@ -1235,6 +1304,10 @@ const claimDetail = reactive({
   claimType: '',
   claimReason: '',
   incidentDate: '',
+  hospitalName: '',
+  diagnosisOrTreatment: '',
+  hospitalizationStatus: '',
+  surgeryStatus: '',
   claimAmount: '',
   reviewItems: [],
   result: '',
@@ -1354,7 +1427,9 @@ watch(
   },
 )
 
-watch(customerMode, () => {
+watch(customerMode, async (nextMode, previousMode) => {
+  if (nextMode === previousMode) return
+
   customers.value = []
   customerSearchTouched.value = false
   selectedCustomer.value = null
@@ -1362,6 +1437,10 @@ watch(customerMode, () => {
   form.contractId = ''
   contracts.value = []
   resetCustomerInfo()
+
+  if (nextMode === 'EXISTING') {
+    await loadCustomers()
+  }
 })
 
 watch(
@@ -1403,15 +1482,21 @@ watch(needsContract, async (value) => {
 })
 
 watch(
-  () => [emailLocalPart.value, emailDomainSelected.value, emailDomainCustom.value, emailDomainMode.value],
+  () => [emailLocalPart.value, emailDomainSelected.value, emailDomainCustom.value],
   () => {
-    const domain = emailDomainMode.value === 'custom' ? emailDomainCustom.value.trim() : emailDomainSelected.value
+    const domain = emailDomainSelected.value === 'custom' ? emailDomainCustom.value.trim() : emailDomainSelected.value
     customerInfo.customerEmail = emailLocalPart.value && domain ? `${emailLocalPart.value.trim()}@${domain}` : ''
   },
 )
 
 onMounted(async () => {
-  if (isEditMode.value) hydrateDraft()
+  if (isEditMode.value) {
+    await hydrateDraft()
+  }
+
+  if (needsExistingCustomer.value && !customerSearchTouched.value) {
+    await loadCustomers()
+  }
 })
 
 function selectType(type) {
@@ -1520,11 +1605,10 @@ function hydrateEmailFields(emailValue) {
   const [localPart, domain] = email.split('@')
   emailLocalPart.value = localPart
   if (emailDomainOptions.includes(domain)) {
-    emailDomainMode.value = 'selected'
     emailDomainSelected.value = domain
     emailDomainCustom.value = ''
   } else {
-    emailDomainMode.value = 'custom'
+    emailDomainSelected.value = 'custom'
     emailDomainCustom.value = domain
   }
 }
@@ -1659,6 +1743,13 @@ async function applyStructuredDraft(draft) {
       claimType: normalizeOptionValue(draft.claimDetail.claimType, claimTypeOptions),
       claimReason: draft.claimDetail.claimReason || '',
       incidentDate: draft.claimDetail.incidentDate || '',
+      hospitalName: draft.claimDetail.hospitalName || '',
+      diagnosisOrTreatment: draft.claimDetail.diagnosisOrTreatment || '',
+      hospitalizationStatus: normalizeOptionValue(
+        draft.claimDetail.hospitalizationStatus,
+        hospitalizationStatusOptions,
+      ),
+      surgeryStatus: normalizeOptionValue(draft.claimDetail.surgeryStatus, surgeryStatusOptions),
       claimAmount: normalizeAiMoneyValue(draft.claimDetail.claimAmount),
       reviewItems: normalizeOptionArray(draft.claimDetail.reviewItems, claimReviewOptions),
       result: normalizeOptionValue(draft.claimDetail.result, claimResultOptions),
@@ -1718,10 +1809,21 @@ async function submitConsultation() {
   isSubmitting.value = true
 
   try {
-    await createConsultation(buildSubmitPayload())
+    const payload = buildSubmitPayload()
+    if (form.consultationType === 'CLAIM' && !claimTypeValues.includes(payload.claimDetail?.claimType)) {
+      throw new Error('청구 유형이 올바르게 설정되지 않았습니다. 다시 선택해주세요.')
+    }
+
+    await createConsultation(payload)
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
-    window.setTimeout(() => router.push({ name: 'fp-consultations' }), 500)
+    await router.push({
+      name: 'fp-consultations',
+      query: {
+        refreshAfterCreate: 'true',
+        createdAt: Date.now().toString(),
+      },
+    })
   } catch (error) {
     messageType.value = 'error'
     message.value = error.response?.data?.message || error.message || '상담일지 저장에 실패했습니다.'
@@ -1776,6 +1878,10 @@ function buildSubmitPayload() {
       claimType: claimDetail.claimType || null,
       claimReason: claimDetail.claimReason || null,
       incidentDate: claimDetail.incidentDate || null,
+      hospitalName: claimDetail.hospitalName || null,
+      diagnosisOrTreatment: claimDetail.diagnosisOrTreatment || null,
+      hospitalizationStatus: claimDetail.hospitalizationStatus || null,
+      surgeryStatus: claimDetail.surgeryStatus || null,
       claimAmount: parseMoneyOrNull(claimDetail.claimAmount),
       reviewItems: claimDetail.reviewItems,
       result: claimDetail.result || null,
@@ -1804,14 +1910,21 @@ function buildSubmitPayload() {
   }
 
   if (form.consultationType === 'TERMINATION') {
+    const reasonFlags = Object.fromEntries(cancelBooleanFields.map(({ key }) => [key, Boolean(cancelDetail[key])]))
+    cancelDetail.reviewReasons.forEach((reason) => {
+      const key = terminationReasonBooleanMap[reason]
+      if (key) reasonFlags[key] = true
+    })
+
     payload.cancelDetail = {
-      ...cancelDetail,
-      reviewReasons: cancelDetail.reviewReasons,
+      ...reasonFlags,
+      retentionPossibility: cancelDetail.retentionPossibility || null,
+      reviewReasons: [...cancelDetail.reviewReasons],
       reasonDetail: cancelDetail.reasonDetail || null,
-      retentionPlans: cancelDetail.retentionPlans,
+      retentionPlans: [...cancelDetail.retentionPlans],
       customerIntent: cancelDetail.customerIntent || null,
       result: cancelDetail.result || null,
-      nextActions: cancelDetail.nextActions,
+      nextActions: [...cancelDetail.nextActions],
     }
   }
 
@@ -1858,7 +1971,7 @@ function validateForm() {
     if (!newDetail.existingInsuranceNote) return '기존 보험 정보를 입력해주세요.'
   }
   if (form.consultationType === 'CLAIM') {
-    if (!claimDetail.claimType) return '청구 유형을 선택해주세요.'
+    if (!claimTypeValues.includes(claimDetail.claimType)) return '청구 유형을 선택해주세요.'
     if (!claimDetail.claimReason) return '청구 사유를 입력해주세요.'
     if (!claimDetail.incidentDate) return '발생일 또는 진단일을 입력해주세요.'
     if (!claimDetail.result) return '상담 결과를 선택해주세요.'
@@ -2190,6 +2303,12 @@ function formatMoneyDisplay(rawValue) {
 }
 
 function addDisease() {
+  if (selectedDisease.value === '없음') {
+    customerInfo.underlyingDiseases = []
+    selectedDisease.value = ''
+    return
+  }
+
   if (!selectedDisease.value || customerInfo.underlyingDiseases.includes(selectedDisease.value)) return
   customerInfo.underlyingDiseases = [...customerInfo.underlyingDiseases, selectedDisease.value]
   selectedDisease.value = ''
@@ -2636,19 +2755,21 @@ function toApiDateTime(value) {
 
 .email-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 128px;
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 5fr);
   gap: 8px;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.email-row.is-custom-domain {
+  grid-template-columns: minmax(0, 7fr) auto minmax(0, 3fr);
 }
 
 .email-row span {
   color: #64748b;
   font-size: 13px;
   font-weight: 700;
-}
-
-.email-row__mode {
-  min-width: 0;
 }
 
 .address-box {
@@ -2728,7 +2849,7 @@ function toApiDateTime(value) {
 
 .disease-picker {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 

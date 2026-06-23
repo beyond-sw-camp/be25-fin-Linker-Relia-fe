@@ -343,20 +343,28 @@ router.beforeEach(async (to) => {
     await waitForAuthInitialization(authStore)
   }
 
+  if (to.path === '/login') {
+    if (!authStore.accessToken) {
+      return true
+    }
+
+    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? '/'
+  }
+
   if (to.path === '/') {
     if (!authStore.accessToken) {
       return '/login'
     }
 
-    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole]
+    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? true
   }
 
   if (requiresAuth && !authStore.accessToken) {
     return '/login'
   }
 
-  if (authStore.accessToken && ['/login', '/signup/fp'].includes(to.path)) {
-    return authStore.defaultRoutePath
+  if (authStore.accessToken && to.path === '/signup/fp') {
+    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? '/'
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(authStore.userRole)) {

@@ -30,6 +30,11 @@ export async function getCustomerAiBriefing(customerId) {
   return response.data
 }
 
+export async function createCustomerAiBriefing(customerId) {
+  const response = await authApi.post(`/customers/${customerId}/ai-briefing`)
+  return response.data
+}
+
 export async function getCustomerFpHistories(customerId, params) {
   const response = await authApi.get(`/customers/${customerId}/fp-histories`, { params })
   return response.data

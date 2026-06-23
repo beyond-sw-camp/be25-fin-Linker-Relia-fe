@@ -151,13 +151,13 @@ const typeDetailItems = computed(() => {
   if (detail.value.consultationType === 'CLAIM') {
     const source = detail.value.claimDetail || {}
     return [
-      { label: '청구 유형', value: source.claimType || '-' },
+      { label: '청구 유형', value: claimTypeText(source.claimType) },
       { label: '청구 사유', value: source.claimReasonDetail || source.claimReason || '-' },
-      { label: '사고일', value: source.incidentDate || '-' },
+      { label: '발생일 또는 진단일', value: source.incidentDate || '-' },
       { label: '병원명', value: source.hospitalName || '-' },
       { label: '진단/치료', value: source.diagnosisOrTreatment || '-' },
-      { label: '입원 여부', value: source.hospitalizationStatus || '-' },
-      { label: '수술 여부', value: source.surgeryStatus || '-' },
+      { label: '입원 여부', value: hospitalizationStatusText(source.hospitalizationStatus) },
+      { label: '수술 여부', value: surgeryStatusText(source.surgeryStatus) },
       { label: '검토 항목', value: arrayText(source.reviewItems) },
       { label: '상담 결과', value: source.result || '-' },
       { label: '후속조치', value: arrayText(source.nextActions) },
@@ -192,9 +192,20 @@ const typeDetailItems = computed(() => {
     { label: '상담 결과', value: source.result || source.consultationResult || '-' },
     { label: '후속조치', value: arrayText(source.nextActions) },
   ]
-  const hasCurrentItems = currentItems.some((item) => item.value !== '-')
+  const hasExtendedItems = [
+    source.reviewReasons,
+    source.terminationReasons,
+    source.reasonDetail,
+    source.cancelReasonDetail,
+    source.retentionPlans,
+    source.retentionPlanTypes,
+    source.customerIntent,
+    source.result,
+    source.consultationResult,
+    source.nextActions,
+  ].some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value))
 
-  if (hasCurrentItems) return currentItems
+  if (hasExtendedItems) return currentItems
 
   return [
     ...cancelBooleanGroups.map((group) => ({
@@ -276,6 +287,38 @@ function arrayText(value) {
     ? value
     : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
   return items.length ? items.join(', ') : '-'
+}
+
+function claimTypeText(value) {
+  const labels = {
+    MEDICAL_EXPENSE: '실손의료비 보장',
+    HOSPITALIZATION: '입원 보장',
+    OUTPATIENT: '통원 보장',
+    SURGERY: '수술 보장',
+    DIAGNOSIS: '진단 보장',
+    INJURY: '상해 보장',
+  }
+  return labels[value] || value || '-'
+}
+
+function hospitalizationStatusText(value) {
+  const labels = {
+    HOSPITALIZED: '입원',
+    HOSPITALIZATION: '입원',
+    OUTPATIENT: '통원',
+    NONE: '해당 없음',
+  }
+  return labels[value] || value || '-'
+}
+
+function surgeryStatusText(value) {
+  const labels = {
+    SURGERY: '수술함',
+    YES: '수술함',
+    NONE: '수술 안 함',
+    NO: '수술 안 함',
+  }
+  return labels[value] || value || '-'
 }
 
 function cancelGroupText(source, keys) {

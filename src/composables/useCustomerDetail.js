@@ -1,6 +1,7 @@
 import { reactive, ref, watch } from 'vue'
 
 import {
+  createCustomerAiBriefing,
   getCustomerAiBriefing,
   getCustomerConsultations,
   getCustomerContracts,
@@ -34,6 +35,7 @@ export function useCustomerDetail(customerId) {
   const briefing = reactive({
     item: null,
     isLoading: false,
+    isGenerating: false,
     errorMessage: '',
     loaded: false,
   })
@@ -147,6 +149,28 @@ export function useCustomerDetail(customerId) {
     }
   }
 
+  async function createBriefing() {
+    if (briefing.isGenerating || !briefing.item?.canGenerate) {
+      return
+    }
+
+    briefing.errorMessage = ''
+    briefing.isGenerating = true
+
+    try {
+      const response = await createCustomerAiBriefing(customerId.value)
+      briefing.item = response?.result ?? null
+      briefing.loaded = true
+    } catch (error) {
+      briefing.errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'AI 상담 브리핑을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.'
+    } finally {
+      briefing.isGenerating = false
+    }
+  }
+
   async function loadFpHistories(force = false) {
     if (fpHistories.loaded && !force) {
       return
@@ -200,6 +224,8 @@ export function useCustomerDetail(customerId) {
     consultations.loaded = false
     consultations.errorMessage = ''
     briefing.item = null
+    briefing.isLoading = false
+    briefing.isGenerating = false
     briefing.loaded = false
     briefing.errorMessage = ''
     fpHistories.items = []
@@ -221,6 +247,7 @@ export function useCustomerDetail(customerId) {
     loadContracts,
     loadConsultations,
     loadBriefing,
+    createBriefing,
     loadFpHistories,
     changeConsultationPage,
     changeFpHistoryPage,
