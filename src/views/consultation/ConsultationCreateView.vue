@@ -819,13 +819,13 @@
             <div class="checkbox-chip-row checkbox-chip-row--spaced">
               <button
                 v-for="option in terminationReasonOptions"
-                :key="option"
+                :key="option.value"
                 type="button"
                 class="checkbox-chip"
-                :class="{ 'is-active': cancelDetail.reviewReasons.includes(option) }"
-                @click="toggleArraySelection(cancelDetail.reviewReasons, option)"
+                :class="{ 'is-active': cancelDetail.reviewReasons.includes(option.value) }"
+                @click="toggleArraySelection(cancelDetail.reviewReasons, option.value)"
               >
-                {{ option }}
+                {{ option.label }}
               </button>
             </div>
           </section>
@@ -837,8 +837,18 @@
               <textarea
                 v-model.trim="cancelDetail.reasonDetail"
                 class="control textarea textarea--large"
+                :class="{ 'is-error': terminationFieldErrors.reasonDetail }"
+                :maxlength="terminationFieldLimits.reasonDetail"
                 placeholder="예: 고객이 최근 소득 감소로 보험료 부담을 느끼고 있음. 실손 보험을 유지 의사가 있으나 보험료나 보장 내용을 재검토 중"
               ></textarea>
+              <div class="field-feedback">
+                <span v-if="terminationFieldErrors.reasonDetail" class="field-error">
+                  {{ terminationFieldErrors.reasonDetail }}
+                </span>
+                <span class="character-count">
+                  {{ cancelDetail.reasonDetail.length }}/{{ terminationFieldLimits.reasonDetail }}
+                </span>
+              </div>
             </label>
           </section>
 
@@ -848,13 +858,13 @@
             <div class="checkbox-chip-row checkbox-chip-row--spaced">
               <button
                 v-for="option in terminationRetentionPlanOptions"
-                :key="option"
+                :key="option.value"
                 type="button"
                 class="checkbox-chip"
-                :class="{ 'is-active': cancelDetail.retentionPlans.includes(option) }"
-                @click="toggleArraySelection(cancelDetail.retentionPlans, option)"
+                :class="{ 'is-active': cancelDetail.retentionPlans.includes(option.value) }"
+                @click="toggleArraySelection(cancelDetail.retentionPlans, option.value)"
               >
-                {{ option }}
+                {{ option.label }}
               </button>
             </div>
           </section>
@@ -866,15 +876,18 @@
               <div class="checkbox-chip-row">
                 <button
                   v-for="option in terminationCustomerIntentOptions"
-                  :key="option"
+                  :key="option.value"
                   type="button"
                   class="checkbox-chip"
-                  :class="{ 'is-active': cancelDetail.customerIntent === option }"
-                  @click="cancelDetail.customerIntent = toggleSingleSelection(cancelDetail.customerIntent, option)"
+                  :class="{ 'is-active': cancelDetail.customerIntent === option.value }"
+                  @click="cancelDetail.customerIntent = toggleSingleSelection(cancelDetail.customerIntent, option.value)"
                 >
-                  {{ option }}
+                  {{ option.label }}
                 </button>
               </div>
+              <p v-if="terminationFieldErrors.customerIntent" class="field-error">
+                {{ terminationFieldErrors.customerIntent }}
+              </p>
             </section>
 
             <section class="form-card">
@@ -904,15 +917,18 @@
             <div class="claim-result-row">
               <button
                 v-for="option in terminationResultOptions"
-                :key="option"
+                :key="option.value"
                 type="button"
                 class="claim-result-button"
-                :class="{ 'is-active': cancelDetail.result === option }"
-                @click="cancelDetail.result = toggleSingleSelection(cancelDetail.result, option)"
+                :class="{ 'is-active': cancelDetail.result === option.value }"
+                @click="cancelDetail.result = toggleSingleSelection(cancelDetail.result, option.value)"
               >
-                {{ option }}
+                {{ option.label }}
               </button>
             </div>
+            <p v-if="terminationFieldErrors.result" class="field-error">
+              {{ terminationFieldErrors.result }}
+            </p>
           </section>
 
           <section class="form-card">
@@ -1167,35 +1183,35 @@ const renewalNextActionOptions = [
 ]
 
 const terminationReasonOptions = [
-  '보험료 부담',
-  '갱신 후 보험료 인상 부담',
-  '경제적 사정',
-  '보장 불만족',
-  '중복 가입',
-  '설계사 서비스 불만',
-  '관리 부족 불만',
-  '대체 상품 검토 중',
-  '타사 상품 비교 중',
-  '타사 이동 예정',
-  '기타',
+  { label: '보험료 부담', value: 'PREMIUM_BURDEN' },
+  { label: '갱신 후 보험료 인상 부담', value: 'RENEWAL_PREMIUM_BURDEN' },
+  { label: '경제적 사정', value: 'PAYMENT_DIFFICULTY' },
+  { label: '보장 불만족', value: 'COVERAGE_DISSATISFACTION' },
+  { label: '중복 가입', value: 'DUPLICATE_INSURANCE' },
+  { label: '설계사 서비스 불만', value: 'PLANNER_CONTACT_DISSATISFACTION' },
+  { label: '관리 부족 불만', value: 'MANAGEMENT_DISSATISFACTION' },
+  { label: '대체 상품 검토 중', value: 'PRODUCT_REVIEW' },
+  { label: '타사 상품 비교 중', value: 'COMPARING_OTHER_COMPANY' },
+  { label: '타사 이동 예정', value: 'MOVING_TO_OTHER_COMPANY' },
+  { label: '기타', value: 'OTHER' },
 ]
 
 const terminationRetentionPlanOptions = [
-  '보험료 감액 설계',
-  '특약 조정',
-  '보장 리모델링',
-  '납입 유예 검토',
-  '대체 상품 제안',
-  '유지 권유',
-  '기타',
+  { label: '보험료 감액 설계', value: 'PREMIUM_ADJUSTMENT' },
+  { label: '특약 조정', value: 'RIDER_ADJUSTMENT' },
+  { label: '보장 리모델링', value: 'COVERAGE_REDESIGN' },
+  { label: '납입 유예 검토', value: 'PAYMENT_DEFERRAL' },
+  { label: '대체 상품 제안', value: 'ALTERNATIVE_PRODUCT' },
+  { label: '유지 권유', value: 'RETENTION_RECOMMENDATION' },
+  { label: '기타', value: 'OTHER' },
 ]
 
 const terminationCustomerIntentOptions = [
-  '즉시 해지 희망',
-  '해지 검토 중',
-  '유지 검토 중',
-  '가족과 상의 예정',
-  '추후 재상담 희망',
+  { label: '즉시 해지 희망', value: 'IMMEDIATE_TERMINATION' },
+  { label: '해지 검토 중', value: 'REVIEW_BEFORE_TERMINATION' },
+  { label: '유지 검토 중', value: 'REVIEW_MAINTENANCE' },
+  { label: '가족과 상의 예정', value: 'DISCUSS_WITH_FAMILY' },
+  { label: '추후 재상담 희망', value: 'FOLLOW_UP_CONSULTATION' },
 ]
 
 const terminationPossibilityOptions = [
@@ -1204,7 +1220,12 @@ const terminationPossibilityOptions = [
   { label: '높음', value: 'HIGH' },
 ]
 
-const terminationResultOptions = ['유지', '해지 진행', '해지 보류', '재상담 예정']
+const terminationResultOptions = [
+  { label: '유지', value: 'RETAINED' },
+  { label: '해지 진행', value: 'TERMINATION_IN_PROGRESS' },
+  { label: '해지 보류', value: 'TERMINATION_DEFERRED' },
+  { label: '재상담 예정', value: 'FOLLOW_UP_REQUIRED' },
+]
 
 const terminationNextActionOptions = ['재상담 예약', '대체상품 제안', '해지 서류 안내', '가족 동반 상담', '없음']
 
@@ -1222,6 +1243,16 @@ const cancelBooleanFields = [
 ]
 
 const terminationReasonBooleanMap = {
+  PREMIUM_BURDEN: 'premiumBurden',
+  RENEWAL_PREMIUM_BURDEN: 'renewalPremiumBurden',
+  PAYMENT_DIFFICULTY: 'paymentDifficulty',
+  COVERAGE_DISSATISFACTION: 'coverageDissatisfaction',
+  DUPLICATE_INSURANCE: 'duplicateInsurance',
+  PRODUCT_REVIEW: 'productRemodelingReview',
+  COMPARING_OTHER_COMPANY: 'comparingOtherCompany',
+  MOVING_TO_OTHER_COMPANY: 'movingToOtherCompany',
+  PLANNER_CONTACT_DISSATISFACTION: 'plannerContactDissatisfaction',
+  MANAGEMENT_DISSATISFACTION: 'managementDissatisfaction',
   '보험료 부담': 'premiumBurden',
   '갱신 보험료 부담': 'renewalPremiumBurden',
   '갱신 후 보험료 인상 부담': 'renewalPremiumBurden',
@@ -1308,6 +1339,16 @@ const coverageTypeOptionItems = [
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('error')
+const terminationFieldLimits = Object.freeze({
+  reasonDetail: 500,
+  customerIntent: 100,
+  result: 100,
+})
+const terminationFieldErrors = reactive({
+  reasonDetail: '',
+  customerIntent: '',
+  result: '',
+})
 const customerMode = ref('EXISTING')
 const customerKeyword = ref('')
 const customers = ref([])
@@ -1548,6 +1589,15 @@ watch(
 )
 
 watch(
+  () => [cancelDetail.reasonDetail, cancelDetail.customerIntent, cancelDetail.result],
+  ([reasonDetail, customerIntent, result]) => {
+    if (reasonDetail.length <= terminationFieldLimits.reasonDetail) terminationFieldErrors.reasonDetail = ''
+    if (customerIntent.length <= terminationFieldLimits.customerIntent) terminationFieldErrors.customerIntent = ''
+    if (result.length <= terminationFieldLimits.result) terminationFieldErrors.result = ''
+  },
+)
+
+watch(
   () => selectedCustomer.value?.customerId,
   async (customerId) => {
     if (!customerId) {
@@ -1716,8 +1766,10 @@ function hydrateDraft() {
   if (!Array.isArray(renewalDetail.customerInterests)) renewalDetail.customerInterests = []
   if (!Array.isArray(renewalDetail.nextActions)) renewalDetail.nextActions = []
   Object.assign(cancelDetail, draft.cancelDetail || {})
-  if (!Array.isArray(cancelDetail.reviewReasons)) cancelDetail.reviewReasons = []
-  if (!Array.isArray(cancelDetail.retentionPlans)) cancelDetail.retentionPlans = []
+  cancelDetail.reviewReasons = normalizeOptionArray(cancelDetail.reviewReasons, terminationReasonOptions)
+  cancelDetail.retentionPlans = normalizeOptionArray(cancelDetail.retentionPlans, terminationRetentionPlanOptions)
+  cancelDetail.customerIntent = normalizeOptionValue(cancelDetail.customerIntent, terminationCustomerIntentOptions)
+  cancelDetail.result = normalizeOptionValue(cancelDetail.result, terminationResultOptions)
   if (!Array.isArray(cancelDetail.nextActions)) cancelDetail.nextActions = []
 }
 
@@ -1921,6 +1973,7 @@ async function applyStructuredDraft(draft) {
 }
 
 async function submitConsultation() {
+  clearTerminationFieldErrors()
   const validationMessage = validateForm()
   if (validationMessage) {
     messageType.value = 'error'
@@ -1947,6 +2000,7 @@ async function submitConsultation() {
       },
     })
   } catch (error) {
+    applyTerminationApiFieldErrors(error)
     messageType.value = 'error'
     message.value = error.response?.data?.message || error.message || '상담일지 저장에 실패했습니다.'
   } finally {
@@ -2067,7 +2121,7 @@ function buildCustomerInfoPayload() {
     customerJob: customerInfo.customerJob === '기타/직접입력'
       ? (customerInfo.customerJobCustom || null)
       : (customerInfo.customerJob || null),
-    customerCompanyName: isCompanyNameDisabled.value ? null : (customerInfo.customerCompanyName || null),
+    customerCompanyName: isCompanyNameDisabled.value ? '해당 없음' : (customerInfo.customerCompanyName || null),
     customerAnnualIncome: parseMoneyOrNull(customerInfo.customerAnnualIncome),
     customerAssetSize: parseMoneyOrNull(customerInfo.customerAssetSize),
     customerDebtStatus: customerInfo.customerDebtStatus || null,
@@ -2109,11 +2163,66 @@ function validateForm() {
   if (form.consultationType === 'TERMINATION') {
     if (!cancelDetail.reviewReasons.length) return '해지 검토 사유를 선택해주세요.'
     if (!cancelDetail.reasonDetail) return '해지 사유 상세를 입력해주세요.'
+    if (cancelDetail.reasonDetail.length > terminationFieldLimits.reasonDetail) {
+      terminationFieldErrors.reasonDetail = `해지 사유 상세는 최대 ${terminationFieldLimits.reasonDetail}자까지 입력할 수 있습니다.`
+      return terminationFieldErrors.reasonDetail
+    }
     if (!cancelDetail.customerIntent) return '고객 의사를 선택해주세요.'
+    if (cancelDetail.customerIntent.length > terminationFieldLimits.customerIntent) {
+      terminationFieldErrors.customerIntent = `고객 의사는 최대 ${terminationFieldLimits.customerIntent}자까지 입력할 수 있습니다.`
+      return terminationFieldErrors.customerIntent
+    }
     if (!cancelDetail.retentionPossibility) return '유지 가능성을 선택해주세요.'
     if (!cancelDetail.result) return '상담 결과를 선택해주세요.'
+    if (cancelDetail.result.length > terminationFieldLimits.result) {
+      terminationFieldErrors.result = `상담 결과는 최대 ${terminationFieldLimits.result}자까지 입력할 수 있습니다.`
+      return terminationFieldErrors.result
+    }
   }
   return ''
+}
+
+function clearTerminationFieldErrors() {
+  terminationFieldErrors.reasonDetail = ''
+  terminationFieldErrors.customerIntent = ''
+  terminationFieldErrors.result = ''
+}
+
+function applyTerminationApiFieldErrors(error) {
+  if (form.consultationType !== 'TERMINATION' || error.response?.status !== 400) return
+
+  const data = error.response?.data || {}
+  const sources = [data.errors, data.validationErrors, data.fieldErrors, data.result]
+  const entries = []
+
+  sources.forEach((source) => {
+    if (Array.isArray(source)) {
+      source.forEach((item) => {
+        if (item && typeof item === 'object') {
+          entries.push([item.field || item.property || item.name, item.message || item.defaultMessage])
+        }
+      })
+      return
+    }
+
+    if (source && typeof source === 'object') {
+      entries.push(...Object.entries(source))
+    }
+  })
+
+  entries.forEach(([rawField, rawMessage]) => {
+    const field = String(rawField || '').split('.').pop()
+    if (field in terminationFieldErrors) {
+      terminationFieldErrors[field] = String(rawMessage || '입력값을 확인해주세요.')
+    }
+  })
+
+  const messageText = String(data.message || '')
+  Object.keys(terminationFieldErrors).forEach((field) => {
+    if (!terminationFieldErrors[field] && messageText.includes(field)) {
+      terminationFieldErrors[field] = messageText
+    }
+  })
 }
 
 function setExistingInsurance(value) {
@@ -2859,6 +2968,38 @@ function toApiDateTime(value) {
 .journal-workspace textarea::placeholder {
   color: #cbd5e1;
   opacity: 1;
+}
+
+.control.is-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+.field-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+  margin-top: 6px;
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.field-feedback .field-error {
+  margin: 0;
+}
+
+.character-count {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .retention-possibility {

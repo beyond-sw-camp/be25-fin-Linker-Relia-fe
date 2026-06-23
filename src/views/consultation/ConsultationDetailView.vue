@@ -184,12 +184,12 @@ const typeDetailItems = computed(() => {
 
   const source = detail.value.cancelDetail || {}
   const currentItems = [
-    { label: '해지 검토 사유', value: arrayText(source.reviewReasons ?? source.terminationReasons) },
+    { label: '해지 검토 사유', value: terminationReasonsText(source.reviewReasons ?? source.terminationReasons) },
     { label: '해지 사유 상세', value: source.reasonDetail || source.cancelReasonDetail || '-' },
-    { label: '유지 방안', value: arrayText(source.retentionPlans ?? source.retentionPlanTypes) },
-    { label: '고객 의사', value: source.customerIntent || '-' },
+    { label: '유지 방안', value: terminationRetentionPlansText(source.retentionPlans ?? source.retentionPlanTypes) },
+    { label: '고객 의사', value: terminationCustomerIntentText(source.customerIntent) },
     { label: '유지 가능성', value: retentionLabel(source.retentionPossibility) },
-    { label: '상담 결과', value: source.result || source.consultationResult || '-' },
+    { label: '상담 결과', value: terminationResultText(source.result || source.consultationResult) },
     { label: '후속조치', value: arrayText(source.nextActions) },
   ]
   const hasExtendedItems = [
@@ -380,6 +380,57 @@ function mappedArrayText(value, labels) {
     ? value
     : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
   return items.length ? items.map((item) => labels[item] || item).join(', ') : '-'
+}
+
+function terminationReasonsText(value) {
+  const labels = {
+    PREMIUM_BURDEN: '보험료 부담',
+    RENEWAL_PREMIUM_BURDEN: '갱신 후 보험료 인상 부담',
+    PAYMENT_DIFFICULTY: '경제적 사정',
+    COVERAGE_DISSATISFACTION: '보장 불만족',
+    DUPLICATE_INSURANCE: '중복 가입',
+    PLANNER_CONTACT_DISSATISFACTION: '설계사 서비스 불만',
+    MANAGEMENT_DISSATISFACTION: '관리 부족 불만',
+    PRODUCT_REVIEW: '대체 상품 검토 중',
+    COMPARING_OTHER_COMPANY: '타사 상품 비교 중',
+    MOVING_TO_OTHER_COMPANY: '타사 이동 예정',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function terminationRetentionPlansText(value) {
+  const labels = {
+    PREMIUM_ADJUSTMENT: '보험료 감액 설계',
+    RIDER_ADJUSTMENT: '특약 조정',
+    COVERAGE_REDESIGN: '보장 리모델링',
+    PAYMENT_DEFERRAL: '납입 유예 검토',
+    ALTERNATIVE_PRODUCT: '대체 상품 제안',
+    RETENTION_RECOMMENDATION: '유지 권유',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function terminationCustomerIntentText(value) {
+  const labels = {
+    IMMEDIATE_TERMINATION: '즉시 해지 희망',
+    REVIEW_BEFORE_TERMINATION: '해지 검토 중',
+    REVIEW_MAINTENANCE: '유지 검토 중',
+    DISCUSS_WITH_FAMILY: '가족과 상의 예정',
+    FOLLOW_UP_CONSULTATION: '추후 재상담 희망',
+  }
+  return labels[value] || value || '-'
+}
+
+function terminationResultText(value) {
+  const labels = {
+    RETAINED: '유지',
+    TERMINATION_IN_PROGRESS: '해지 진행',
+    TERMINATION_DEFERRED: '해지 보류',
+    FOLLOW_UP_REQUIRED: '재상담 예정',
+  }
+  return labels[value] || value || '-'
 }
 
 function cancelGroupText(source, keys) {
