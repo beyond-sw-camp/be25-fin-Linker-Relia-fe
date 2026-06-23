@@ -245,6 +245,7 @@
             <table>
               <thead>
                 <tr>
+                  <th>순위</th>
                   <th>사번</th>
                   <th>이름</th>
                   <th>소속 지점</th>
@@ -261,6 +262,7 @@
                   class="clickable-row"
                   @click="goToFpDetail(fp.id)"
                 >
+                  <td>{{ formatRank(getFpListRank(fp)) }}</td>
                   <td>{{ fp.empCode }}</td>
                   <td><strong>{{ fp.userName }}</strong></td>
                   <td>{{ fp.organizationName }}</td>
@@ -820,6 +822,15 @@ function getBranchAdvisorCount(branch) {
     ?? null
 }
 
+function getFpListRank(fp) {
+  return fp.rank
+    ?? fp.ranking
+    ?? fp.totalRank
+    ?? fp.performanceRank
+    ?? fp.branchRank
+    ?? null
+}
+
 function getContractKey(contract) {
   return contract.id
     ?? contract.contractId
@@ -854,6 +865,13 @@ function formatCount(value) {
 function formatNullableCount(value) {
   if (value === null || value === undefined || value === '') return '-'
   return formatCount(value)
+}
+
+function formatRank(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  const rank = Number(value)
+  if (!Number.isFinite(rank) || rank < 1) return '-'
+  return `${formatCount(rank)}위`
 }
 
 function formatPercent(value) {
