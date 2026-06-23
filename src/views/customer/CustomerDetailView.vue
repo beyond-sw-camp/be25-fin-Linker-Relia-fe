@@ -176,21 +176,69 @@
           </template>
 
           <template v-else-if="activeTab === 'briefing'">
-            <div v-if="briefing.errorMessage" class="detail-state">
-              <v-alert type="error" variant="tonal">{{ briefing.errorMessage }}</v-alert>
-            </div>
-            <div v-else-if="briefing.isLoading" class="detail-state">
-              <v-progress-circular indeterminate color="#f97316" />
-            </div>
-            <div v-else-if="briefing.item?.briefingContent" class="briefing-box">
-              <div class="briefing-box__title">
-                <v-icon icon="mdi-sparkles" size="18" />
-                <strong>AI 상담 브리핑</strong>
+            <div class="briefing-box">
+              <div class="briefing-box__header">
+                <div class="briefing-box__identity">
+                  <span class="briefing-box__sparkle">
+                    <v-icon icon="mdi-auto-fix" size="28" />
+                  </span>
+                  <div>
+                    <h3>AI 상담 브리핑</h3>
+                    <p>AI가 고객의 상담 이력을 분석하여 핵심 내용을 요약해 드립니다.</p>
+                  </div>
+                </div>
+
+                <div v-if="briefing.item?.createdAt" class="briefing-box__meta">
+                  <span>최근 생성일</span>
+                  <strong>{{ formatDateTime(briefing.item.createdAt) }}</strong>
+                  <button class="briefing-box__button briefing-box__button--complete" type="button" disabled>
+                    <v-icon icon="mdi-check" size="17" />
+                    최신 브리핑
+                  </button>
+                </div>
               </div>
-              <p class="briefing-box__content">{{ briefing.item.briefingContent }}</p>
-              <p class="briefing-box__timestamp">생성 시각: {{ formatDateTime(briefing.item.createdAt) }}</p>
+
+              <div v-if="briefing.errorMessage" class="briefing-box__alert" role="alert">
+                <v-icon icon="mdi-alert-circle-outline" size="20" />
+                {{ briefing.errorMessage }}
+              </div>
+
+              <div v-if="briefing.isLoading" class="briefing-box__loading">
+                <v-progress-circular indeterminate color="#8b5cf6" size="30" width="3" />
+                <span>AI 상담 브리핑을 불러오는 중입니다.</span>
+              </div>
+
+              <div v-else-if="briefing.item?.briefingContent" class="briefing-box__result">
+                <p class="briefing-box__content">{{ briefing.item.briefingContent }}</p>
+              </div>
+
+              <div v-else class="briefing-box__empty">
+                <div class="briefing-box__empty-visual" aria-hidden="true">
+                  <v-icon icon="mdi-text-box-outline" size="42" />
+                  <span><v-icon icon="mdi-star-four-points" size="18" /></span>
+                </div>
+                <div class="briefing-box__empty-copy">
+                  <h4>아직 생성된 AI 상담 브리핑이 없습니다.</h4>
+                  <p>고객과의 상담 이력이 쌓이면 AI가 핵심 상담 흐름과 주요 내용을 분석하여 요약 브리핑을 제공합니다.</p>
+                  <button
+                    class="briefing-box__button"
+                    type="button"
+                    :disabled="!briefing.item?.canGenerate || briefing.isGenerating"
+                    @click="createBriefing"
+                  >
+                    <v-progress-circular
+                      v-if="briefing.isGenerating"
+                      indeterminate
+                      color="white"
+                      size="17"
+                      width="2"
+                    />
+                    <v-icon v-else icon="mdi-auto-fix" size="18" />
+                    {{ briefing.isGenerating ? 'AI 브리핑 생성 중...' : 'AI 브리핑 생성' }}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div v-else class="detail-empty">생성된 AI 브리핑이 없습니다.</div>
           </template>
 
           <template v-else>
@@ -279,6 +327,7 @@ const {
   loadContracts,
   loadConsultations,
   loadBriefing,
+  createBriefing,
   loadFpHistories,
   changeConsultationPage,
   changeFpHistoryPage,
@@ -428,14 +477,12 @@ watch(
   () => customerId.value,
   async () => {
     activeTab.value = 'contracts'
-    await loadCustomer()
-    await loadContracts(true)
+    await Promise.all([loadCustomer(), loadContracts(true), loadBriefing(true)])
   },
 )
 
 onMounted(async () => {
-  await loadCustomer()
-  await loadContracts()
+  await Promise.all([loadCustomer(), loadContracts(), loadBriefing()])
 })
 
 function goBack() {
@@ -742,32 +789,219 @@ function formatDDay(value) {
 }
 
 .briefing-box {
-  padding: 18px;
-  border: 1px solid #ffe7d6;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #fffaf5 0%, #fffdfb 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid rgba(196, 181, 253, 0.6);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(216, 180, 254, 0.3), transparent 29%),
+    radial-gradient(circle at 14% 92%, rgba(153, 246, 228, 0.25), transparent 34%),
+    linear-gradient(135deg, rgba(250, 245, 255, 0.92), rgba(240, 253, 250, 0.8));
+  box-shadow: 0 16px 40px rgba(124, 58, 237, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px);
 }
 
-.briefing-box__title {
+.briefing-box::before {
+  position: absolute;
+  top: -70px;
+  right: -40px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  content: '';
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.briefing-box__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(196, 181, 253, 0.42);
+}
+
+.briefing-box__identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.briefing-box__sparkle {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.66);
+  color: #8b5cf6;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.14);
+}
+
+.briefing-box__identity h3,
+.briefing-box__empty-copy h4 {
+  margin: 0;
+  color: #334155;
+}
+
+.briefing-box__identity h3 {
+  font-size: 20px;
+}
+
+.briefing-box__identity p,
+.briefing-box__empty-copy p {
+  margin: 6px 0 0;
+  color: #64748b;
+  line-height: 1.65;
+}
+
+.briefing-box__meta {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: end;
+  gap: 4px 10px;
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.briefing-box__meta strong {
+  color: #475569;
+}
+
+.briefing-box__meta .briefing-box__button {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+.briefing-box__alert {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  color: #f97316;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: rgba(254, 242, 242, 0.88);
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.briefing-box__loading {
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #64748b;
+}
+
+.briefing-box__result {
+  position: relative;
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.54);
+  box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .briefing-box__content {
   margin: 0;
-  color: #475569;
-  line-height: 1.7;
-  white-space: pre-wrap;
+  color: #334155;
+  line-height: 1.85;
+  white-space: pre-line;
 }
 
-.briefing-box__timestamp {
-  margin: 18px 0 0;
-  text-align: right;
-  color: #94a3b8;
-  font-size: 12px;
+.briefing-box__empty {
+  position: relative;
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(280px, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: 18px 28px 4px;
+}
+
+.briefing-box__empty-visual {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 36px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(237, 233, 254, 0.72));
+  color: #818cf8;
+  box-shadow: 0 18px 36px rgba(99, 102, 241, 0.15), 18px 12px 40px rgba(45, 212, 191, 0.12);
+  transform: rotate(4deg);
+}
+
+.briefing-box__empty-visual span {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #a78bfa;
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.14);
+}
+
+.briefing-box__empty-copy {
+  padding-left: 32px;
+  border-left: 1px solid rgba(196, 181, 253, 0.45);
+}
+
+.briefing-box__empty-copy h4 {
+  font-size: 18px;
+}
+
+.briefing-box__button {
+  min-width: 190px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(110deg, #8b5cf6, #818cf8 58%, #5eead4);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.briefing-box__button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 13px 26px rgba(99, 102, 241, 0.26);
+}
+
+.briefing-box__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.briefing-box__button--complete {
+  min-width: 150px;
+  min-height: 36px;
+  padding: 7px 14px;
+  opacity: 0.86;
 }
 
 .detail-pagination {
@@ -793,6 +1027,35 @@ function formatDDay(value) {
 
   .customer-profile__meta {
     grid-template-columns: 1fr;
+  }
+
+  .briefing-box {
+    padding: 18px;
+  }
+
+  .briefing-box__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .briefing-box__meta {
+    justify-content: start;
+  }
+
+  .briefing-box__empty {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 28px 0 6px;
+  }
+
+  .briefing-box__empty-copy {
+    padding: 22px 0 0;
+    border-top: 1px solid rgba(196, 181, 253, 0.45);
+    border-left: 0;
+  }
+
+  .briefing-box__button {
+    width: 100%;
   }
 }
 </style>

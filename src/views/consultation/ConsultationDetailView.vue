@@ -151,13 +151,13 @@ const typeDetailItems = computed(() => {
   if (detail.value.consultationType === 'CLAIM') {
     const source = detail.value.claimDetail || {}
     return [
-      { label: '청구 유형', value: source.claimType || '-' },
+      { label: '청구 유형', value: claimTypeText(source.claimType) },
       { label: '청구 사유', value: source.claimReasonDetail || source.claimReason || '-' },
-      { label: '사고일', value: source.incidentDate || '-' },
+      { label: '발생일 또는 진단일', value: source.incidentDate || '-' },
       { label: '병원명', value: source.hospitalName || '-' },
       { label: '진단/치료', value: source.diagnosisOrTreatment || '-' },
-      { label: '입원 여부', value: source.hospitalizationStatus || '-' },
-      { label: '수술 여부', value: source.surgeryStatus || '-' },
+      { label: '입원 여부', value: hospitalizationStatusText(source.hospitalizationStatus) },
+      { label: '수술 여부', value: surgeryStatusText(source.surgeryStatus) },
       { label: '검토 항목', value: arrayText(source.reviewItems) },
       { label: '상담 결과', value: source.result || '-' },
       { label: '후속조치', value: arrayText(source.nextActions) },
@@ -171,30 +171,41 @@ const typeDetailItems = computed(() => {
       { label: '현재 보험료', value: moneyText(source.currentPremium) },
       { label: '갱신 보험료', value: moneyText(source.renewalPremium) },
       { label: '보험료 변동률', value: rateText(source.premiumChangeRate) },
-      { label: '보장 변경 유형', value: source.coverageChangeType || source.changeType || '-' },
+      { label: '보장 변경 유형', value: renewalChangeTypeText(source.coverageChangeType || source.changeType) },
       { label: '보장 변경 상세', value: source.coverageChangeDetail || source.changeDetail || '-' },
-      { label: '보험료 변동 사유', value: arrayText(source.premiumChangeReasonTypes ?? source.premiumChangeReasons) },
-      { label: '고객 반응', value: source.customerReaction || '-' },
-      { label: '고객 관심사항', value: arrayText(source.interestTypes ?? source.renewalInterests ?? source.interests ?? source.customerInterests) },
+      { label: '보험료 변동 사유', value: renewalPremiumReasonsText(source.premiumChangeReasonTypes ?? source.premiumChangeReasons) },
+      { label: '고객 반응', value: renewalCustomerReactionText(source.customerReaction) },
+      { label: '고객 관심사항', value: renewalInterestsText(source.interestTypes ?? source.renewalInterests ?? source.interests ?? source.customerInterests) },
       { label: '후속조치', value: arrayText(source.nextActions) },
       { label: '결정 예정일', value: formatDate(source.decisionExpectedDate) },
-      { label: '상담 결과', value: source.consultationResult || source.result || '-' },
+      { label: '상담 결과', value: renewalResultText(source.consultationResult || source.result) },
     ]
   }
 
   const source = detail.value.cancelDetail || {}
   const currentItems = [
-    { label: '해지 검토 사유', value: arrayText(source.reviewReasons ?? source.terminationReasons) },
+    { label: '해지 검토 사유', value: terminationReasonsText(source.reviewReasons ?? source.terminationReasons) },
     { label: '해지 사유 상세', value: source.reasonDetail || source.cancelReasonDetail || '-' },
-    { label: '유지 방안', value: arrayText(source.retentionPlans ?? source.retentionPlanTypes) },
-    { label: '고객 의사', value: source.customerIntent || '-' },
+    { label: '유지 방안', value: terminationRetentionPlansText(source.retentionPlans ?? source.retentionPlanTypes) },
+    { label: '고객 의사', value: terminationCustomerIntentText(source.customerIntent) },
     { label: '유지 가능성', value: retentionLabel(source.retentionPossibility) },
-    { label: '상담 결과', value: source.result || source.consultationResult || '-' },
+    { label: '상담 결과', value: terminationResultText(source.result || source.consultationResult) },
     { label: '후속조치', value: arrayText(source.nextActions) },
   ]
-  const hasCurrentItems = currentItems.some((item) => item.value !== '-')
+  const hasExtendedItems = [
+    source.reviewReasons,
+    source.terminationReasons,
+    source.reasonDetail,
+    source.cancelReasonDetail,
+    source.retentionPlans,
+    source.retentionPlanTypes,
+    source.customerIntent,
+    source.result,
+    source.consultationResult,
+    source.nextActions,
+  ].some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value))
 
-  if (hasCurrentItems) return currentItems
+  if (hasExtendedItems) return currentItems
 
   return [
     ...cancelBooleanGroups.map((group) => ({
@@ -276,6 +287,150 @@ function arrayText(value) {
     ? value
     : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
   return items.length ? items.join(', ') : '-'
+}
+
+function claimTypeText(value) {
+  const labels = {
+    MEDICAL_EXPENSE: '실손의료비 보장',
+    HOSPITALIZATION: '입원 보장',
+    OUTPATIENT: '통원 보장',
+    SURGERY: '수술 보장',
+    DIAGNOSIS: '진단 보장',
+    INJURY: '상해 보장',
+  }
+  return labels[value] || value || '-'
+}
+
+function hospitalizationStatusText(value) {
+  const labels = {
+    HOSPITALIZED: '입원',
+    HOSPITALIZATION: '입원',
+    OUTPATIENT: '통원',
+    NONE: '해당 없음',
+  }
+  return labels[value] || value || '-'
+}
+
+function surgeryStatusText(value) {
+  const labels = {
+    SURGERY: '수술함',
+    YES: '수술함',
+    NONE: '수술 안 함',
+    NO: '수술 안 함',
+  }
+  return labels[value] || value || '-'
+}
+
+function renewalChangeTypeText(value) {
+  const labels = {
+    SAME: '변경 없음',
+    NONE: '변경 없음',
+    EXPAND: '보장 확대',
+    EXPANDED: '보장 확대',
+    REDUCE: '보장 축소',
+    REDUCED: '보장 축소',
+  }
+  return labels[value] || value || '-'
+}
+
+function renewalPremiumReasonsText(value) {
+  const labels = {
+    AGE_INCREASE: '연령 증가',
+    RISK_CHANGE: '위험률 변경',
+    LOSS_RATIO_CHANGE: '손해율 변경',
+    COVERAGE_CHANGE: '보장 변경',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function renewalCustomerReactionText(value) {
+  const labels = {
+    '신중함': '부정적',
+    NEGATIVE: '부정적',
+    NEUTRAL: '보통',
+    POSITIVE: '긍정적',
+  }
+  return labels[value] || value || '-'
+}
+
+function renewalInterestsText(value) {
+  const labels = {
+    PREMIUM: '보험료',
+    COVERAGE: '보장 범위',
+    MATURITY: '만기',
+    REFUND: '환급금',
+    ALTERNATIVE_PRODUCT: '대체상품',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function renewalResultText(value) {
+  const labels = {
+    RENEWAL_ACCEPTED: '갱신확정',
+    PENDING_DECISION: '결정보류',
+    COMPARING_PRODUCTS: '상품비교중',
+    ADDITIONAL_CONSULTATION: '추가상담필요',
+  }
+  return labels[value] || value || '-'
+}
+
+function mappedArrayText(value, labels) {
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+  return items.length ? items.map((item) => labels[item] || item).join(', ') : '-'
+}
+
+function terminationReasonsText(value) {
+  const labels = {
+    PREMIUM_BURDEN: '보험료 부담',
+    RENEWAL_PREMIUM_BURDEN: '갱신 후 보험료 인상 부담',
+    PAYMENT_DIFFICULTY: '경제적 사정',
+    COVERAGE_DISSATISFACTION: '보장 불만족',
+    DUPLICATE_INSURANCE: '중복 가입',
+    PLANNER_CONTACT_DISSATISFACTION: '설계사 서비스 불만',
+    MANAGEMENT_DISSATISFACTION: '관리 부족 불만',
+    PRODUCT_REVIEW: '대체 상품 검토 중',
+    COMPARING_OTHER_COMPANY: '타사 상품 비교 중',
+    MOVING_TO_OTHER_COMPANY: '타사 이동 예정',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function terminationRetentionPlansText(value) {
+  const labels = {
+    PREMIUM_ADJUSTMENT: '보험료 감액 설계',
+    RIDER_ADJUSTMENT: '특약 조정',
+    COVERAGE_REDESIGN: '보장 리모델링',
+    PAYMENT_DEFERRAL: '납입 유예 검토',
+    ALTERNATIVE_PRODUCT: '대체 상품 제안',
+    RETENTION_RECOMMENDATION: '유지 권유',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function terminationCustomerIntentText(value) {
+  const labels = {
+    IMMEDIATE_TERMINATION: '즉시 해지 희망',
+    REVIEW_BEFORE_TERMINATION: '해지 검토 중',
+    REVIEW_MAINTENANCE: '유지 검토 중',
+    DISCUSS_WITH_FAMILY: '가족과 상의 예정',
+    FOLLOW_UP_CONSULTATION: '추후 재상담 희망',
+  }
+  return labels[value] || value || '-'
+}
+
+function terminationResultText(value) {
+  const labels = {
+    RETAINED: '유지',
+    TERMINATION_IN_PROGRESS: '해지 진행',
+    TERMINATION_DEFERRED: '해지 보류',
+    FOLLOW_UP_REQUIRED: '재상담 예정',
+  }
+  return labels[value] || value || '-'
 }
 
 function cancelGroupText(source, keys) {

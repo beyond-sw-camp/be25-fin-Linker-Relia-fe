@@ -1,5 +1,9 @@
 <template>
   <section class="consultation-page">
+    <v-snackbar v-model="showCreatedToast" color="success" :timeout="3000">
+      상담일지가 등록되었습니다.
+    </v-snackbar>
+
     <section class="metric-row">
       <article v-for="metric in metrics" :key="metric.label">
         <v-icon :icon="metric.icon" size="18" />
@@ -215,7 +219,6 @@ const channelOptions = [
   { label: '방문', value: 'VISIT' },
   { label: '전화', value: 'PHONE' },
   { label: '메시지', value: 'MESSAGE' },
-  { label: '온라인', value: 'ONLINE' },
 ]
 const sortOptions = [
   { label: '최신 상담일순', value: 'latest' },
@@ -243,6 +246,7 @@ const isLoading = ref(false)
 const isResettingFilters = ref(false)
 const isRestoringListState = ref(false)
 const errorMessage = ref('')
+const showCreatedToast = ref(false)
 
 const canCreateConsultation = computed(() => authStore.userRole === USER_ROLES.FP)
 const selectedBranchOption = computed(() => {
@@ -314,10 +318,24 @@ watch(
 
 onMounted(async () => {
   await initializeBranchFilter()
-  await restoreListState()
+
+  const shouldRefreshAfterCreate = route.query.refreshAfterCreate === 'true'
+
+  if (shouldRefreshAfterCreate) {
+    clearListState()
+    resetFilterValues()
+    showCreatedToast.value = true
+  } else {
+    await restoreListState()
+  }
+
   await loadBranchFpFilter()
   localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
-  loadConsultations()
+  await loadConsultations()
+
+  if (shouldRefreshAfterCreate) {
+    await router.replace({ name: route.name })
+  }
 })
 
 async function searchConsultations() {
@@ -330,20 +348,24 @@ async function resetFilters() {
   isResettingFilters.value = true
 
   try {
-    filters.consultationType = ''
-    filters.organizationCode = ''
-    filters.consultationChannel = ''
-    filters.customerName = ''
-    filters.startedAt = ''
-    filters.endedAt = ''
-    filters.sortOrder = 'latest'
+    resetFilterValues()
     branchFpFilter.value = null
-    currentPage.value = 1
     clearListState()
     await loadConsultations()
   } finally {
     isResettingFilters.value = false
   }
+}
+
+function resetFilterValues() {
+  filters.consultationType = ''
+  filters.organizationCode = ''
+  filters.consultationChannel = ''
+  filters.customerName = ''
+  filters.startedAt = ''
+  filters.endedAt = ''
+  filters.sortOrder = 'latest'
+  currentPage.value = 1
 }
 
 async function changePage(page) {
@@ -428,10 +450,15 @@ async function loadConsultations() {
   try {
     const response = await getConsultations(buildParams())
     const result = response?.result ?? {}
-    const pageResult = result.consultations ?? result
-    const rows = Array.isArray(pageResult.content) ? pageResult.content : pageResult
+    const rows = Array.isArray(result.content)
+      ? result.content
+      : Array.isArray(result.consultations?.content)
+        ? result.consultations.content
+        : Array.isArray(result.consultations)
+          ? result.consultations
+          : []
 
-    consultationRows.value = Array.isArray(rows) ? rows.map(normalizeConsultation) : []
+    consultationRows.value = rows.map(normalizeConsultation)
     localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
   } catch (error) {
     consultationRows.value = []
@@ -448,7 +475,14 @@ function buildParams() {
   const params = {
     page: 0,
     size: 1000,
+    sort: getApiSortParam(filters.sortOrder),
   }
+
+  if (filters.consultationType) params.consultationType = filters.consultationType
+  if (filters.consultationChannel) params.consultationChannel = filters.consultationChannel
+  if (filters.customerName.trim()) params.customerName = filters.customerName.trim()
+  if (filters.startedAt) params.startedAt = filters.startedAt
+  if (filters.endedAt) params.endedAt = filters.endedAt
 
   if (showBranchFilter.value && filters.organizationCode) {
     params.organizationCode = filters.organizationCode
@@ -459,6 +493,12 @@ function buildParams() {
   }
 
   return params
+}
+
+function getApiSortParam(sortOrder) {
+  if (sortOrder === 'oldest') return 'consultedAt,asc'
+  if (sortOrder === 'nextSchedule') return 'nextScheduledAt,asc'
+  return 'consultedAt,desc'
 }
 
 function normalizeConsultation(consultation) {
