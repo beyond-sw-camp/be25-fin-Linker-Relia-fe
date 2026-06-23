@@ -126,7 +126,13 @@
                 </span>
               </div>
 
-              <div v-if="contracts.items.length > 0" class="detail-table">
+              <p class="contracts-toolbar__meta">{{ contractLifecycleDateLabel }} 기준으로 표시됩니다.</p>
+
+              <div
+                v-if="contracts.items.length > 0"
+                class="detail-table"
+                :class="contractsTableClass"
+              >
                 <table>
                   <thead>
                     <tr>
@@ -149,7 +155,7 @@
                       <td>{{ contract.insuranceProductName }}</td>
                       <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
                       <td>{{ formatDate(contract.contractStartDate) }}</td>
-                      <td>{{ formatDate(contract.contractEndDate) }}</td>
+                      <td>{{ formatDate(getContractLifecycleDate(contract)) }}</td>
                       <td>{{ getContractStatusLabel(contract.contractStatus) }}</td>
                     </tr>
                   </tbody>
@@ -441,6 +447,28 @@ const customerCompanyText = computed(() => {
 const consultationPageNumber = computed(() => consultations.page.page || 1)
 const fpHistoryPageNumber = computed(() => fpHistories.page.page || 1)
 const contractPageNumber = computed(() => contracts.page.page || 1)
+const contractLifecycleDateLabel = computed(() => {
+  if (contracts.params.contractStatus === 'COMPLETED') {
+    return '계약 만기일'
+  }
+
+  if (contracts.params.contractStatus === 'TERMINATED') {
+    return '계약 해지일'
+  }
+
+  return '계약 종료일'
+})
+const contractsTableClass = computed(() => {
+  if (contracts.params.contractStatus === 'COMPLETED') {
+    return 'detail-table--completed'
+  }
+
+  if (contracts.params.contractStatus === 'TERMINATED') {
+    return 'detail-table--terminated'
+  }
+
+  return 'detail-table--default'
+})
 
 const interestDetailCards = computed(() => {
   const detail = customer.value
@@ -595,6 +623,14 @@ function goBack() {
   }
 
   router.push('/')
+}
+
+function getContractLifecycleDate(contract) {
+  if (contract?.contractStatus === 'TERMINATED') {
+    return contract?.contractTerminatedAt ?? contract?.contractEndDate ?? ''
+  }
+
+  return contract?.contractEndDate ?? ''
 }
 
 function formatDDay(value) {
@@ -889,6 +925,12 @@ function formatDDay(value) {
   font-size: 13px;
 }
 
+.contracts-toolbar__meta {
+  margin: -6px 0 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .detail-state,
 .detail-empty {
   display: grid;
@@ -928,6 +970,32 @@ function formatDDay(value) {
   font-size: 12px;
   font-weight: 700;
   color: #64748b;
+}
+
+.detail-table--default th:nth-child(5),
+.detail-table--completed th:nth-child(5),
+.detail-table--terminated th:nth-child(5) {
+  position: relative;
+  color: transparent;
+}
+
+.detail-table--default th:nth-child(5)::after,
+.detail-table--completed th:nth-child(5)::after,
+.detail-table--terminated th:nth-child(5)::after {
+  position: absolute;
+  inset: 50% 16px auto;
+  transform: translateY(-50%);
+  color: #64748b;
+  white-space: nowrap;
+  content: '계약 종료일';
+}
+
+.detail-table--completed th:nth-child(5)::after {
+  content: '계약 만기일';
+}
+
+.detail-table--terminated th:nth-child(5)::after {
+  content: '계약 해지일';
 }
 
 .detail-table__row--clickable {

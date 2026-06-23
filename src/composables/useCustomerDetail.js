@@ -403,6 +403,12 @@ function normalizeContract(contract) {
     contractId: contract?.contractId ?? contract?.id,
     contractStartDate: contract?.contractStartDate ?? contract?.contractStartedAt ?? '',
     contractEndDate: contract?.contractEndDate ?? contract?.endedAt ?? '',
+    contractTerminatedAt:
+      contract?.contractTerminatedAt ??
+      contract?.terminatedAt ??
+      contract?.contractTerminationDate ??
+      contract?.terminationDate ??
+      '',
     contractStatus: contract?.contractStatus ?? '',
   }
 }

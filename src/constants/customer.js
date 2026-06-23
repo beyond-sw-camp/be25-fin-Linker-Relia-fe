@@ -1,5 +1,7 @@
 export const CUSTOMER_STATUS_OPTIONS = [
   { label: '잠재 고객', value: 'PROSPECT' },
+  { label: '계약 고객', value: 'CONTRACTED' },
+  { label: '종료 고객', value: 'CLOSED' },
 ]
 
 export const CONTRACT_STATUS_OPTIONS = [
