@@ -171,14 +171,14 @@ const typeDetailItems = computed(() => {
       { label: '현재 보험료', value: moneyText(source.currentPremium) },
       { label: '갱신 보험료', value: moneyText(source.renewalPremium) },
       { label: '보험료 변동률', value: rateText(source.premiumChangeRate) },
-      { label: '보장 변경 유형', value: source.coverageChangeType || source.changeType || '-' },
+      { label: '보장 변경 유형', value: renewalChangeTypeText(source.coverageChangeType || source.changeType) },
       { label: '보장 변경 상세', value: source.coverageChangeDetail || source.changeDetail || '-' },
-      { label: '보험료 변동 사유', value: arrayText(source.premiumChangeReasonTypes ?? source.premiumChangeReasons) },
-      { label: '고객 반응', value: source.customerReaction || '-' },
-      { label: '고객 관심사항', value: arrayText(source.interestTypes ?? source.renewalInterests ?? source.interests ?? source.customerInterests) },
+      { label: '보험료 변동 사유', value: renewalPremiumReasonsText(source.premiumChangeReasonTypes ?? source.premiumChangeReasons) },
+      { label: '고객 반응', value: renewalCustomerReactionText(source.customerReaction) },
+      { label: '고객 관심사항', value: renewalInterestsText(source.interestTypes ?? source.renewalInterests ?? source.interests ?? source.customerInterests) },
       { label: '후속조치', value: arrayText(source.nextActions) },
       { label: '결정 예정일', value: formatDate(source.decisionExpectedDate) },
-      { label: '상담 결과', value: source.consultationResult || source.result || '-' },
+      { label: '상담 결과', value: renewalResultText(source.consultationResult || source.result) },
     ]
   }
 
@@ -319,6 +319,67 @@ function surgeryStatusText(value) {
     NO: '수술 안 함',
   }
   return labels[value] || value || '-'
+}
+
+function renewalChangeTypeText(value) {
+  const labels = {
+    SAME: '변경 없음',
+    NONE: '변경 없음',
+    EXPAND: '보장 확대',
+    EXPANDED: '보장 확대',
+    REDUCE: '보장 축소',
+    REDUCED: '보장 축소',
+  }
+  return labels[value] || value || '-'
+}
+
+function renewalPremiumReasonsText(value) {
+  const labels = {
+    AGE_INCREASE: '연령 증가',
+    RISK_CHANGE: '위험률 변경',
+    LOSS_RATIO_CHANGE: '손해율 변경',
+    COVERAGE_CHANGE: '보장 변경',
+    OTHER: '기타',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function renewalCustomerReactionText(value) {
+  const labels = {
+    '신중함': '부정적',
+    NEGATIVE: '부정적',
+    NEUTRAL: '보통',
+    POSITIVE: '긍정적',
+  }
+  return labels[value] || value || '-'
+}
+
+function renewalInterestsText(value) {
+  const labels = {
+    PREMIUM: '보험료',
+    COVERAGE: '보장 범위',
+    MATURITY: '만기',
+    REFUND: '환급금',
+    ALTERNATIVE_PRODUCT: '대체상품',
+  }
+  return mappedArrayText(value, labels)
+}
+
+function renewalResultText(value) {
+  const labels = {
+    RENEWAL_ACCEPTED: '갱신확정',
+    PENDING_DECISION: '결정보류',
+    COMPARING_PRODUCTS: '상품비교중',
+    ADDITIONAL_CONSULTATION: '추가상담필요',
+  }
+  return labels[value] || value || '-'
+}
+
+function mappedArrayText(value, labels) {
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+  return items.length ? items.map((item) => labels[item] || item).join(', ') : '-'
 }
 
 function cancelGroupText(source, keys) {
