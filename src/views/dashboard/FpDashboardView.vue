@@ -6,7 +6,10 @@
           <h2>설계사 대시보드</h2>
           <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
         </div>
-        <span class="fp-dashboard__heading-dot" aria-hidden="true"></span>
+        <div class="fp-dashboard__heading-meta">
+          <span v-if="currentBranchName" class="fp-dashboard__branch">{{ branchDisplayText }}</span>
+          <span class="fp-dashboard__heading-dot" aria-hidden="true"></span>
+        </div>
       </div>
 
       <div class="fp-dashboard__notice">
@@ -280,7 +283,9 @@ import {
   getFpDashboardMonthlyCommissionTrend,
   getFpDashboardSummary,
 } from '../../api/dashboard'
+import { useAuthStore } from '../../stores/auth'
 
+const authStore = useAuthStore()
 const chartColors = ['#2563eb', '#f97316', '#16a34a', '#f59e0b', '#7c3aed', '#0f766e']
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
@@ -314,6 +319,10 @@ const commissionTooltip = ref({
 })
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
+const currentBranchName = computed(() => authStore.organizationName || authStore.user?.organizationName || '')
+const branchDisplayText = computed(
+  () => `\uC18C\uC18D \uC9C0\uC810 ${currentBranchName.value}`,
+)
 
 const metrics = computed(() => [
   {
@@ -970,6 +979,14 @@ function toDateInputValue(date) {
   align-items: flex-start;
 }
 
+.fp-dashboard__heading-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
 .fp-dashboard__heading h2 {
   margin: 0 0 4px;
   font-size: 20px;
@@ -982,10 +999,22 @@ function toDateInputValue(date) {
   color: #6b7280;
 }
 
+.fp-dashboard__branch {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .fp-dashboard__heading-dot {
   width: 3px;
   height: 3px;
-  margin-top: 24px;
+  margin-top: 12px;
   border-radius: 999px;
   background: #111827;
 }
@@ -1349,8 +1378,7 @@ function toDateInputValue(date) {
 
 .line-chart {
   width: 100%;
-  height: 170px;
-  margin-top: 8px;
+  height: 170px;
 }
 
 .line-chart-wrap {
