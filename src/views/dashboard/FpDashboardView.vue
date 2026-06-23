@@ -8,7 +8,6 @@
         </div>
         <div v-if="currentBranchName" class="fp-dashboard__heading-meta">
           <span class="fp-dashboard__branch">{{ branchDisplayText }}</span>
-          <span class="fp-dashboard__heading-dot" aria-hidden="true"></span>
         </div>
       </div>
 
