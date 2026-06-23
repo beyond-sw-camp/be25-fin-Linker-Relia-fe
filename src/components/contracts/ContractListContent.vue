@@ -93,48 +93,43 @@
         <table>
           <thead>
             <tr>
-              <th>계약번호</th>
-              <th>고객명</th>
-              <th>보험사</th>
-              <th>보험상품</th>
-              <th>계약일</th>
-              <th>월 보험료</th>
-              <th>납부 여부</th>
-              <th>만기일</th>
+              <th v-for="column in contractTableColumns" :key="column.key">
+                {{ column.label }}
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isContractListLoading">
-              <td colspan="8" class="contract-table__state">
+              <td :colspan="contractTableColumns.length" class="contract-table__state">
                 <v-progress-circular indeterminate color="#f97316" size="28" />
                 <span>계약 목록을 불러오는 중입니다.</span>
               </td>
             </tr>
             <tr v-else-if="contractListError">
-              <td colspan="8" class="contract-table__state contract-table__state--error">
+              <td :colspan="contractTableColumns.length" class="contract-table__state contract-table__state--error">
                 {{ contractListError }}
               </td>
             </tr>
             <template v-else>
               <tr v-for="contract in contractRows" :key="contract.contractCode">
-                <td>
+                <td v-if="hasContractTableColumn('contractCode')">
                   <button type="button" class="contract-table__link" @click="goToContractDetail(contract)">
                     {{ contract.contractCode }}
                   </button>
                 </td>
-                <td>
+                <td v-if="hasContractTableColumn('customerName')">
                   <button type="button" class="contract-table__link">{{ contract.customerName }}</button>
                 </td>
-                <td>{{ contract.insuranceCompanyName }}</td>
-                <td class="contract-table__strong">{{ contract.insuranceProductName }}</td>
-                <td>{{ formatDate(contract.contractDate) }}</td>
-                <td class="contract-table__strong">{{ formatPremium(contract.monthlyPremium) }}</td>
-                <td>
+                <td v-if="hasContractTableColumn('insuranceCompanyName')">{{ contract.insuranceCompanyName }}</td>
+                <td v-if="hasContractTableColumn('insuranceProductName')" class="contract-table__strong">{{ contract.insuranceProductName }}</td>
+                <td v-if="hasContractTableColumn('contractDate')">{{ formatDate(contract.contractDate) }}</td>
+                <td v-if="hasContractTableColumn('monthlyPremium')" class="contract-table__strong">{{ formatPremium(contract.monthlyPremium) }}</td>
+                <td v-if="hasContractTableColumn('contractStatus')">
                   <span class="contract-badge" :class="getContractStatusBadgeClass(contract.contractStatus)">
                     {{ getContractStatusLabel(contract.contractStatus) }}
                   </span>
                 </td>
-                <td>
+                <td v-if="hasContractTableColumn('contractEndDate')">
                   <span>{{ formatDate(contract.contractEndDate) }}</span>
                   <span v-if="isNearMaturityContract(contract.contractStatus)" class="contract-badge contract-badge--warning">
                     {{ getContractStatusLabel(contract.contractStatus) }}
@@ -143,7 +138,7 @@
               </tr>
             </template>
             <tr v-if="!isContractListLoading && !contractListError && contractRows.length === 0">
-              <td colspan="8" class="contract-table__empty">조건에 맞는 계약이 없습니다.</td>
+              <td :colspan="contractTableColumns.length" class="contract-table__empty">조건에 맞는 계약이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -274,6 +269,27 @@ const summaryCards = computed(() => [
   },
 ])
 
+const showPaymentStatusColumn = computed(() => filters.status === 'ALL')
+
+const contractTableColumns = computed(() => {
+  const columns = [
+    { key: 'contractCode', label: '계약번호' },
+    { key: 'customerName', label: '고객명' },
+    { key: 'insuranceCompanyName', label: '보험사' },
+    { key: 'insuranceProductName', label: '보험상품' },
+    { key: 'contractDate', label: '계약일' },
+    { key: 'monthlyPremium', label: '월 보험료' },
+  ]
+
+  if (showPaymentStatusColumn.value) {
+    columns.push({ key: 'contractStatus', label: '납부 여부' })
+  }
+
+  columns.push({ key: 'contractEndDate', label: '만기일' })
+
+  return columns
+})
+
 const rangeLabel = computed(() => {
   if (totalElements.value === 0) {
     return '총 0건 중 0-0건 표시'
@@ -308,6 +324,10 @@ onMounted(() => {
 
 function changeStatus(status) {
   filters.status = status
+}
+
+function hasContractTableColumn(key) {
+  return contractTableColumns.value.some((column) => column.key === key)
 }
 
 function changeSort(sort) {
