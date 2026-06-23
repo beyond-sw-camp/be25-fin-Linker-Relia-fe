@@ -279,6 +279,7 @@ const advisorRankingErrorMessage = ref('')
 const branchRankingErrorMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const distribution = ref(createEmptyOrganizationDistribution())
+const topAdvisorRankingItems = ref([])
 
 const chartColors = ['#f97316', '#f59e0b', '#2563eb', '#0f766e', '#4f46e5', '#ec4899', '#14b8a6', '#64748b']
 
@@ -463,6 +464,7 @@ watch(
     loadOrganizationContractDistribution()
     advisorRankingPage.value = 1
     loadOrganizationAdvisorRankings()
+    loadTopAdvisorRanking()
 
     if (isHqManager.value) {
       branchRankingPage.value = 1
@@ -611,6 +613,15 @@ async function loadOrganizationAdvisorRankings() {
   }
 }
 
+async function loadTopAdvisorRanking() {
+  try {
+    const response = await getOrganizationDashboardFpRankings(buildTopAdvisorRankingParams())
+    topAdvisorRankingItems.value = normalizeAdvisorRankingItems(response?.result)
+  } catch {
+    topAdvisorRankingItems.value = []
+  }
+}
+
 async function loadOrganizationBranchRankings() {
   if (!isHqManager.value) {
     return
@@ -667,6 +678,15 @@ function buildBranchRankingParams() {
     rankOrder: selectedBranchRankOrder.value,
     page: branchRankingPage.value,
     size: branchRankingPageSize,
+  }
+}
+
+function buildTopAdvisorRankingParams() {
+  return {
+    ...buildOrganizationSummaryParams(),
+    rankOrder: 'TOP',
+    page: 1,
+    size: 1,
   }
 }
 
@@ -1212,11 +1232,7 @@ const allAdvisorRows = Object.entries(advisorRowsByBranch).flatMap(([branchName,
 
 const advisorRankingItems = ref([])
 
-const overallTopAdvisor = computed(() =>
-  advisorRows.value
-    .slice()
-    .sort((a, b) => toNumber(b.newContractsRaw ?? b.managedContractsRaw) - toNumber(a.newContractsRaw ?? a.managedContractsRaw))[0],
-)
+const topAdvisorCardItem = computed(() => topAdvisorRankingItems.value[0] ?? null)
 
 const advisorRows = computed(() => {
   const rows = [...advisorRankingItems.value]
@@ -1279,31 +1295,16 @@ const advisorTableColumns = computed(() => {
 })
 
 const topPerformers = computed(() => {
-  if (isBranchRankingView.value) {
-    return [
-      {
-        eyebrow: '전 지점 1위 설계사',
-        name: overallTopAdvisor.value?.name ?? '-',
-        meta: overallTopAdvisor.value?.branchName ?? '-',
-      },
-      {
-        eyebrow: '지점 1위',
-        name: branchRankingItems.value[0]?.organizationName ?? '-',
-        meta: branchRankingItems.value[0]?.commissionAmount ?? '-',
-      },
-    ]
-  }
-
   if (!isAllBranchSelected.value) {
     return [
       {
         eyebrow: '해당 지점 1위 설계사',
-        name: advisorRows.value[0]?.name ?? '-',
+        name: topAdvisorCardItem.value?.name ?? '-',
         meta: '',
       },
       {
         eyebrow: '1위 설계사 수수료',
-        name: advisorRows.value[0]?.commissionAmount ?? '-',
+        name: topAdvisorCardItem.value?.commissionAmount ?? '-',
         meta: '',
       },
     ]
@@ -1312,12 +1313,12 @@ const topPerformers = computed(() => {
   return [
     {
       eyebrow: '전체 지점 1위 설계사',
-      name: advisorRows.value[0]?.name ?? '-',
+      name: topAdvisorCardItem.value?.name ?? '-',
       meta: '',
     },
     {
       eyebrow: '전체 지점 1위 소속 지점',
-      name: advisorRows.value[0]?.branchName ?? '-',
+      name: topAdvisorCardItem.value?.branchName ?? '-',
       meta: '',
     },
   ]
