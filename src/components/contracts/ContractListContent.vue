@@ -131,7 +131,10 @@
                 </td>
                 <td v-if="hasContractTableColumn('contractEndDate')">
                   <span>{{ formatDate(contract.contractEndDate) }}</span>
-                  <span v-if="isNearMaturityContract(contract.contractStatus)" class="contract-badge contract-badge--warning">
+                  <span
+                    v-if="shouldShowMaturityBadge(contract.contractStatus)"
+                    class="contract-badge contract-badge--warning"
+                  >
                     {{ getContractStatusLabel(contract.contractStatus) }}
                   </span>
                 </td>
@@ -328,6 +331,14 @@ function changeStatus(status) {
 
 function hasContractTableColumn(key) {
   return contractTableColumns.value.some((column) => column.key === key)
+}
+
+function shouldShowMaturityBadge(status) {
+  if (filters.status === 'EXPIRING_SOON' || filters.status === 'RENEWAL_SOON') {
+    return false
+  }
+
+  return isNearMaturityContract(status)
 }
 
 function changeSort(sort) {
