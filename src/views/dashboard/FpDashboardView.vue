@@ -6,8 +6,8 @@
           <h2>설계사 대시보드</h2>
           <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
         </div>
-        <div class="fp-dashboard__heading-meta">
-          <span v-if="currentBranchName" class="fp-dashboard__branch">{{ branchDisplayText }}</span>
+        <div v-if="currentBranchName" class="fp-dashboard__heading-meta">
+          <span class="fp-dashboard__branch">{{ branchDisplayText }}</span>
           <span class="fp-dashboard__heading-dot" aria-hidden="true"></span>
         </div>
       </div>
@@ -366,7 +366,7 @@ const commissionTooltip = ref({
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
 const currentBranchName = computed(() => authStore.organizationName || authStore.user?.organizationName || '')
 const branchDisplayText = computed(
-  () => `\uC18C\uC18D \uC9C0\uC810 ${currentBranchName.value}`,
+  () => `${currentBranchName.value} \uC18C\uC18D`,
 )
 const summaryTableLabels = {
   month: '\uC6D4',
