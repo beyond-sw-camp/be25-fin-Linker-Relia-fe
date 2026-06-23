@@ -51,7 +51,7 @@
           <span>건</span>
         </div>
         <p>{{ card.label }}</p>
-        <small>{{ card.caption }}</small>
+        <small v-if="card.caption">{{ card.caption }}</small>
       </article>
     </div>
 
@@ -235,7 +235,7 @@ const summaryCards = computed(() => [
   {
     label: '전체 보유 계약',
     value: formatCount(contractSummary.value.totalContractCount),
-    caption: '전체 계약 건수',
+    caption: '',
     accent: '#f97316',
     tone: '#fff1e8',
     icon: 'mdi-file-document-outline',
@@ -243,7 +243,7 @@ const summaryCards = computed(() => [
   {
     label: '수금 계약',
     value: formatCount(contractSummary.value.normalPaymentCount),
-    caption: '정상 수금 계약',
+    caption: '',
     accent: '#16a34a',
     tone: '#dcfce7',
     icon: 'mdi-check-circle-outline',
@@ -251,7 +251,7 @@ const summaryCards = computed(() => [
   {
     label: '미수금 계약',
     value: formatCount(contractSummary.value.unpaidCount),
-    caption: '미수금 발생 계약',
+    caption: '',
     accent: '#ef4444',
     tone: '#fee2e2',
     icon: 'mdi-alert-circle-outline',
@@ -263,6 +263,14 @@ const summaryCards = computed(() => [
     accent: '#f59e0b',
     tone: '#fef3c7',
     icon: 'mdi-clock-outline',
+  },
+  {
+    label: '갱신 임박 계약',
+    value: formatCount(contractSummary.value.renewalSoonCount),
+    caption: '',
+    accent: '#2563eb',
+    tone: '#dbeafe',
+    icon: 'mdi-autorenew',
   },
 ])
 
@@ -429,6 +437,7 @@ function normalizeContractSummary(summary) {
     unpaidCount: Number(summary?.unpaidCount ?? 0),
     lapseExpectedCount: Number(summary?.lapseExpectedCount ?? 0),
     expiringSoonCount: Number(summary?.expiringSoonCount ?? 0),
+    renewalSoonCount: Number(summary?.renewalSoonCount ?? 0),
   }
 }
 
@@ -439,6 +448,7 @@ function createEmptyContractSummary() {
     unpaidCount: 0,
     lapseExpectedCount: 0,
     expiringSoonCount: 0,
+    renewalSoonCount: 0,
   }
 }
 
@@ -517,7 +527,7 @@ function isNearMaturityContract(status) {
 
 .contract-page__summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -807,7 +817,7 @@ td span + .contract-badge {
 
 @media (max-width: 1180px) {
   .contract-page__summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
 }
@@ -851,8 +861,14 @@ td span + .contract-badge {
   }
 
   .contract-page__summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+}
+
+@media (max-width: 560px) {
+  .contract-page__summary {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
