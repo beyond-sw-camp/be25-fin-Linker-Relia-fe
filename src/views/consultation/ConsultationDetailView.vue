@@ -274,6 +274,20 @@ function mergeDetailObject(localValue, serverValue) {
 }
 
 function goList() {
+  if (route.query.from === 'customer-detail' && typeof route.query.customerId === 'string') {
+    const target = {
+      name: 'customer-detail',
+      params: { customerId: route.query.customerId },
+    }
+
+    if (typeof route.query.returnFrom === 'string' && route.query.returnFrom.length > 0) {
+      target.query = { from: route.query.returnFrom }
+    }
+
+    router.push(target)
+    return
+  }
+
   const routeName = consultationListRouteByRole[authStore.userRole] ?? 'fp-consultations'
   router.push(isDraft.value ? { name: 'consultation-drafts' } : { name: routeName })
 }
