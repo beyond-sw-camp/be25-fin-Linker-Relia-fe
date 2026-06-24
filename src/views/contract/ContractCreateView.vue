@@ -300,7 +300,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createContract } from '../../api/contracts'
-import { getCustomers } from '../../api/customers'
+import { getCustomerDetail, getCustomers } from '../../api/customers'
 import {
   getInsuranceCategories,
   getInsuranceCompanies,
@@ -425,8 +425,23 @@ async function loadCustomers() {
   }
 }
 
-function selectCustomer(customer) {
-  selectedCustomer.value = customer
+async function selectCustomer(customer) {
+  const normalizedCustomer = normalizeCustomer(customer)
+  selectedCustomer.value = normalizedCustomer
+
+  try {
+    const response = await getCustomerDetail(customer.customerId)
+    const detail = response?.result?.customer ?? response?.result ?? response
+
+    selectedCustomer.value = {
+      ...normalizedCustomer,
+      ...normalizeCustomer(detail),
+      customerId: detail?.customerId ?? normalizedCustomer.customerId,
+      customerName: detail?.customerName ?? normalizedCustomer.customerName,
+    }
+  } catch {
+    // Keep the selected row data when the detail API fails.
+  }
 }
 
 async function loadInsuranceCompanies() {
@@ -582,8 +597,7 @@ function getApiErrorMessage(error, fallback) {
 function getCustomerStatusLabel(status) {
   if (status === 'PROSPECT') return '잠재 고객'
   if (status === 'CONTRACTED') return '계약 고객'
-  if (status === 'TERMINATED') return '해지 고객'
-  if (status === 'COMPLETED') return '만기 고객'
+  if (status === 'CLOSED') return '종료 고객'
   return status
 }
 
@@ -634,19 +648,18 @@ function normalizeCustomer(customer) {
     birthDate: customer.birthDate ?? customer.customerBirthDate,
     phoneNumber: customer.phoneNumber ?? customer.customerPhone,
     customerStatus: customer.customerStatus,
-    gender: customer.gender,
-    email: customer.email ?? '-',
-    job: customer.job ?? '-',
-    companyName: customer.companyName ?? '-',
-    address: customer.address ?? '-',
+    gender: customer.gender ?? customer.customerGender,
+    email: customer.email ?? customer.customerEmail ?? '-',
+    job: customer.job ?? customer.customerJob ?? '-',
+    companyName: customer.companyName ?? customer.customerCompanyName ?? '-',
+    address: customer.address ?? customer.customerAddress ?? '-',
   }
 }
 
 function getCustomerStatusBadgeClass(status) {
   if (status === 'PROSPECT') return 'contract-create-badge--prospect'
   if (status === 'CONTRACTED') return 'contract-create-badge--contracted'
-  if (status === 'TERMINATED') return 'contract-create-badge--terminated'
-  if (status === 'COMPLETED') return 'contract-create-badge--completed'
+  if (status === 'CLOSED') return 'contract-create-badge--neutral'
   return 'contract-create-badge--neutral'
 }
 

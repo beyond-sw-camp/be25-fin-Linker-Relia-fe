@@ -342,6 +342,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-file-document-outline',
       children: [
         { title: '보유 계약 목록', to: { name: 'fp-contracts' } },
+        { title: '계약 등록', to: { name: 'contract-create' } },
       ],
     },
     {

@@ -18,6 +18,8 @@ export function useCustomerDetail(customerId) {
 
   const contracts = reactive({
     items: [],
+    page: createEmptyPage(),
+    params: { page: 1, size: DEFAULT_PAGE_SIZE, contractStatus: '' },
     isLoading: false,
     errorMessage: '',
     loaded: false,
@@ -62,7 +64,7 @@ export function useCustomerDetail(customerId) {
 
     try {
       const response = await getCustomerDetail(customerId.value)
-      customer.value = response?.result ?? null
+      customer.value = normalizeCustomerDetail(response?.result)
     } catch (error) {
       customer.value = null
       customerErrorMessage.value =
@@ -83,11 +85,25 @@ export function useCustomerDetail(customerId) {
     contracts.isLoading = true
 
     try {
-      const response = await getCustomerContracts(customerId.value)
-      contracts.items = Array.isArray(response?.result) ? response.result : []
+      const params = {
+        page: Math.max(contracts.params.page, 1),
+        size: contracts.params.size,
+      }
+
+      if (contracts.params.contractStatus) {
+        params.contractStatus = contracts.params.contractStatus
+      }
+
+      const response = await getCustomerContracts(customerId.value, params)
+      const result = response?.result ?? {}
+      const pagedResult = normalizeContractsResult(result)
+
+      contracts.items = pagedResult.items
+      contracts.page = pagedResult.page
       contracts.loaded = true
     } catch (error) {
       contracts.items = []
+      contracts.page = createEmptyPage()
       contracts.errorMessage =
         error.response?.data?.message ||
         error.message ||
@@ -165,7 +181,7 @@ export function useCustomerDetail(customerId) {
       briefing.errorMessage =
         error.response?.data?.message ||
         error.message ||
-        'AI 상담 브리핑을 생성하지 못했습니다. 잠시 후 다시 시도해주세요.'
+        'AI 상담 브리핑을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.'
     } finally {
       briefing.isGenerating = false
     }
@@ -200,6 +216,19 @@ export function useCustomerDetail(customerId) {
     }
   }
 
+  async function changeContractPage(page) {
+    contracts.params.page = page
+    contracts.loaded = false
+    await loadContracts(true)
+  }
+
+  async function changeContractStatus(contractStatus) {
+    contracts.params.contractStatus = contractStatus
+    contracts.params.page = 1
+    contracts.loaded = false
+    await loadContracts(true)
+  }
+
   async function changeConsultationPage(page) {
     consultations.params.page = page
     consultations.loaded = false
@@ -215,19 +244,26 @@ export function useCustomerDetail(customerId) {
   function resetAll() {
     customer.value = null
     customerErrorMessage.value = ''
+
     contracts.items = []
+    contracts.page = createEmptyPage()
+    contracts.params.page = 1
+    contracts.params.contractStatus = ''
     contracts.loaded = false
     contracts.errorMessage = ''
+
     consultations.items = []
     consultations.page = createEmptyPage()
     consultations.params.page = 1
     consultations.loaded = false
     consultations.errorMessage = ''
+
     briefing.item = null
     briefing.isLoading = false
     briefing.isGenerating = false
     briefing.loaded = false
     briefing.errorMessage = ''
+
     fpHistories.items = []
     fpHistories.page = createEmptyPage()
     fpHistories.params.page = 1
@@ -249,31 +285,73 @@ export function useCustomerDetail(customerId) {
     loadBriefing,
     createBriefing,
     loadFpHistories,
+    changeContractPage,
+    changeContractStatus,
     changeConsultationPage,
     changeFpHistoryPage,
   }
 }
 
+function normalizeContractsResult(result) {
+  if (Array.isArray(result)) {
+    const items = result.map(normalizeContract)
+
+    return {
+      items,
+      page: normalizePage({
+        content: items,
+        page: 1,
+        size: items.length || DEFAULT_PAGE_SIZE,
+        totalElements: items.length,
+        totalPages: 1,
+        numberOfElements: items.length,
+        first: true,
+        last: true,
+        empty: items.length === 0,
+      }),
+    }
+  }
+
+  if (Array.isArray(result?.content)) {
+    return {
+      items: result.content.map(normalizeContract),
+      page: normalizePage(result),
+    }
+  }
+
+  if (Array.isArray(result?.contracts?.content)) {
+    return {
+      items: result.contracts.content.map(normalizeContract),
+      page: normalizePage(result.contracts),
+    }
+  }
+
+  return {
+    items: [],
+    page: createEmptyPage(),
+  }
+}
+
 function normalizePage(result) {
   return {
-    content: Array.isArray(result.content) ? result.content : [],
-    page: Number(result.page ?? 0),
-    size: Number(result.size ?? DEFAULT_PAGE_SIZE),
-    totalElements: Number(result.totalElements ?? 0),
-    totalPages: Number(result.totalPages ?? 0),
-    numberOfElements: Number(result.numberOfElements ?? 0),
-    hasNext: Boolean(result.hasNext),
-    hasPrevious: Boolean(result.hasPrevious),
-    first: Boolean(result.first),
-    last: Boolean(result.last),
-    empty: Boolean(result.empty),
+    content: Array.isArray(result?.content) ? result.content : [],
+    page: Number(result?.page ?? result?.number ?? 1),
+    size: Number(result?.size ?? DEFAULT_PAGE_SIZE),
+    totalElements: Number(result?.totalElements ?? 0),
+    totalPages: Number(result?.totalPages ?? 0),
+    numberOfElements: Number(result?.numberOfElements ?? 0),
+    hasNext: Boolean(result?.hasNext),
+    hasPrevious: Boolean(result?.hasPrevious),
+    first: Boolean(result?.first),
+    last: Boolean(result?.last),
+    empty: Boolean(result?.empty),
   }
 }
 
 function createEmptyPage() {
   return {
     content: [],
-    page: 0,
+    page: 1,
     size: DEFAULT_PAGE_SIZE,
     totalElements: 0,
     totalPages: 0,
@@ -283,5 +361,54 @@ function createEmptyPage() {
     first: true,
     last: true,
     empty: true,
+  }
+}
+
+function normalizeCustomerDetail(result) {
+  if (!result) {
+    return null
+  }
+
+  const customer = result.customer ?? result.customerDetail ?? result
+  const contractSummary = result.contractSummary ?? customer.contractSummary ?? {}
+  const contractStatusCounts = (
+    result.contractStatusCounts ??
+    contractSummary.contractStatusCounts ??
+    customer.contractStatusCounts ??
+    {}
+  )
+  const normalizedContractStatusCounts = {
+    MAINTENANCE: Number(contractStatusCounts?.MAINTENANCE ?? 0),
+    COMPLETED: Number(contractStatusCounts?.COMPLETED ?? 0),
+    TERMINATED: Number(contractStatusCounts?.TERMINATED ?? 0),
+    LAPSED: Number(contractStatusCounts?.LAPSED ?? 0),
+  }
+
+  return {
+    ...customer,
+    customerStatus: customer.customerStatus,
+    contractSummary: {
+      ...contractSummary,
+      totalContractCount: Number(contractSummary?.totalContractCount ?? 0),
+      totalMonthlyPremium: Number(contractSummary?.totalMonthlyPremium ?? 0),
+      contractStatusCounts: normalizedContractStatusCounts,
+    },
+    contractStatusCounts: normalizedContractStatusCounts,
+  }
+}
+
+function normalizeContract(contract) {
+  return {
+    ...contract,
+    contractId: contract?.contractId ?? contract?.id,
+    contractStartDate: contract?.contractStartDate ?? contract?.contractStartedAt ?? '',
+    contractEndDate: contract?.contractEndDate ?? contract?.endedAt ?? '',
+    contractTerminatedAt:
+      contract?.contractTerminatedAt ??
+      contract?.terminatedAt ??
+      contract?.contractTerminationDate ??
+      contract?.terminationDate ??
+      '',
+    contractStatus: contract?.contractStatus ?? '',
   }
 }

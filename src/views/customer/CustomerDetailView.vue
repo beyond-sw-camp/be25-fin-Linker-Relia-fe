@@ -27,7 +27,10 @@
           <div>
             <div class="customer-profile__name-row">
               <strong>{{ customer.customerName }}</strong>
-              <span class="customer-profile__status">
+              <span
+                class="customer-profile__status"
+                :class="getCustomerStatusBadgeClass(customer.interestYn, customer.customerStatus)"
+              >
                 {{ customer.interestYn ? '관심 고객' : getCustomerStatusLabel(customer.customerStatus) }}
               </span>
               <span v-if="customer.interestReason" class="customer-profile__interest-reason">
@@ -105,29 +108,74 @@
             <div v-else-if="contracts.isLoading" class="detail-state">
               <v-progress-circular indeterminate color="#f97316" />
             </div>
-            <div v-else-if="contracts.items.length > 0" class="detail-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>보험사명</th>
-                    <th>상품명</th>
-                    <th>월 보험료</th>
-                    <th>계약 시작일</th>
-                    <th>계약 상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="contract in contracts.items" :key="contract.contractId">
-                    <td>{{ contract.insuranceCompanyName }}</td>
-                    <td>{{ contract.insuranceProductName }}</td>
-                    <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
-                    <td>{{ formatDate(contract.contractStartedAt) }}</td>
-                    <td>{{ getContractStatusLabel(contract.contractStatus) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else class="detail-empty">보유 계약이 없습니다.</div>
+            <template v-else>
+              <div class="contracts-toolbar">
+                <div class="contracts-toolbar__filters" role="tablist" aria-label="계약 상태 필터">
+                  <button
+                    v-for="option in contractStatusOptions"
+                    :key="option.value || 'ALL'"
+                    type="button"
+                    class="contracts-toolbar__filter"
+                    :class="{
+                      'contracts-toolbar__filter--active': contracts.params.contractStatus === option.value,
+                    }"
+                    @click="changeContractStatus(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+                <span class="contracts-toolbar__count">
+                  총 {{ contracts.page.totalElements.toLocaleString('ko-KR') }}건
+                </span>
+              </div>
+
+              <p class="contracts-toolbar__meta">{{ contractLifecycleDateLabel }} 기준으로 표시됩니다.</p>
+
+              <div
+                v-if="contracts.items.length > 0"
+                class="detail-table"
+                :class="contractsTableClass"
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      <th>보험사명</th>
+                      <th>상품명</th>
+                      <th>월 보험료</th>
+                      <th>계약 시작일</th>
+                      <th>계약 종료일</th>
+                      <th>계약 상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="contract in contracts.items"
+                      :key="contract.contractId"
+                      class="detail-table__row detail-table__row--clickable"
+                      @click="goToContractDetail(contract)"
+                    >
+                      <td>{{ contract.insuranceCompanyName }}</td>
+                      <td>{{ contract.insuranceProductName }}</td>
+                      <td>{{ formatCurrency(contract.monthlyPremium) }}</td>
+                      <td>{{ formatDate(contract.contractStartDate) }}</td>
+                      <td>{{ formatDate(getContractLifecycleDate(contract)) }}</td>
+                      <td>{{ getContractStatusLabel(contract.contractStatus) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div v-if="contracts.items.length > 0" class="detail-pagination">
+                <v-pagination
+                  :model-value="contractPageNumber"
+                  :length="Math.max(contracts.page.totalPages, 1)"
+                  total-visible="7"
+                  rounded="circle"
+                  @update:model-value="changeContractPage"
+                />
+              </div>
+              <div v-else class="detail-empty detail-empty--compact">보유 계약이 없습니다.</div>
+            </template>
           </template>
 
           <template v-else-if="activeTab === 'consultations'">
@@ -151,7 +199,12 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="consultation in consultations.items" :key="consultation.consultationId">
+                    <tr
+                      v-for="consultation in consultations.items"
+                      :key="consultation.consultationId"
+                      class="detail-table__row detail-table__row--clickable"
+                      @click="goToConsultationDetail(consultation)"
+                    >
                       <td>{{ consultation.consultationSequence }}</td>
                       <td>{{ formatDateTime(consultation.consultedAt) }}</td>
                       <td>{{ getConsultationTypeLabel(consultation.consultationType) }}</td>
@@ -307,6 +360,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  CONTRACT_STATUS_OPTIONS,
   getConsultationChannelLabel,
   getConsultationTypeLabel,
   getContractStatusLabel,
@@ -342,6 +396,8 @@ const {
   loadBriefing,
   createBriefing,
   loadFpHistories,
+  changeContractPage,
+  changeContractStatus,
   changeConsultationPage,
   changeFpHistoryPage,
 } = useCustomerDetail(customerId)
@@ -352,6 +408,7 @@ const detailTabs = [
   { label: 'AI 브리핑 요약', value: 'briefing' },
   { label: '설계사 변경 이력', value: 'history' },
 ]
+const contractStatusOptions = CONTRACT_STATUS_OPTIONS
 
 const summaryCards = computed(() => [
   {
@@ -367,16 +424,28 @@ const summaryCards = computed(() => [
     icon: 'mdi-cash-multiple',
   },
   {
-    label: '정상 계약 수',
-    value: customer.value?.contractSummary?.activeContractCount ?? 0,
+    label: '유지 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.MAINTENANCE ?? 0,
     unit: '건',
     icon: 'mdi-check-circle-outline',
   },
   {
-    label: '만기 임박 계약 수',
-    value: customer.value?.contractSummary?.maturityDueContractCount ?? 0,
+    label: '만기 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.COMPLETED ?? 0,
     unit: '건',
-    icon: 'mdi-clock-fast',
+    icon: 'mdi-calendar-check-outline',
+  },
+  {
+    label: '해지 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.TERMINATED ?? 0,
+    unit: '건',
+    icon: 'mdi-close-circle-outline',
+  },
+  {
+    label: '실효 계약 수',
+    value: customer.value?.contractSummary?.contractStatusCounts?.LAPSED ?? 0,
+    unit: '건',
+    icon: 'mdi-alert-circle-outline',
   },
 ])
 
@@ -393,6 +462,29 @@ const customerCompanyText = computed(() => {
 
 const consultationPageNumber = computed(() => consultations.page.page || 1)
 const fpHistoryPageNumber = computed(() => fpHistories.page.page || 1)
+const contractPageNumber = computed(() => contracts.page.page || 1)
+const contractLifecycleDateLabel = computed(() => {
+  if (contracts.params.contractStatus === 'COMPLETED') {
+    return '계약 만기일'
+  }
+
+  if (contracts.params.contractStatus === 'TERMINATED') {
+    return '계약 해지일'
+  }
+
+  return '계약 종료일'
+})
+const contractsTableClass = computed(() => {
+  if (contracts.params.contractStatus === 'COMPLETED') {
+    return 'detail-table--completed'
+  }
+
+  if (contracts.params.contractStatus === 'TERMINATED') {
+    return 'detail-table--terminated'
+  }
+
+  return 'detail-table--default'
+})
 
 const interestDetailCards = computed(() => {
   const detail = customer.value
@@ -498,6 +590,46 @@ onMounted(async () => {
   await Promise.all([loadCustomer(), loadContracts(), loadBriefing()])
 })
 
+function goToConsultationDetail(consultation) {
+  const consultationId = consultation?.consultationId ?? consultation?.id
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+
+  if (!consultationId) {
+    consultations.errorMessage = '상담 상세 조회에 필요한 상담 ID가 없습니다.'
+    return
+  }
+
+  router.push({
+    name: 'consultation-detail',
+    params: { consultationId },
+    query: {
+      from: 'customer-detail',
+      customerId: customerId.value,
+      returnFrom: from,
+    },
+  })
+}
+
+function goToContractDetail(contract) {
+  const contractId = contract?.contractId ?? contract?.id
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+
+  if (!contractId) {
+    contracts.errorMessage = '계약 상세 조회에 필요한 계약 ID가 없습니다.'
+    return
+  }
+
+  router.push({
+    name: 'contract-detail',
+    params: { contractId },
+    query: {
+      from: 'customer-detail',
+      customerId: customerId.value,
+      returnFrom: from,
+    },
+  })
+}
+
 function goBack() {
   const from = route.query.from
 
@@ -507,6 +639,14 @@ function goBack() {
   }
 
   router.push('/')
+}
+
+function getContractLifecycleDate(contract) {
+  if (contract?.contractStatus === 'TERMINATED') {
+    return contract?.contractTerminatedAt ?? contract?.contractEndDate ?? ''
+  }
+
+  return contract?.contractEndDate ?? ''
 }
 
 function formatDDay(value) {
@@ -529,6 +669,26 @@ function formatDDay(value) {
   }
 
   return `D+${Math.abs(parsed)}`
+}
+
+function getCustomerStatusBadgeClass(interestYn, customerStatus) {
+  if (interestYn) {
+    return 'customer-profile__status--interest'
+  }
+
+  if (customerStatus === 'PROSPECT') {
+    return 'customer-profile__status--prospect'
+  }
+
+  if (customerStatus === 'CONTRACTED') {
+    return 'customer-profile__status--contracted'
+  }
+
+  if (customerStatus === 'CLOSED') {
+    return 'customer-profile__status--closed'
+  }
+
+  return 'customer-profile__status--default'
 }
 </script>
 
@@ -611,8 +771,33 @@ function formatDDay(value) {
 }
 
 .customer-profile__status {
+  color: #475569;
+  background: #f8fafc;
+}
+
+.customer-profile__status--default {
+  color: #475569;
+  background: #f8fafc;
+}
+
+.customer-profile__status--interest {
+  color: #ea580c;
+  background: #fff7ed;
+}
+
+.customer-profile__status--prospect {
   color: #2563eb;
   background: #e8f0ff;
+}
+
+.customer-profile__status--contracted {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.customer-profile__status--closed {
+  color: #dc2626;
+  background: #fee2e2;
 }
 
 .customer-profile__interest-reason {
@@ -688,7 +873,7 @@ function formatDDay(value) {
 
 .customer-detail__summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -764,6 +949,49 @@ function formatDDay(value) {
   padding: 16px 4px 4px;
 }
 
+.contracts-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.contracts-toolbar__filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.contracts-toolbar__filter {
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.contracts-toolbar__filter--active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.contracts-toolbar__count {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.contracts-toolbar__meta {
+  margin: -6px 0 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .detail-state,
 .detail-empty {
   display: grid;
@@ -771,6 +999,10 @@ function formatDDay(value) {
   gap: 10px;
   min-height: 220px;
   color: #64748b;
+}
+
+.detail-empty--compact {
+  min-height: 120px;
 }
 
 .detail-table {
@@ -799,6 +1031,40 @@ function formatDDay(value) {
   font-size: 12px;
   font-weight: 700;
   color: #64748b;
+}
+
+.detail-table--default th:nth-child(5),
+.detail-table--completed th:nth-child(5),
+.detail-table--terminated th:nth-child(5) {
+  position: relative;
+  color: transparent;
+}
+
+.detail-table--default th:nth-child(5)::after,
+.detail-table--completed th:nth-child(5)::after,
+.detail-table--terminated th:nth-child(5)::after {
+  position: absolute;
+  inset: 50% 16px auto;
+  transform: translateY(-50%);
+  color: #64748b;
+  white-space: nowrap;
+  content: '계약 종료일';
+}
+
+.detail-table--completed th:nth-child(5)::after {
+  content: '계약 만기일';
+}
+
+.detail-table--terminated th:nth-child(5)::after {
+  content: '계약 해지일';
+}
+
+.detail-table__row--clickable {
+  cursor: pointer;
+}
+
+.detail-table__row--clickable:hover td {
+  background: #f8fafc;
 }
 
 .briefing-box {
@@ -1024,20 +1290,12 @@ function formatDDay(value) {
 }
 
 @media (max-width: 1200px) {
-  .customer-detail__summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .customer-profile {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .customer-detail__summary {
-    grid-template-columns: 1fr;
-  }
-
   .customer-profile__meta {
     grid-template-columns: 1fr;
   }
