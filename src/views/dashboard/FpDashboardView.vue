@@ -272,24 +272,35 @@
       <section class="side-panel calendar-panel">
         <h3>일정 캘린더</h3>
         <div class="calendar-panel__month">
-          <v-icon icon="mdi-chevron-left" size="18" />
-          <strong>2024년 7월</strong>
-          <v-icon icon="mdi-chevron-right" size="18" />
+          <button type="button" aria-label="이전 달" @click="moveMonth(-1)">
+            <v-icon icon="mdi-chevron-left" size="18" />
+          </button>
+          <strong>{{ calendarMonthLabel }}</strong>
+          <button type="button" aria-label="다음 달" @click="moveMonth(1)">
+            <v-icon icon="mdi-chevron-right" size="18" />
+          </button>
         </div>
         <div class="calendar-grid">
           <span v-for="day in weekDays" :key="day" class="calendar-grid__weekday">{{ day }}</span>
           <button
             v-for="day in calendarDays"
-            :key="day.date"
+            :key="day.dateKey"
             type="button"
             class="calendar-grid__day"
             :class="{
-              'calendar-grid__day--active': day.date === 1,
-              'calendar-grid__day--today': day.hasSchedule,
+              'calendar-grid__day--active': day.dateKey === selectedDateKey,
+              'calendar-grid__day--today': day.dateKey === todayDateKey,
               'calendar-grid__day--muted': day.muted,
             }"
+            :aria-label="`${day.dateKey} 일정 조회`"
+            :aria-pressed="day.dateKey === selectedDateKey"
+            @click="selectDate(day)"
           >
             {{ day.label }}
+            <span v-if="day.hasConsultation || day.hasExpiry" class="calendar-grid__markers" aria-hidden="true">
+              <i v-if="day.hasConsultation" class="calendar-grid__marker calendar-grid__marker--consultation"></i>
+              <i v-if="day.hasExpiry" class="calendar-grid__marker calendar-grid__marker--expiry"></i>
+            </span>
           </button>
         </div>
         <div class="calendar-panel__legend">
@@ -300,26 +311,97 @@
 
       <section class="side-panel schedule-panel">
         <div class="schedule-panel__heading">
-          <h3>오늘 상담 일정</h3>
-          <span>7월 1일 (월)</span>
+          <h3>{{ isSelectedToday ? '오늘 상담 일정' : '선택한 날짜 일정' }}</h3>
+          <span>{{ selectedDateLabel }}</span>
         </div>
-        <div class="schedule-list">
-          <article v-for="item in schedules" :key="item.name" class="schedule-card" :class="{ 'is-done': item.done }">
-            <div>
-              <strong>{{ item.name }}</strong>
-              <span>{{ item.type }}</span>
+        <div v-if="isScheduleLoading" class="schedule-panel__state">
+          <v-progress-circular indeterminate color="#f97316" size="20" width="2" />
+          <span>일정을 불러오는 중입니다.</span>
+        </div>
+        <div v-else-if="scheduleError" class="schedule-panel__state schedule-panel__state--error">
+          {{ scheduleError }}
+          <button type="button" @click="loadSelectedDate(true)">다시 시도</button>
+        </div>
+        <div v-else-if="selectedSchedules.length === 0" class="schedule-panel__state">
+          등록된 일정이 없습니다.
+        </div>
+        <div v-else class="schedule-list">
+          <article
+            v-for="item in selectedSchedules"
+            :key="item.key"
+            class="schedule-card"
+            :class="[`schedule-card--${item.scheduleType}`, { 'is-done': item.done }]"
+          >
+            <div class="schedule-card__content">
+              <div class="schedule-card__title">
+                <strong>{{ item.customerName }}</strong>
+                <span class="schedule-card__badge" :class="{ 'is-done': item.done }">
+                  {{ item.done ? '완료' : '일정' }}
+                </span>
+              </div>
+              <span>{{ item.consultationType }} · {{ item.consultationChannel }}</span>
             </div>
-            <button type="button">{{ item.done ? '수정' : '일지' }}</button>
+            <div class="schedule-card__actions">
+              <button v-if="item.scheduleType === 'consultation'" type="button" @click="openScheduleEdit(item)">수정</button>
+              <button
+                type="button"
+                class="schedule-card__journal"
+                :aria-label="item.scheduleType === 'expiry' ? '계약 상세 보기' : '상담일지 보기'"
+                :title="item.scheduleType === 'expiry' ? '계약 상세 보기' : '상담일지 보기'"
+                @click="goToRelatedRecord(item)"
+              >
+                <v-icon :icon="item.scheduleType === 'expiry' ? 'mdi-file-document-outline' : 'mdi-clipboard-text-outline'" size="15" />
+              </button>
+            </div>
           </article>
         </div>
-        <button class="schedule-panel__memo" type="button">메모 추가하기</button>
+        <button class="schedule-panel__memo" type="button" @click="openScheduleCreate">상담 일정 추가하기</button>
       </section>
     </aside>
+
+    <div v-if="isScheduleEditOpen" class="schedule-edit-modal" role="presentation" @click.self="closeScheduleEdit">
+      <section class="schedule-edit-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="schedule-edit-title">
+        <div class="schedule-edit-modal__heading">
+          <div>
+            <h3 id="schedule-edit-title">상담 일정 {{ scheduleFormMode === 'create' ? '추가' : '수정' }}</h3>
+            <span>{{ selectedDateLabel }}</span>
+          </div>
+          <button type="button" aria-label="수정 창 닫기" @click="closeScheduleEdit">
+            <v-icon icon="mdi-close" size="18" />
+          </button>
+        </div>
+
+        <label class="schedule-edit-modal__field">
+          <span>고객</span>
+          <input v-model.trim="scheduleEditForm.customerName" type="text" maxlength="50" />
+        </label>
+        <label class="schedule-edit-modal__field">
+          <span>상담 유형</span>
+          <select v-model="scheduleEditForm.consultationType">
+            <option v-for="option in scheduleTypeOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </label>
+        <label class="schedule-edit-modal__field">
+          <span>상담 채널</span>
+          <select v-model="scheduleEditForm.consultationChannel">
+            <option v-for="option in scheduleChannelOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </label>
+
+        <div class="schedule-edit-modal__actions">
+          <button type="button" class="schedule-edit-modal__cancel" @click="closeScheduleEdit">취소</button>
+          <button type="button" class="schedule-edit-modal__save" :disabled="!scheduleEditForm.customerName" @click="saveScheduleForm">
+            {{ scheduleFormMode === 'create' ? '추가' : '저장' }}
+          </button>
+        </div>
+      </section>
+    </div>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   getFpDashboardContractStatus,
   getFpDashboardContractDistribution,
@@ -327,9 +409,13 @@ import {
   getFpDashboardMonthlyCommissionTrend,
   getFpDashboardSummary,
 } from '../../api/dashboard'
+import { getConsultations } from '../../api/consultations'
+import { getContracts } from '../../api/contracts'
 import { useAuthStore } from '../../stores/auth'
+import { getSavedConsultations } from '../../utils/consultationDrafts'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const chartColors = ['#2563eb', '#f97316', '#16a34a', '#f59e0b', '#7c3aed', '#0f766e']
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
@@ -608,25 +694,397 @@ onMounted(() => {
   loadContractDistribution()
   loadMonthlyContractCustomerTrend()
   loadMonthlyCommissionTrend()
+  loadSelectedDate()
+  loadCalendarMonth()
 })
 
 const weekDays = ['일', '월', '화', '수', '목', '금', '토']
-const scheduleDates = new Set([1, 3, 5, 8, 12, 15, 18, 22, 25, 29])
-const calendarDays = [
-  { label: 30, date: 0, muted: true },
-  ...Array.from({ length: 31 }, (_, index) => ({ label: index + 1, date: index + 1, muted: false })),
-].map((day) => ({
-  ...day,
-  hasSchedule: scheduleDates.has(day.date),
-}))
+const today = new Date()
+const todayDateKey = toDateInputValue(today)
+const selectedDateKey = ref(todayDateKey)
+const calendarCursor = ref(new Date(today.getFullYear(), today.getMonth(), 1))
+const scheduleCache = ref({})
+const selectedSchedules = ref([])
+const isScheduleLoading = ref(false)
+const scheduleError = ref('')
+const consultationScheduleSource = ref([])
+const isScheduleEditOpen = ref(false)
+const scheduleFormMode = ref('edit')
+const editingScheduleKey = ref(null)
+const scheduleEditForm = ref({
+  customerName: '',
+  consultationType: '',
+  consultationChannel: '',
+})
+let selectedDateRequestId = 0
+let calendarLoadId = 0
+let scheduleSourcePromise = null
 
-const schedules = [
-  { name: '이수진', type: '신계약 상담 · 대면', done: true },
-  { name: '박정호', type: '계약 갱신 · 전화', done: true },
-  { name: '최미영', type: '보험료 납입 · 방문', done: false },
-  { name: '김태현', type: '민원 처리 · 대면', done: false },
-  { name: '정윤혜', type: '신계약 상담 · 화상', done: false },
-]
+const calendarMonthLabel = computed(
+  () => `${calendarCursor.value.getFullYear()}년 ${calendarCursor.value.getMonth() + 1}월`,
+)
+const isSelectedToday = computed(() => selectedDateKey.value === todayDateKey)
+const selectedDateLabel = computed(() => {
+  const date = parseLocalDate(selectedDateKey.value)
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekDays[date.getDay()]})`
+})
+const calendarDays = computed(() => buildCalendarDays(calendarCursor.value, scheduleCache.value))
+
+async function selectDate(day) {
+  if (day.muted) {
+    calendarCursor.value = new Date(day.year, day.month, 1)
+    loadCalendarMonth()
+  }
+
+  selectedDateKey.value = day.dateKey
+  await loadSelectedDate()
+}
+
+function moveMonth(offset) {
+  const cursor = calendarCursor.value
+  calendarCursor.value = new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1)
+  const selectedDay = Math.min(parseLocalDate(selectedDateKey.value).getDate(), daysInMonth(calendarCursor.value))
+  selectedDateKey.value = toDateInputValue(
+    new Date(calendarCursor.value.getFullYear(), calendarCursor.value.getMonth(), selectedDay),
+  )
+  loadSelectedDate()
+  loadCalendarMonth()
+}
+
+async function loadSelectedDate(force = false) {
+  const dateKey = selectedDateKey.value
+  const requestId = ++selectedDateRequestId
+  scheduleError.value = ''
+  isScheduleLoading.value = true
+
+  try {
+    const schedules = await fetchSchedules(dateKey, force)
+    if (requestId === selectedDateRequestId) selectedSchedules.value = schedules
+  } catch (error) {
+    if (requestId !== selectedDateRequestId) return
+    selectedSchedules.value = []
+    scheduleError.value = error.response?.data?.message || error.message || '일정을 불러오지 못했습니다.'
+  } finally {
+    if (requestId === selectedDateRequestId) isScheduleLoading.value = false
+  }
+}
+
+async function loadCalendarMonth() {
+  const loadId = ++calendarLoadId
+  try {
+    await ensureConsultationScheduleSource()
+    if (loadId !== calendarLoadId) return
+    scheduleCache.value = buildScheduleCache(consultationScheduleSource.value)
+  } catch {
+    // 조회 오류는 선택 날짜 일정 영역에서 안내합니다.
+  }
+}
+
+async function fetchSchedules(dateKey, force = false) {
+  if (force) scheduleSourcePromise = null
+  await ensureConsultationScheduleSource()
+  const schedules = consultationScheduleSource.value.filter((item) => toDateOnly(item.nextScheduledAt) === dateKey)
+  scheduleCache.value = { ...scheduleCache.value, [dateKey]: schedules }
+  return schedules
+}
+
+async function ensureConsultationScheduleSource() {
+  if (scheduleSourcePromise) return scheduleSourcePromise
+
+  scheduleSourcePromise = (async () => {
+    const [consultationResult, contractResult] = await Promise.allSettled([
+      getConsultations({
+        page: 0,
+        size: 1000,
+        sort: 'nextScheduledAt,asc',
+      }),
+      getContracts({
+        page: 1,
+        size: 1000,
+        sort: 'EXPIRY_SOON',
+      }),
+    ])
+
+    if (consultationResult.status === 'rejected' && contractResult.status === 'rejected') {
+      throw consultationResult.reason
+    }
+
+    const serverRows = consultationResult.status === 'fulfilled'
+      ? extractConsultationRows(consultationResult.value)
+      : []
+    const contractRows = contractResult.status === 'fulfilled'
+      ? extractContractRows(contractResult.value)
+      : []
+    const localRows = getSavedConsultations()
+    const localSchedules = readLocalSchedules()
+    const rowsById = new Map()
+    const overrides = readScheduleOverrides()
+
+    ;[...localSchedules, ...localRows, ...serverRows].forEach((item, index) => {
+      if (!item?.nextScheduledAt) return
+      const key = item.consultationId ?? item.id ?? `local-${index}-${item.nextScheduledAt}`
+      const normalized = normalizeSchedule(item, toDateOnly(item.nextScheduledAt), index)
+      rowsById.set(String(key), { ...normalized, ...(overrides[String(normalized.key)] ?? {}) })
+    })
+
+    contractRows.forEach((contract, index) => {
+      const contractEndDate = contract.contractEndDate ?? contract.maturityDate ?? contract.endDate
+      if (!contractEndDate) return
+      const contractId = contract.contractId ?? contract.id
+      const key = `contract-expiry-${contractId ?? index}-${contractEndDate}`
+      rowsById.set(key, normalizeSchedule({
+        ...contract,
+        id: key,
+        scheduleType: 'EXPIRY',
+        nextScheduledAt: contractEndDate,
+        consultationType: contract.insuranceProductName
+          ? `${contract.insuranceProductName} 만기`
+          : '계약 만기',
+        consultationChannel: contract.contractCode ?? contract.insuranceCompanyName ?? '만기 안내',
+        status: isPastDate(contractEndDate) ? 'COMPLETED' : 'SCHEDULED',
+        contractId,
+      }, toDateOnly(contractEndDate), index))
+    })
+
+    consultationScheduleSource.value = [...rowsById.values()]
+    scheduleCache.value = buildScheduleCache(consultationScheduleSource.value)
+    return consultationScheduleSource.value
+  })().catch((error) => {
+    scheduleSourcePromise = null
+    throw error
+  })
+
+  return scheduleSourcePromise
+}
+
+function extractConsultationRows(response) {
+  const result = response?.result ?? response
+  if (Array.isArray(result)) return result
+  if (Array.isArray(result?.content)) return result.content
+  if (Array.isArray(result?.consultations?.content)) return result.consultations.content
+  if (Array.isArray(result?.consultations)) return result.consultations
+  if (Array.isArray(result?.items)) return result.items
+  return []
+}
+
+function extractContractRows(response) {
+  const result = response?.result ?? response
+  if (Array.isArray(result)) return result
+  if (Array.isArray(result?.content)) return result.content
+  if (Array.isArray(result?.contracts?.content)) return result.contracts.content
+  if (Array.isArray(result?.contracts)) return result.contracts
+  return []
+}
+
+function normalizeSchedule(item, dateKey, index) {
+  const rawType = String(item.scheduleType ?? item.eventType ?? item.type ?? '').toUpperCase()
+  const scheduleType = /EXPIR|MATUR|END|만기/.test(rawType) ? 'expiry' : 'consultation'
+  const rawStatus = String(item.status ?? item.scheduleStatus ?? item.consultationStatus ?? '').toUpperCase()
+  const done = item.done === true || item.completed === true || ['DONE', 'COMPLETED', 'COMPLETE', 'FINISHED', '완료'].includes(rawStatus)
+  const consultationType = item.consultationTypeName ?? consultationTypeLabels[item.consultationType] ?? item.consultationType
+  const consultationChannel = item.consultationChannelName ?? consultationChannelLabels[item.consultationChannel] ?? item.consultationChannel
+
+  return {
+    ...item,
+    key: item.scheduleId ?? item.consultationId ?? item.id ?? `${dateKey}-${index}`,
+    scheduleType,
+    done,
+    customerName: item.customerName ?? item.customer?.customerName ?? item.customer?.name ?? '고객 정보 없음',
+    consultationType: consultationType ?? item.title ?? (scheduleType === 'expiry' ? '계약 만기' : '상담'),
+    consultationChannel: consultationChannel ?? item.channel ?? item.method ?? (scheduleType === 'expiry' ? '만기 안내' : '방식 미정'),
+    consultationId: item.consultationId ?? item.consultation?.consultationId ?? item.consultation?.id,
+    draftId: item.draftId ?? item.consultationDraftId,
+    nextScheduledAt: item.nextScheduledAt ?? item.scheduledAt ?? item.scheduleDateTime ?? dateKey,
+  }
+}
+
+const consultationTypeLabels = {
+  NEW_CONTRACT: '신규 가입 상담',
+  CLAIM: '보험금 청구 상담',
+  RENEWAL: '갱신 상담',
+  TERMINATION: '해지 상담',
+}
+
+const consultationChannelLabels = {
+  VISIT: '방문',
+  PHONE: '전화',
+  MESSAGE: '메시지',
+  VIDEO: '화상',
+}
+
+const scheduleTypeOptions = ['신규 가입 상담', '보험금 청구 상담', '갱신 상담', '해지 상담']
+const scheduleChannelOptions = ['방문', '전화', '메시지', '화상']
+const SCHEDULE_OVERRIDES_KEY = 'relia.fp.scheduleOverrides'
+const LOCAL_SCHEDULES_KEY = 'relia.fp.localSchedules'
+
+function buildScheduleCache(items) {
+  return items.reduce((cache, item) => {
+    const dateKey = toDateOnly(item.nextScheduledAt)
+    if (!dateKey) return cache
+    cache[dateKey] = [...(cache[dateKey] ?? []), item]
+    return cache
+  }, {})
+}
+
+function buildCalendarDays(cursorDate, cache) {
+  const year = cursorDate.getFullYear()
+  const month = cursorDate.getMonth()
+  const firstDate = new Date(year, month, 1)
+  const startDate = new Date(year, month, 1 - firstDate.getDay())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + index)
+    const dateKey = toDateInputValue(date)
+    const items = cache[dateKey] ?? []
+    return {
+      label: date.getDate(),
+      dateKey,
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      muted: date.getMonth() !== month,
+      hasConsultation: items.some((item) => item.scheduleType === 'consultation'),
+      hasExpiry: items.some((item) => item.scheduleType === 'expiry'),
+    }
+  })
+}
+
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+}
+
+function parseLocalDate(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function openScheduleEdit(item) {
+  scheduleFormMode.value = 'edit'
+  editingScheduleKey.value = String(item.key)
+  scheduleEditForm.value = {
+    customerName: item.customerName,
+    consultationType: item.consultationType,
+    consultationChannel: item.consultationChannel,
+  }
+  isScheduleEditOpen.value = true
+}
+
+function openScheduleCreate() {
+  scheduleFormMode.value = 'create'
+  editingScheduleKey.value = null
+  scheduleEditForm.value = {
+    customerName: '',
+    consultationType: scheduleTypeOptions[0],
+    consultationChannel: scheduleChannelOptions[0],
+  }
+  isScheduleEditOpen.value = true
+}
+
+function closeScheduleEdit() {
+  isScheduleEditOpen.value = false
+  editingScheduleKey.value = null
+}
+
+function saveScheduleForm() {
+  if (scheduleFormMode.value === 'create') {
+    createLocalSchedule()
+    return
+  }
+
+  const key = editingScheduleKey.value
+  const customerName = scheduleEditForm.value.customerName.trim()
+  if (!key || !customerName) return
+
+  const changes = {
+    customerName,
+    consultationType: scheduleEditForm.value.consultationType,
+    consultationChannel: scheduleEditForm.value.consultationChannel,
+  }
+  consultationScheduleSource.value = consultationScheduleSource.value.map((item) =>
+    String(item.key) === key ? { ...item, ...changes } : item,
+  )
+  scheduleCache.value = buildScheduleCache(consultationScheduleSource.value)
+  selectedSchedules.value = scheduleCache.value[selectedDateKey.value] ?? []
+
+  const overrides = readScheduleOverrides()
+  overrides[key] = changes
+  window.localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(overrides))
+  updateStoredLocalSchedule(key, changes)
+  closeScheduleEdit()
+}
+
+function createLocalSchedule() {
+  const customerName = scheduleEditForm.value.customerName.trim()
+  if (!customerName) return
+
+  const localSchedule = normalizeSchedule({
+    id: `schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    customerName,
+    consultationType: scheduleEditForm.value.consultationType,
+    consultationChannel: scheduleEditForm.value.consultationChannel,
+    nextScheduledAt: `${selectedDateKey.value}T09:00:00`,
+    status: 'SCHEDULED',
+    isLocalSchedule: true,
+  }, selectedDateKey.value, consultationScheduleSource.value.length)
+
+  const localSchedules = readLocalSchedules()
+  window.localStorage.setItem(LOCAL_SCHEDULES_KEY, JSON.stringify([localSchedule, ...localSchedules]))
+  consultationScheduleSource.value = [localSchedule, ...consultationScheduleSource.value]
+  scheduleCache.value = buildScheduleCache(consultationScheduleSource.value)
+  selectedSchedules.value = scheduleCache.value[selectedDateKey.value] ?? []
+  closeScheduleEdit()
+}
+
+function updateStoredLocalSchedule(key, changes) {
+  const localSchedules = readLocalSchedules()
+  if (!localSchedules.some((item) => String(item.key ?? item.id) === key)) return
+  const nextSchedules = localSchedules.map((item) =>
+    String(item.key ?? item.id) === key ? { ...item, ...changes } : item,
+  )
+  window.localStorage.setItem(LOCAL_SCHEDULES_KEY, JSON.stringify(nextSchedules))
+}
+
+function goToRelatedRecord(item) {
+  if (item.contractId) {
+    router.push({ name: 'contract-detail', params: { contractId: item.contractId } })
+    return
+  }
+  if (item.consultationId) {
+    router.push({ name: 'consultation-detail', params: { consultationId: item.consultationId } })
+    return
+  }
+  if (item.draftId) {
+    router.push({ name: 'consultation-draft-detail', params: { draftId: item.draftId } })
+    return
+  }
+  router.push({ name: 'consultation-create', query: { scheduleDate: selectedDateKey.value, customerId: item.customerId } })
+}
+
+function isPastDate(value) {
+  const dateKey = toDateOnly(value)
+  return Boolean(dateKey && dateKey < todayDateKey)
+}
+
+function readScheduleOverrides() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(SCHEDULE_OVERRIDES_KEY) || '{}')
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+function readLocalSchedules() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(LOCAL_SCHEDULES_KEY) || '[]')
+    return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+
+function toDateOnly(value) {
+  return value ? String(value).slice(0, 10) : ''
+}
 
 async function loadDashboardSummary() {
   summaryError.value = ''
@@ -1651,6 +2109,23 @@ function toDateInputValue(date) {
   color: #6b7280;
 }
 
+.calendar-panel__month button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.calendar-panel__month button:hover {
+  background: #f1f5f9;
+  color: #111827;
+}
+
 .calendar-panel__month strong {
   color: #111827;
   font-size: 13px;
@@ -1702,17 +2177,41 @@ function toDateInputValue(date) {
 .calendar-grid__day--today::after {
   content: '';
   position: absolute;
-  left: 50%;
-  bottom: 3px;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: #f97316;
-  transform: translateX(-50%);
+  inset: 2px;
+  border: 1px solid #f97316;
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 .calendar-grid__day--active::after {
-  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.calendar-grid__markers {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.calendar-grid__marker {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.calendar-grid__marker--consultation {
+  background: #f97316;
+}
+
+.calendar-grid__marker--expiry {
+  background: #ef4444;
+}
+
+.calendar-grid__day--active .calendar-grid__marker {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
 }
 
 .calendar-panel__legend {
@@ -1756,6 +2255,36 @@ function toDateInputValue(date) {
   gap: 8px;
 }
 
+.schedule-panel__state {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  text-align: center;
+}
+
+.schedule-panel__state--error {
+  flex-direction: column;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.schedule-panel__state button {
+  border: 0;
+  background: transparent;
+  color: #ea580c;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .schedule-card {
   min-height: 54px;
   display: flex;
@@ -1765,10 +2294,41 @@ function toDateInputValue(date) {
   padding: 10px 9px 10px 12px;
   border-radius: 7px;
   background: #fff1e8;
+  border-left: 3px solid #f97316;
 }
 
 .schedule-card.is-done {
   background: #f8fafc;
+}
+
+.schedule-card--expiry {
+  border-left-color: #ef4444;
+  background: #fff1f2;
+}
+
+.schedule-card__content {
+  min-width: 0;
+}
+
+.schedule-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.schedule-card__badge {
+  margin: 0;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #ea580c;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.schedule-card__badge.is-done {
+  background: #e2e8f0;
+  color: #64748b;
 }
 
 .schedule-card strong,
@@ -1798,10 +2358,32 @@ function toDateInputValue(date) {
   cursor: pointer;
 }
 
-.schedule-card:not(.is-done) button {
+.schedule-card:not(.is-done) .schedule-card__actions > button:first-child {
   border-color: #f97316;
   background: #f97316;
   color: #ffffff;
+}
+
+.schedule-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.schedule-card .schedule-card__journal {
+  min-width: 28px;
+  width: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-color: #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+}
+
+.schedule-card .schedule-card__journal:hover {
+  border-color: #fb923c;
+  color: #ea580c;
 }
 
 .schedule-panel__memo {
@@ -1815,6 +2397,119 @@ function toDateInputValue(date) {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.schedule-edit-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.schedule-edit-modal__dialog {
+  width: min(400px, 100%);
+  padding: 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+}
+
+.schedule-edit-modal__heading,
+.schedule-edit-modal__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.schedule-edit-modal__heading {
+  margin-bottom: 18px;
+}
+
+.schedule-edit-modal__heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.schedule-edit-modal__heading span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.schedule-edit-modal__heading > button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.schedule-edit-modal__field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.schedule-edit-modal__field input,
+.schedule-edit-modal__field select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+.schedule-edit-modal__field input:focus,
+.schedule-edit-modal__field select:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.schedule-edit-modal__actions {
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.schedule-edit-modal__actions button {
+  min-width: 64px;
+  height: 36px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.schedule-edit-modal__cancel {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.schedule-edit-modal__save {
+  border: 1px solid #f97316;
+  background: #f97316;
+  color: #ffffff;
+}
+
+.schedule-edit-modal__save:disabled {
+  border-color: #cbd5e1;
+  background: #cbd5e1;
+  cursor: not-allowed;
 }
 
 @media (max-width: 1280px) {
