@@ -1634,7 +1634,6 @@ onMounted(async () => {
       form.nextScheduledAt = `${route.query.scheduleDate}T09:00`
     }
   }
-  }
 
   if (needsExistingCustomer.value && !customerSearchTouched.value) {
     await loadCustomers()
