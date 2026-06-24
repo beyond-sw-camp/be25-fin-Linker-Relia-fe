@@ -2,7 +2,7 @@
   <section class="customer-detail">
     <button class="customer-detail__back" type="button" @click="goBack">
       <v-icon icon="mdi-arrow-left" size="16" />
-      고객 목록으로 돌아가기
+      {{ backButtonLabel }}
     </button>
 
     <div v-if="customerErrorMessage" class="detail-state">
@@ -381,6 +381,15 @@ const route = useRoute()
 const router = useRouter()
 const customerId = computed(() => route.params.customerId)
 const activeTab = ref('contracts')
+const backButtonLabel = computed(() => {
+  const from = typeof route.query.from === 'string' ? route.query.from : ''
+
+  if (['fp-contracts', 'branch-contracts', 'hq-contracts'].includes(from)) {
+    return '계약 목록으로 돌아가기'
+  }
+
+  return '고객 목록으로 돌아가기'
+})
 
 const {
   customer,
@@ -631,7 +640,13 @@ function goToContractDetail(contract) {
 }
 
 function goBack() {
+  const returnTo = route.query.returnTo
   const from = route.query.from
+
+  if (typeof returnTo === 'string' && returnTo.length > 0) {
+    router.push(returnTo)
+    return
+  }
 
   if (typeof from === 'string' && from.length > 0) {
     router.push({ name: from })
