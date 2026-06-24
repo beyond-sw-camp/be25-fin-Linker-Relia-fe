@@ -188,12 +188,25 @@
                   </div>
                 </div>
 
-                <div v-if="briefing.item?.createdAt" class="briefing-box__meta">
+                <div v-if="briefing.item?.createdAt || briefing.item?.updatedAt" class="briefing-box__meta">
                   <span>최근 생성일</span>
-                  <strong>{{ formatDateTime(briefing.item.createdAt) }}</strong>
-                  <button class="briefing-box__button briefing-box__button--complete" type="button" disabled>
-                    <v-icon icon="mdi-check" size="17" />
-                    최신 브리핑
+                  <strong>{{ formatDateTime(briefing.item.createdAt || briefing.item.updatedAt) }}</strong>
+                  <button
+                    class="briefing-box__button"
+                    :class="{ 'briefing-box__button--complete': !briefing.item?.canGenerate }"
+                    type="button"
+                    :disabled="!briefing.item?.canGenerate || briefing.isGenerating"
+                    @click="createBriefing"
+                  >
+                    <v-progress-circular
+                      v-if="briefing.isGenerating"
+                      indeterminate
+                      color="white"
+                      size="17"
+                      width="2"
+                    />
+                    <v-icon v-else :icon="briefing.item?.canGenerate ? 'mdi-auto-fix' : 'mdi-check'" size="17" />
+                    {{ briefing.isGenerating ? 'AI 브리핑 생성 중...' : briefing.item?.canGenerate ? 'AI 브리핑 다시 생성' : '최신 브리핑' }}
                   </button>
                 </div>
               </div>
