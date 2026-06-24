@@ -261,7 +261,7 @@
                   v-for="fp in fpPage.content"
                   :key="fp.id"
                   class="clickable-row"
-                  @click="goToFpDetail(fp.id, fp)"
+                  @click="goToFpDetail(fp.id)"
                 >
                   <td>{{ formatRank(getFpListRank(fp)) }}</td>
                   <td>{{ fp.empCode }}</td>
@@ -276,7 +276,7 @@
                       class="table-action-button table-action-button--danger"
                       type="button"
                       :disabled="isResignedFp(fp)"
-                      @click.stop="openResignModal(fp)"
+                      @click.stop="openResignModal(fp, $event)"
                     >
                       {{ getResignButtonLabel(fp) }}
                     </button>
@@ -343,7 +343,7 @@
               class="button button--danger fp-profile__action"
               type="button"
               :disabled="isResignedFp(fpDetail)"
-              @click="openResignModal(fpDetail)"
+              @click="openResignModal(fpDetail, $event)"
             >
               {{ getResignButtonLabel(fpDetail) }}
             </button>
@@ -456,7 +456,13 @@
       aria-labelledby="termination-modal-title"
     >
       <div class="termination-modal__backdrop" @click="closeResignModal"></div>
-      <form class="termination-modal__panel" @submit.prevent="submitResignFp">
+      <form
+        ref="resignModalPanel"
+        class="termination-modal__panel"
+        tabindex="-1"
+        @keydown="handleResignModalKeydown"
+        @submit.prevent="submitResignFp"
+      >
         <header class="termination-modal__header">
           <div>
             <h3 id="termination-modal-title">설계사 해촉 처리</h3>
@@ -545,7 +551,7 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -580,7 +586,8 @@ const fpDetail = ref(null)
 const contractPage = ref(createEmptyPage(10))
 const selectedResignFp = ref(null)
 const resignResult = ref(null)
-const resignedFpIds = ref(readPersistedResignedFpIds())
+const resignModalPanel = ref(null)
+const resignModalTrigger = ref(null)
 
 const isOrganizationLoading = ref(false)
 const isBranchesLoading = ref(false)
@@ -636,15 +643,11 @@ const selectedResignFpName = computed(() => (
 
 const selectedResignCustomerCount = computed(() => (
   selectedResignFp.value?.customerCount
-  ?? selectedResignFp.value?.assignedCustomerCount
   ?? null
 ))
 
 const selectedResignContractCount = computed(() => (
   selectedResignFp.value?.contractCount
-  ?? selectedResignFp.value?.completedContractCount
-  ?? selectedResignFp.value?.performanceSummary?.completedContractCount
-  ?? contractPage.value.totalElements
   ?? null
 ))
 
@@ -714,6 +717,10 @@ watch(organizationListTotalPages, (totalPages) => {
 
 onMounted(() => {
   initializePage()
+})
+
+onBeforeUnmount(() => {
+  resignModalTrigger.value = null
 })
 
 async function initializePage() {
@@ -912,15 +919,19 @@ function changeContractPage(page) {
   loadFpContracts(String(route.params.fpId))
 }
 
-function openResignModal(fp) {
+async function openResignModal(fp, event = null) {
   if (isResignedFp(fp)) {
     return
   }
 
+  resignModalTrigger.value = event?.currentTarget ?? getActiveElement()
   selectedResignFp.value = normalizeResignTargetFp(fp)
   resignErrorMessage.value = ''
   resignResult.value = null
   isResignModalOpen.value = true
+
+  await nextTick()
+  focusFirstResignModalElement()
 }
 
 function closeResignModal() {
@@ -930,6 +941,89 @@ function closeResignModal() {
   selectedResignFp.value = null
   resignErrorMessage.value = ''
   resignResult.value = null
+
+  restoreResignModalTriggerFocus()
+}
+
+function handleResignModalKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeResignModal()
+    return
+  }
+
+  if (event.key !== 'Tab') {
+    return
+  }
+
+  trapResignModalFocus(event)
+}
+
+function trapResignModalFocus(event) {
+  const focusableElements = getResignModalFocusableElements()
+
+  if (focusableElements.length === 0) {
+    event.preventDefault()
+    resignModalPanel.value?.focus()
+    return
+  }
+
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements[focusableElements.length - 1]
+  const activeElement = getActiveElement()
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault()
+    lastElement.focus()
+    return
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault()
+    firstElement.focus()
+  }
+}
+
+function focusFirstResignModalElement() {
+  const [firstElement] = getResignModalFocusableElements()
+  const target = firstElement ?? resignModalPanel.value
+  target?.focus()
+}
+
+function restoreResignModalTriggerFocus() {
+  const trigger = resignModalTrigger.value
+  resignModalTrigger.value = null
+
+  nextTick(() => {
+    if (trigger && typeof trigger.focus === 'function' && containsElement(trigger)) {
+      trigger.focus()
+    }
+  })
+}
+
+function getResignModalFocusableElements() {
+  const panel = resignModalPanel.value
+  if (!panel) return []
+
+  const selector = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',')
+
+  return Array.from(panel.querySelectorAll(selector))
+    .filter((element) => !element.hasAttribute('disabled') && element.offsetParent !== null)
+}
+
+function getActiveElement() {
+  return typeof document === 'undefined' ? null : document.activeElement
+}
+
+function containsElement(element) {
+  return typeof document !== 'undefined' && document.contains(element)
 }
 
 async function submitResignFp() {
@@ -955,11 +1049,19 @@ async function submitResignFp() {
     }
     resignNoticeType.value = 'success'
     resignNoticeMessage.value = `해촉 처리가 완료되었습니다. 자동 생성된 인수인계 요청 ${formatCount(resignResult.value.handoverRequestCount)}건`
-    markFpAsResigned(fpId)
+    applyResignResultToCurrentFp(fpId, result)
     await refetchCurrentFpData()
   } catch (error) {
     if (isAlreadyResignedError(error)) {
-      markFpAsResigned(fpId)
+      resignResult.value = { handoverRequestCount: 0 }
+      resignNoticeType.value = 'success'
+      resignNoticeMessage.value = '이미 해촉 처리된 설계사입니다.'
+      applyResignResultToCurrentFp(fpId, {
+        userStatus: 'RESIGNED',
+        resignedAt: selectedResignFp.value?.resignedAt ?? getTodayDateInputValue(),
+      })
+      await refetchCurrentFpData()
+      return
     }
 
     resignErrorMessage.value = getResignErrorMessage(error)
@@ -977,16 +1079,8 @@ function normalizeResignTargetFp(fp) {
 
   return {
     ...fp,
-    customerCount:
-      fp.customerCount ??
-      fp.assignedCustomerCount ??
-      getRouteNumberQueryValue('customerCount'),
-    contractCount:
-      fp.contractCount ??
-      fp.completedContractCount ??
-      fp.performanceSummary?.completedContractCount ??
-      getRouteNumberQueryValue('contractCount') ??
-      null,
+    customerCount: fp.customerCount ?? null,
+    contractCount: fp.contractCount ?? null,
   }
 }
 
@@ -997,71 +1091,7 @@ function getResignButtonLabel(fp) {
 function isResignedFp(fp) {
   if (!fp) return false
 
-  const fpId = getFpIdentifier(fp)
-  if (fpId && resignedFpIds.value.has(String(fpId))) return true
-
-  const resignedFlags = [
-    fp.isResigned,
-    fp.resigned,
-    fp.isResign,
-    fp.isTerminated,
-    fp.terminated,
-    fp.isInactive,
-  ]
-
-  if (resignedFlags.some(isTruthyFlag)) return true
-
-  const resignedDates = [
-    fp.resignedAt,
-    fp.resignDate,
-    fp.resignedDate,
-    fp.resignationDate,
-    fp.resignationCompletedAt,
-    fp.terminatedAt,
-    fp.terminationDate,
-    fp.retiredAt,
-    fp.retireDate,
-    fp.dismissedAt,
-    fp.dismissalDate,
-  ]
-
-  if (resignedDates.some(Boolean)) return true
-
-  const statusValues = [
-    fp.resignStatus,
-    fp.resignationStatus,
-    fp.terminationStatus,
-    fp.employmentStatus,
-    fp.employmentState,
-    fp.employeeStatus,
-    fp.fpStatus,
-    fp.fpState,
-    fp.userStatus,
-    fp.userState,
-    fp.advisorStatus,
-    fp.advisorState,
-    fp.status,
-    fp.statusName,
-  ].map(normalizeResignStatusValue)
-
-  return statusValues.some((status) => (
-    status === 'RESIGNED' ||
-    status === 'RESIGNATION' ||
-    status === 'RESIGN' ||
-    status === 'RESIGNCOMPLETED' ||
-    status === 'RESIGNEDCOMPLETED' ||
-    status === 'TERMINATION' ||
-    status === 'TERMINATED' ||
-    status === 'INACTIVE' ||
-    status === 'RETIRED' ||
-    status === 'DISMISSED' ||
-    status === 'WITHDRAWN' ||
-    status === 'DEACTIVATED' ||
-    status === '해촉' ||
-    status === '해촉완료' ||
-    status === '퇴사' ||
-    status === '비활성'
-  ))
+  return fp.userStatus === 'RESIGNED' || Boolean(fp.resignedAt)
 }
 
 function getFpIdentifier(fp) {
@@ -1072,60 +1102,6 @@ function getFpIdentifier(fp) {
     ?? null
 }
 
-function markFpAsResigned(fpId) {
-  if (!fpId) return
-
-  resignedFpIds.value = new Set([...resignedFpIds.value, String(fpId)])
-  persistResignedFpIds()
-}
-
-function readPersistedResignedFpIds() {
-  if (typeof window === 'undefined') return new Set()
-
-  try {
-    const rawValue = window.localStorage.getItem('relia:resigned-fp-ids')
-    const parsedValue = JSON.parse(rawValue || '[]')
-    return new Set(Array.isArray(parsedValue) ? parsedValue.map(String) : [])
-  } catch {
-    return new Set()
-  }
-}
-
-function persistResignedFpIds() {
-  if (typeof window === 'undefined') return
-
-  try {
-    window.localStorage.setItem(
-      'relia:resigned-fp-ids',
-      JSON.stringify([...resignedFpIds.value]),
-    )
-  } catch {
-    // Ignore storage failures; backend state remains the source of truth.
-  }
-}
-
-function isTruthyFlag(value) {
-  if (typeof value === 'boolean') return value
-
-  const normalized = String(value ?? '').trim().toUpperCase()
-  return normalized === 'TRUE' || normalized === 'Y' || normalized === 'YES' || normalized === '1'
-}
-
-function normalizeResignStatusValue(value) {
-  return String(value ?? '').trim().toUpperCase().replace(/[\s_-]/g, '')
-}
-
-function getRouteNumberQueryValue(key) {
-  return toNullableNumber(normalizeQueryValue(route.query[key]))
-}
-
-function toNullableNumber(value) {
-  if (value === null || value === undefined || value === '') return null
-
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
 async function refetchCurrentFpData() {
   if (props.mode === 'fps') {
     await loadFps()
@@ -1134,6 +1110,36 @@ async function refetchCurrentFpData() {
 
   if (props.mode === 'fp-detail') {
     await reloadFpDetail()
+  }
+}
+
+function applyResignResultToCurrentFp(fpId, result = {}) {
+  const nextStatus = result?.userStatus ?? 'RESIGNED'
+  const nextResignedAt = result?.resignedAt ?? getTodayDateInputValue()
+  const patch = {
+    userStatus: nextStatus,
+    resignedAt: nextResignedAt,
+  }
+
+  selectedResignFp.value = mergeFpById(selectedResignFp.value, fpId, patch)
+  fpDetail.value = mergeFpById(fpDetail.value, fpId, patch)
+
+  if (Array.isArray(fpPage.value.content)) {
+    fpPage.value = {
+      ...fpPage.value,
+      content: fpPage.value.content.map((fp) => mergeFpById(fp, fpId, patch)),
+    }
+  }
+}
+
+function mergeFpById(fp, fpId, patch) {
+  if (!fp || String(getFpIdentifier(fp)) !== String(fpId)) {
+    return fp
+  }
+
+  return {
+    ...fp,
+    ...patch,
   }
 }
 
@@ -1162,23 +1168,11 @@ function goToResignationHandovers() {
   })
 }
 
-function goToFpDetail(fpId, fp = null) {
-  const query = { from: route.name }
-  const customerCount = toNullableNumber(fp?.customerCount ?? fp?.assignedCustomerCount)
-  const contractCount = toNullableNumber(fp?.contractCount ?? fp?.completedContractCount)
-
-  if (customerCount !== null) {
-    query.customerCount = String(customerCount)
-  }
-
-  if (contractCount !== null) {
-    query.contractCount = String(contractCount)
-  }
-
+function goToFpDetail(fpId) {
   router.push({
     name: 'organization-fp-detail',
     params: { fpId },
-    query,
+    query: { from: route.name },
   })
 }
 
