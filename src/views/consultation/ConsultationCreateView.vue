@@ -371,7 +371,7 @@
           <div class="stt-actions">
             <button type="button" @click="openSttPreview">AI 녹음 작성</button>
           </div>
-          <p v-if="!canOpenSttPreview" class="stt-card__hint">AI 녹음 작성을 시작하려면 먼저 좌측에서 고객을 선택해주세요.</p>
+          <p v-if="!canOpenSttPreview" class="stt-card__hint">{{ sttHintMessage }}</p>
         </section>
 
         <section v-if="needsContract" class="form-card">
@@ -1464,9 +1464,22 @@ const cancelDetail = reactive({
 
 const isEditMode = computed(() => route.name === 'consultation-draft-edit')
 const sttPreviewCustomerId = computed(() => selectedCustomer.value?.customerId || '')
-const canOpenSttPreview = computed(() => Boolean(selectedCustomer.value?.customerId))
 const isNewContract = computed(() => form.consultationType === 'NEW_CONTRACT')
 const needsExistingCustomer = computed(() => !isNewContract.value || customerMode.value === 'EXISTING')
+const canOpenSttPreview = computed(() => {
+  if (selectedCustomer.value?.customerId) {
+    return true
+  }
+
+  return isNewContract.value && customerMode.value === 'PROSPECT'
+})
+const sttHintMessage = computed(() => {
+  if (isNewContract.value) {
+    return '기존 고객을 선택하거나 신규 고객 정보를 입력한 뒤 AI 녹음 작성을 시작할 수 있습니다.'
+  }
+
+  return 'AI 녹음 작성을 시작하려면 먼저 좌측에서 고객을 선택해주세요.'
+})
 const needsContract = computed(() => ['CLAIM', 'RENEWAL', 'TERMINATION'].includes(form.consultationType))
 const noteSectionNumber = computed(() => {
   if (form.consultationType === 'NEW_CONTRACT') return 4
@@ -1687,7 +1700,9 @@ async function selectCustomer(customer) {
 async function loadContracts(customerId) {
   try {
     const response = await getCustomerContracts(customerId)
-    contracts.value = Array.isArray(response?.result) ? response.result : []
+    const pageResult = response?.result
+    const rows = Array.isArray(pageResult?.content) ? pageResult.content : pageResult
+    contracts.value = Array.isArray(rows) ? rows : []
 
     if (isNewContract.value && customerMode.value === 'EXISTING') {
       applyExistingInsuranceFromContracts(contracts.value)
