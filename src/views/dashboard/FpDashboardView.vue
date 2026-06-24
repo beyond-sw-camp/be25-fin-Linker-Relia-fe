@@ -6,9 +6,6 @@
           <h2>설계사 대시보드</h2>
           <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
         </div>
-        <div v-if="currentBranchName" class="fp-dashboard__heading-meta">
-          <span class="fp-dashboard__branch">{{ branchDisplayText }}</span>
-        </div>
       </div>
 
       <div class="fp-dashboard__notice">
@@ -327,9 +324,6 @@ import {
   getFpDashboardMonthlyCommissionTrend,
   getFpDashboardSummary,
 } from '../../api/dashboard'
-import { useAuthStore } from '../../stores/auth'
-
-const authStore = useAuthStore()
 const chartColors = ['#2563eb', '#f97316', '#16a34a', '#f59e0b', '#7c3aed', '#0f766e']
 const summary = ref(createEmptySummary())
 const isSummaryLoading = ref(false)
@@ -363,10 +357,6 @@ const commissionTooltip = ref({
 })
 
 const comparisonLabel = computed(() => formatClosingMonth(summary.value.comparisonClosingMonth))
-const currentBranchName = computed(() => authStore.organizationName || authStore.user?.organizationName || '')
-const branchDisplayText = computed(
-  () => `${currentBranchName.value} \uC18C\uC18D`,
-)
 const summaryTableLabels = {
   month: '\uC6D4',
   contractCount: '\uACC4\uC57D \uAC74\uC218',
@@ -1119,26 +1109,6 @@ function toDateInputValue(date) {
   margin: 0;
   font-size: 13px;
   color: #6b7280;
-}
-
-.fp-dashboard__branch {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #f8fafc;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.fp-dashboard__heading-dot {
-  width: 3px;
-  height: 3px;
-  margin-top: 12px;
-  border-radius: 999px;
-  background: #111827;
 }
 
 .fp-dashboard__notice {
