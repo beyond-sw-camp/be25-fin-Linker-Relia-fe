@@ -1698,7 +1698,9 @@ async function selectCustomer(customer) {
 async function loadContracts(customerId) {
   try {
     const response = await getCustomerContracts(customerId)
-    contracts.value = Array.isArray(response?.result) ? response.result : []
+    const pageResult = response?.result
+    const rows = Array.isArray(pageResult?.content) ? pageResult.content : pageResult
+    contracts.value = Array.isArray(rows) ? rows : []
 
     if (isNewContract.value && customerMode.value === 'EXISTING') {
       applyExistingInsuranceFromContracts(contracts.value)
