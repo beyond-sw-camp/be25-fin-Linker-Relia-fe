@@ -182,16 +182,30 @@ const summaryCards = computed(() => [
   {
     label: '전체 고객 수',
     value: summary.value.totalCustomerCount.toLocaleString('ko-KR'),
-    accent: '#2563eb',
-    tone: '#eff6ff',
+    accent: '#475569',
+    tone: '#f8fafc',
     icon: 'mdi-account-group-outline',
   },
   {
     label: '잠재 고객 수',
     value: summary.value.prospectCustomerCount.toLocaleString('ko-KR'),
-    accent: '#f59e0b',
-    tone: '#fff7ed',
+    accent: '#2563eb',
+    tone: '#eff6ff',
     icon: 'mdi-account-search-outline',
+  },
+  {
+    label: '계약 고객 수',
+    value: summary.value.contractedCustomerCount.toLocaleString('ko-KR'),
+    accent: '#16a34a',
+    tone: '#f0fdf4',
+    icon: 'mdi-account-check-outline',
+  },
+  {
+    label: '종료 고객 수',
+    value: summary.value.closedCustomerCount.toLocaleString('ko-KR'),
+    accent: '#dc2626',
+    tone: '#fef2f2',
+    icon: 'mdi-account-cancel-outline',
   },
 ])
 

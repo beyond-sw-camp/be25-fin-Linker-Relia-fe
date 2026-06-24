@@ -151,6 +151,8 @@ function normalizeSummary(summary) {
   return {
     totalCustomerCount: Number(summary?.totalCustomerCount ?? 0),
     prospectCustomerCount: Number(summary?.prospectCustomerCount ?? 0),
+    contractedCustomerCount: Number(summary?.contractedCustomerCount ?? 0),
+    closedCustomerCount: Number(summary?.closedCustomerCount ?? 0),
   }
 }
 
@@ -174,6 +176,8 @@ function createEmptySummary() {
   return {
     totalCustomerCount: 0,
     prospectCustomerCount: 0,
+    contractedCustomerCount: 0,
+    closedCustomerCount: 0,
   }
 }
 
