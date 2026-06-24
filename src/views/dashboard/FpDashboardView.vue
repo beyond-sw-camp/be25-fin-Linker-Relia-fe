@@ -342,7 +342,6 @@
               <span>{{ item.consultationType }} · {{ item.consultationChannel }}</span>
             </div>
             <div class="schedule-card__actions">
-              <button v-if="item.scheduleType === 'consultation'" type="button" @click="openScheduleEdit(item)">수정</button>
               <button
                 type="button"
                 class="schedule-card__journal"
@@ -350,8 +349,28 @@
                 :title="item.scheduleType === 'expiry' ? '계약 상세 보기' : '상담일지 보기'"
                 @click="goToRelatedRecord(item)"
               >
-                <v-icon :icon="item.scheduleType === 'expiry' ? 'mdi-file-document-outline' : 'mdi-clipboard-text-outline'" size="15" />
+                <v-icon :icon="item.scheduleType === 'expiry' ? 'mdi-file-document-outline' : 'mdi-notebook-outline'" size="16" />
               </button>
+              <div v-if="item.scheduleType === 'consultation'" class="schedule-card__manage-actions">
+                <button
+                  type="button"
+                  class="schedule-card__edit"
+                  aria-label="상담 일정 수정"
+                  title="상담 일정 수정"
+                  @click="openScheduleEdit(item)"
+                >
+                  <v-icon icon="mdi-pencil-outline" size="15" />
+                </button>
+                <button
+                  type="button"
+                  class="schedule-card__delete"
+                  aria-label="상담 일정 삭제"
+                  title="상담 일정 삭제"
+                  @click="deleteSchedule(item)"
+                >
+                  <v-icon icon="mdi-trash-can-outline" size="15" />
+                </button>
+              </div>
             </div>
           </article>
         </div>
@@ -819,11 +838,13 @@ async function ensureConsultationScheduleSource() {
     const localSchedules = readLocalSchedules()
     const rowsById = new Map()
     const overrides = readScheduleOverrides()
+    const deletedScheduleKeys = readDeletedScheduleKeys()
 
     ;[...localSchedules, ...localRows, ...serverRows].forEach((item, index) => {
       if (!item?.nextScheduledAt) return
       const key = item.consultationId ?? item.id ?? `local-${index}-${item.nextScheduledAt}`
       const normalized = normalizeSchedule(item, toDateOnly(item.nextScheduledAt), index)
+      if (deletedScheduleKeys.includes(String(normalized.key))) return
       rowsById.set(String(key), { ...normalized, ...(overrides[String(normalized.key)] ?? {}) })
     })
 
@@ -916,6 +937,7 @@ const scheduleTypeOptions = ['신규 가입 상담', '보험금 청구 상담', 
 const scheduleChannelOptions = ['방문', '전화', '메시지', '화상']
 const SCHEDULE_OVERRIDES_KEY = 'relia.fp.scheduleOverrides'
 const LOCAL_SCHEDULES_KEY = 'relia.fp.localSchedules'
+const DELETED_SCHEDULE_KEYS_KEY = 'relia.fp.deletedScheduleKeys'
 
 function buildScheduleCache(items) {
   return items.reduce((cache, item) => {
@@ -1043,6 +1065,30 @@ function updateStoredLocalSchedule(key, changes) {
   window.localStorage.setItem(LOCAL_SCHEDULES_KEY, JSON.stringify(nextSchedules))
 }
 
+function deleteSchedule(item) {
+  if (!window.confirm(`${item.customerName} 고객의 상담 일정을 삭제할까요?`)) return
+
+  const key = String(item.key)
+  consultationScheduleSource.value = consultationScheduleSource.value.filter(
+    (schedule) => String(schedule.key) !== key,
+  )
+  scheduleCache.value = buildScheduleCache(consultationScheduleSource.value)
+  selectedSchedules.value = scheduleCache.value[selectedDateKey.value] ?? []
+
+  const localSchedules = readLocalSchedules().filter(
+    (schedule) => String(schedule.key ?? schedule.id) !== key,
+  )
+  window.localStorage.setItem(LOCAL_SCHEDULES_KEY, JSON.stringify(localSchedules))
+
+  const deletedKeys = new Set(readDeletedScheduleKeys())
+  deletedKeys.add(key)
+  window.localStorage.setItem(DELETED_SCHEDULE_KEYS_KEY, JSON.stringify([...deletedKeys]))
+
+  const overrides = readScheduleOverrides()
+  delete overrides[key]
+  window.localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(overrides))
+}
+
 function goToRelatedRecord(item) {
   if (item.contractId) {
     router.push({ name: 'contract-detail', params: { contractId: item.contractId } })
@@ -1077,6 +1123,15 @@ function readLocalSchedules() {
   try {
     const value = JSON.parse(window.localStorage.getItem(LOCAL_SCHEDULES_KEY) || '[]')
     return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+
+function readDeletedScheduleKeys() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(DELETED_SCHEDULE_KEYS_KEY) || '[]')
+    return Array.isArray(value) ? value.map(String) : []
   } catch {
     return []
   }
@@ -2358,19 +2413,21 @@ function toDateInputValue(date) {
   cursor: pointer;
 }
 
-.schedule-card:not(.is-done) .schedule-card__actions > button:first-child {
-  border-color: #f97316;
-  background: #f97316;
-  color: #ffffff;
-}
-
 .schedule-card__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
 }
 
-.schedule-card .schedule-card__journal {
+.schedule-card__manage-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.schedule-card .schedule-card__journal,
+.schedule-card .schedule-card__edit,
+.schedule-card .schedule-card__delete {
   min-width: 28px;
   width: 28px;
   padding: 0;
@@ -2381,9 +2438,40 @@ function toDateInputValue(date) {
   color: #475569;
 }
 
+.schedule-card .schedule-card__journal {
+  border-color: #f97316;
+  background: #f97316;
+  color: #ffffff;
+}
+
 .schedule-card .schedule-card__journal:hover {
-  border-color: #fb923c;
-  color: #ea580c;
+  border-color: #ea580c;
+  background: #ea580c;
+  color: #ffffff;
+}
+
+.schedule-card .schedule-card__edit {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.schedule-card .schedule-card__edit:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.schedule-card .schedule-card__delete {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.schedule-card .schedule-card__delete:hover {
+  border-color: #ef4444;
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .schedule-panel__memo {
