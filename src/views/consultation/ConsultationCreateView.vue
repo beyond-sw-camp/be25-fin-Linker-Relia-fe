@@ -1629,7 +1629,11 @@ onMounted(async () => {
   if (isEditMode.value) {
     await hydrateDraft()
   } else if (/^\d{4}-\d{2}-\d{2}$/.test(String(route.query.scheduleDate || ''))) {
-    form.nextScheduledAt = `${route.query.scheduleDate}T09:00`
+    const testDate = new Date(`${route.query.scheduleDate}T00:00`)
+    if (!isNaN(testDate.getTime()) && testDate.toISOString().startsWith(route.query.scheduleDate)) {
+      form.nextScheduledAt = `${route.query.scheduleDate}T09:00`
+    }
+  }
   }
 
   if (needsExistingCustomer.value && !customerSearchTouched.value) {
