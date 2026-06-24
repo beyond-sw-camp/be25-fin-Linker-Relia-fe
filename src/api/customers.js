@@ -15,8 +15,8 @@ export async function getCustomerDetail(customerId) {
   return response.data
 }
 
-export async function getCustomerContracts(customerId) {
-  const response = await authApi.get(`/customers/${customerId}/contracts`)
+export async function getCustomerContracts(customerId, params) {
+  const response = await authApi.get(`/customers/${customerId}/contracts`, { params })
   return response.data
 }
 
@@ -27,6 +27,11 @@ export async function getCustomerConsultations(customerId, params) {
 
 export async function getCustomerAiBriefing(customerId) {
   const response = await authApi.get(`/customers/${customerId}/ai-briefing`)
+  return response.data
+}
+
+export async function createCustomerAiBriefing(customerId) {
+  const response = await authApi.post(`/customers/${customerId}/ai-briefing`)
   return response.data
 }
 

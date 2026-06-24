@@ -118,7 +118,9 @@
                   </button>
                 </td>
                 <td v-if="hasContractTableColumn('customerName')">
-                  <button type="button" class="contract-table__link">{{ contract.customerName }}</button>
+                  <button type="button" class="contract-table__link" @click="goToCustomerDetail(contract)">
+                    {{ contract.customerName }}
+                  </button>
                 </td>
                 <td v-if="hasContractTableColumn('insuranceCompanyName')">{{ contract.insuranceCompanyName }}</td>
                 <td v-if="hasContractTableColumn('insuranceProductName')" class="contract-table__strong">{{ contract.insuranceProductName }}</td>
@@ -370,6 +372,26 @@ function goToContractDetail(contract) {
     },
     query: {
       from: route.name,
+    },
+  })
+}
+
+function goToCustomerDetail(contract) {
+  const customerId = contract?.customerId
+
+  if (!customerId) {
+    contractListError.value = '고객 상세 조회에 필요한 고객 ID가 없습니다.'
+    return
+  }
+
+  router.push({
+    name: 'customer-detail',
+    params: {
+      customerId,
+    },
+    query: {
+      from: route.name,
+      returnTo: route.fullPath,
     },
   })
 }

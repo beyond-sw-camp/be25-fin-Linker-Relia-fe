@@ -60,7 +60,6 @@
                     {{ category.name }}
                   </option>
                 </select>
-                <small>오른쪽 보종 관리 영역은 아직 작업 전입니다.</small>
               </label>
             </div>
           </div>
