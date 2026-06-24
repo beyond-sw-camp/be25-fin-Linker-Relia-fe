@@ -27,7 +27,10 @@
           <div>
             <div class="customer-profile__name-row">
               <strong>{{ customer.customerName }}</strong>
-              <span class="customer-profile__status">
+              <span
+                class="customer-profile__status"
+                :class="getCustomerStatusBadgeClass(customer.interestYn, customer.customerStatus)"
+              >
                 {{ customer.interestYn ? '관심 고객' : getCustomerStatusLabel(customer.customerStatus) }}
               </span>
               <span v-if="customer.interestReason" class="customer-profile__interest-reason">
@@ -654,6 +657,26 @@ function formatDDay(value) {
 
   return `D+${Math.abs(parsed)}`
 }
+
+function getCustomerStatusBadgeClass(interestYn, customerStatus) {
+  if (interestYn) {
+    return 'customer-profile__status--interest'
+  }
+
+  if (customerStatus === 'PROSPECT') {
+    return 'customer-profile__status--prospect'
+  }
+
+  if (customerStatus === 'CONTRACTED') {
+    return 'customer-profile__status--contracted'
+  }
+
+  if (customerStatus === 'CLOSED') {
+    return 'customer-profile__status--closed'
+  }
+
+  return 'customer-profile__status--default'
+}
 </script>
 
 <style scoped>
@@ -735,8 +758,33 @@ function formatDDay(value) {
 }
 
 .customer-profile__status {
+  color: #475569;
+  background: #f8fafc;
+}
+
+.customer-profile__status--default {
+  color: #475569;
+  background: #f8fafc;
+}
+
+.customer-profile__status--interest {
+  color: #ea580c;
+  background: #fff7ed;
+}
+
+.customer-profile__status--prospect {
   color: #2563eb;
   background: #e8f0ff;
+}
+
+.customer-profile__status--contracted {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.customer-profile__status--closed {
+  color: #dc2626;
+  background: #fee2e2;
 }
 
 .customer-profile__interest-reason {
