@@ -13,7 +13,7 @@
         </div>
         <div class="app-header__profile-text">
           <strong>{{ authStore.userName || '사용자' }}</strong>
-          <span>{{ roleLabel }}</span>
+          <span>{{ profileMetaLabel }}</span>
         </div>
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
@@ -70,6 +70,16 @@ const pageTitle = computed(() => {
   return route.meta.title ?? '대시보드'
 })
 const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] ?? '사용자')
+const profileMetaLabel = computed(() => {
+  const organizationName = getOrganizationName()
+
+  if (organizationName && roleLabel.value) {
+    return `${organizationName} · ${roleLabel.value}`
+  }
+
+  return organizationName || roleLabel.value
+})
+
 const isBranchScopedRoute = computed(() => (
   Object.keys(BRANCH_SCOPED_TITLE_BY_ROUTE).includes(route.name) &&
   authStore.userRole === USER_ROLES.BRANCH_MANAGER
