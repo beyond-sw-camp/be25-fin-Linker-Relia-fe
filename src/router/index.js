@@ -344,19 +344,19 @@ router.beforeEach(async (to) => {
   }
 
   if (to.path === '/login') {
-    if (!authStore.accessToken) {
+    if (!authStore.accessToken || !authStore.userRole) {
       return true
     }
 
-    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? '/'
+    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? true
   }
 
   if (to.path === '/') {
-    if (!authStore.accessToken) {
+    if (!authStore.accessToken || !authStore.userRole) {
       return '/login'
     }
 
-    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? true
+    return DEFAULT_ROUTE_BY_ROLE[authStore.userRole] ?? '/login'
   }
 
   if (requiresAuth && !authStore.accessToken) {
