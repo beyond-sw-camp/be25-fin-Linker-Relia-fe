@@ -253,6 +253,7 @@
                   <th>고객 수</th>
                   <th>계약 수</th>
                   <th>유지율</th>
+                  <th v-if="canResignFp" class="table-action-cell">관리</th>
                 </tr>
               </thead>
               <tbody>
@@ -270,6 +271,16 @@
                   <td>{{ formatCount(fp.customerCount) }}</td>
                   <td>{{ formatCount(fp.contractCount) }}</td>
                   <td>{{ formatPercent(fp.retentionRate) }}</td>
+                  <td v-if="canResignFp" class="table-action-cell">
+                    <button
+                      class="table-action-button table-action-button--danger"
+                      type="button"
+                      :disabled="isResignedFp(fp)"
+                      @click.stop="openResignModal(fp, $event)"
+                    >
+                      {{ getResignButtonLabel(fp) }}
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -309,7 +320,7 @@
         <template v-else>
           <div class="fp-profile">
             <div class="fp-profile__avatar">{{ fpDetail.fpName?.slice(0, 1) || '-' }}</div>
-            <div>
+            <div class="fp-profile__content">
               <h3>{{ fpDetail.fpName }}</h3>
               <p>{{ fpDetail.empCode }} · {{ fpDetail.organizationName }}</p>
               <dl>
@@ -327,6 +338,15 @@
                 </div>
               </dl>
             </div>
+            <button
+              v-if="canResignFp"
+              class="button button--danger fp-profile__action"
+              type="button"
+              :disabled="isResignedFp(fpDetail)"
+              @click="openResignModal(fpDetail, $event)"
+            >
+              {{ getResignButtonLabel(fpDetail) }}
+            </button>
           </div>
 
           <div v-if="fpDetail.performanceSummary" class="summary-grid">
@@ -417,11 +437,121 @@
         </template>
       </section>
     </template>
+
+    <v-alert
+      v-if="resignNoticeMessage"
+      :type="resignNoticeType"
+      variant="tonal"
+      density="comfortable"
+      class="termination-alert"
+    >
+      {{ resignNoticeMessage }}
+    </v-alert>
+
+    <div
+      v-if="isResignModalOpen"
+      class="termination-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="termination-modal-title"
+    >
+      <div class="termination-modal__backdrop" @click="closeResignModal"></div>
+      <form
+        ref="resignModalPanel"
+        class="termination-modal__panel"
+        tabindex="-1"
+        @keydown="handleResignModalKeydown"
+        @submit.prevent="submitResignFp"
+      >
+        <header class="termination-modal__header">
+          <div>
+            <h3 id="termination-modal-title">설계사 해촉 처리</h3>
+            <p>해촉 처리 전 설계사 정보를 확인하세요. 해촉일은 오늘 날짜로 처리됩니다.</p>
+          </div>
+          <button type="button" aria-label="해촉 처리 창 닫기" @click="closeResignModal">
+            <span class="mdi mdi-close" aria-hidden="true"></span>
+          </button>
+        </header>
+
+        <v-alert
+          v-if="resignErrorMessage"
+          type="error"
+          variant="tonal"
+          density="comfortable"
+        >
+          {{ resignErrorMessage }}
+        </v-alert>
+
+        <v-alert
+          v-if="resignResult"
+          type="success"
+          variant="tonal"
+          density="comfortable"
+        >
+          해촉 처리가 완료되었습니다. 자동 생성된 인수인계 요청
+          {{ formatCount(resignResult.handoverRequestCount) }}건
+        </v-alert>
+
+        <dl class="termination-summary">
+          <div>
+            <dt>설계사명</dt>
+            <dd>{{ selectedResignFpName }}</dd>
+          </div>
+          <div>
+            <dt>사번</dt>
+            <dd>{{ selectedResignFp?.empCode || '-' }}</dd>
+          </div>
+          <div>
+            <dt>소속 지점</dt>
+            <dd>{{ selectedResignFp?.organizationName || '-' }}</dd>
+          </div>
+          <div>
+            <dt>담당 고객 수</dt>
+            <dd>{{ formatNullableCount(selectedResignCustomerCount) }}</dd>
+          </div>
+          <div>
+            <dt>보유 계약 수</dt>
+            <dd>{{ formatNullableCount(selectedResignContractCount) }}</dd>
+          </div>
+        </dl>
+
+        <p class="termination-notice">
+          해촉 처리 시 오늘 날짜 기준으로 담당 고객에 대한 인수인계 요청이 자동 생성됩니다.
+        </p>
+
+        <div class="termination-modal__actions">
+          <button
+            v-if="resignResult"
+            class="button button--secondary"
+            type="button"
+            @click="goToResignationHandovers"
+          >
+            인수인계 목록 보기
+          </button>
+          <button
+            class="button button--secondary"
+            type="button"
+            :disabled="isResignSubmitting"
+            @click="closeResignModal"
+          >
+            {{ resignResult ? '닫기' : '취소' }}
+          </button>
+          <button
+            v-if="!resignResult"
+            class="button button--danger"
+            type="submit"
+            :disabled="isResignSubmitting"
+          >
+            {{ isResignSubmitting ? '처리 중...' : '해촉 처리' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -430,7 +560,10 @@ import {
   getOrganizationFps,
   getOrganizations,
   getOrganizationsBranches,
+  resignOrganizationFp,
 } from '../../api/organizations'
+import { USER_ROLES } from '../../constants/auth'
+import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps({
   mode: {
@@ -444,24 +577,34 @@ const props = defineProps({
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const organizations = ref([])
 const branches = ref([])
 const fpPage = ref(createEmptyPage(10))
 const fpDetail = ref(null)
 const contractPage = ref(createEmptyPage(10))
+const selectedResignFp = ref(null)
+const resignResult = ref(null)
+const resignModalPanel = ref(null)
+const resignModalTrigger = ref(null)
 
 const isOrganizationLoading = ref(false)
 const isBranchesLoading = ref(false)
 const isFpsLoading = ref(false)
 const isFpDetailLoading = ref(false)
 const isContractsLoading = ref(false)
+const isResignModalOpen = ref(false)
+const isResignSubmitting = ref(false)
 
 const organizationError = ref('')
 const branchesError = ref('')
 const fpsError = ref('')
 const fpDetailError = ref('')
 const contractsError = ref('')
+const resignErrorMessage = ref('')
+const resignNoticeMessage = ref('')
+const resignNoticeType = ref('success')
 
 const organizationStatus = ref('')
 const organizationListPage = ref(1)
@@ -490,6 +633,23 @@ const organizationStatusOptions = [
 ]
 
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
+const canResignFp = computed(() => authStore.userRole === USER_ROLES.BRANCH_MANAGER)
+
+const selectedResignFpName = computed(() => (
+  selectedResignFp.value?.fpName
+  ?? selectedResignFp.value?.userName
+  ?? '-'
+))
+
+const selectedResignCustomerCount = computed(() => (
+  selectedResignFp.value?.customerCount
+  ?? null
+))
+
+const selectedResignContractCount = computed(() => (
+  selectedResignFp.value?.contractCount
+  ?? null
+))
 
 const pageTitle = computed(() => {
   if (props.mode === 'chart') return '조직도 조회'
@@ -557,6 +717,10 @@ watch(organizationListTotalPages, (totalPages) => {
 
 onMounted(() => {
   initializePage()
+})
+
+onBeforeUnmount(() => {
+  resignModalTrigger.value = null
 })
 
 async function initializePage() {
@@ -755,6 +919,255 @@ function changeContractPage(page) {
   loadFpContracts(String(route.params.fpId))
 }
 
+async function openResignModal(fp, event = null) {
+  if (isResignedFp(fp)) {
+    return
+  }
+
+  resignModalTrigger.value = event?.currentTarget ?? getActiveElement()
+  selectedResignFp.value = normalizeResignTargetFp(fp)
+  resignErrorMessage.value = ''
+  resignResult.value = null
+  isResignModalOpen.value = true
+
+  await nextTick()
+  focusFirstResignModalElement()
+}
+
+function closeResignModal() {
+  if (isResignSubmitting.value) return
+
+  isResignModalOpen.value = false
+  selectedResignFp.value = null
+  resignErrorMessage.value = ''
+  resignResult.value = null
+
+  restoreResignModalTriggerFocus()
+}
+
+function handleResignModalKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeResignModal()
+    return
+  }
+
+  if (event.key !== 'Tab') {
+    return
+  }
+
+  trapResignModalFocus(event)
+}
+
+function trapResignModalFocus(event) {
+  const focusableElements = getResignModalFocusableElements()
+
+  if (focusableElements.length === 0) {
+    event.preventDefault()
+    resignModalPanel.value?.focus()
+    return
+  }
+
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements[focusableElements.length - 1]
+  const activeElement = getActiveElement()
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault()
+    lastElement.focus()
+    return
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault()
+    firstElement.focus()
+  }
+}
+
+function focusFirstResignModalElement() {
+  const [firstElement] = getResignModalFocusableElements()
+  const target = firstElement ?? resignModalPanel.value
+  target?.focus()
+}
+
+function restoreResignModalTriggerFocus() {
+  const trigger = resignModalTrigger.value
+  resignModalTrigger.value = null
+
+  nextTick(() => {
+    if (trigger && typeof trigger.focus === 'function' && containsElement(trigger)) {
+      trigger.focus()
+    }
+  })
+}
+
+function getResignModalFocusableElements() {
+  const panel = resignModalPanel.value
+  if (!panel) return []
+
+  const selector = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',')
+
+  return Array.from(panel.querySelectorAll(selector))
+    .filter((element) => !element.hasAttribute('disabled') && element.offsetParent !== null)
+}
+
+function getActiveElement() {
+  return typeof document === 'undefined' ? null : document.activeElement
+}
+
+function containsElement(element) {
+  return typeof document !== 'undefined' && document.contains(element)
+}
+
+async function submitResignFp() {
+  const fpId = getSelectedResignFpId()
+
+  if (!fpId) {
+    resignErrorMessage.value = '해촉 처리할 설계사를 확인한 뒤 다시 시도해 주세요.'
+    return
+  }
+
+  resignErrorMessage.value = ''
+  resignNoticeMessage.value = ''
+  isResignSubmitting.value = true
+
+  try {
+    const resignedAt = getTodayDateInputValue()
+    const result = await resignOrganizationFp(fpId, {
+      resignedAt,
+    })
+
+    resignResult.value = result ?? {
+      handoverRequestCount: 0,
+    }
+    resignNoticeType.value = 'success'
+    resignNoticeMessage.value = `해촉 처리가 완료되었습니다. 자동 생성된 인수인계 요청 ${formatCount(resignResult.value.handoverRequestCount)}건`
+    applyResignResultToCurrentFp(fpId, result)
+    await refetchCurrentFpData()
+  } catch (error) {
+    if (isAlreadyResignedError(error)) {
+      resignResult.value = { handoverRequestCount: 0 }
+      resignNoticeType.value = 'success'
+      resignNoticeMessage.value = '이미 해촉 처리된 설계사입니다.'
+      applyResignResultToCurrentFp(fpId, {
+        userStatus: 'RESIGNED',
+        resignedAt: selectedResignFp.value?.resignedAt ?? getTodayDateInputValue(),
+      })
+      await refetchCurrentFpData()
+      return
+    }
+
+    resignErrorMessage.value = getResignErrorMessage(error)
+  } finally {
+    isResignSubmitting.value = false
+  }
+}
+
+function getSelectedResignFpId() {
+  return getFpIdentifier(selectedResignFp.value)
+}
+
+function normalizeResignTargetFp(fp) {
+  if (!fp) return null
+
+  return {
+    ...fp,
+    customerCount: fp.customerCount ?? null,
+    contractCount: fp.contractCount ?? null,
+  }
+}
+
+function getResignButtonLabel(fp) {
+  return isResignedFp(fp) ? '해촉 완료' : '해촉 처리'
+}
+
+function isResignedFp(fp) {
+  if (!fp) return false
+
+  return fp.userStatus === 'RESIGNED' || Boolean(fp.resignedAt)
+}
+
+function getFpIdentifier(fp) {
+  return fp?.id
+    ?? fp?.fpId
+    ?? fp?.userId
+    ?? fp?.advisorId
+    ?? null
+}
+
+async function refetchCurrentFpData() {
+  if (props.mode === 'fps') {
+    await loadFps()
+    return
+  }
+
+  if (props.mode === 'fp-detail') {
+    await reloadFpDetail()
+  }
+}
+
+function applyResignResultToCurrentFp(fpId, result = {}) {
+  const nextStatus = result?.userStatus ?? 'RESIGNED'
+  const nextResignedAt = result?.resignedAt ?? getTodayDateInputValue()
+  const patch = {
+    userStatus: nextStatus,
+    resignedAt: nextResignedAt,
+  }
+
+  selectedResignFp.value = mergeFpById(selectedResignFp.value, fpId, patch)
+  fpDetail.value = mergeFpById(fpDetail.value, fpId, patch)
+
+  if (Array.isArray(fpPage.value.content)) {
+    fpPage.value = {
+      ...fpPage.value,
+      content: fpPage.value.content.map((fp) => mergeFpById(fp, fpId, patch)),
+    }
+  }
+}
+
+function mergeFpById(fp, fpId, patch) {
+  if (!fp || String(getFpIdentifier(fp)) !== String(fpId)) {
+    return fp
+  }
+
+  return {
+    ...fp,
+    ...patch,
+  }
+}
+
+function getResignErrorMessage(error) {
+  if (isAlreadyResignedError(error)) {
+    return '이미 해촉 처리된 설계사입니다.'
+  }
+
+  if (error?.response?.data?.errorCode === 'ORG_003') {
+    return '존재하지 않는 설계사입니다.'
+  }
+
+  return error?.response?.data?.message || '해촉 처리에 실패했습니다.'
+}
+
+function isAlreadyResignedError(error) {
+  const status = error?.response?.status
+  const errorCode = error?.response?.data?.errorCode
+
+  return status === 409 || errorCode === 'ORG_004'
+}
+
+function goToResignationHandovers() {
+  router.push({
+    name: 'handover-requests',
+  })
+}
+
 function goToFpDetail(fpId) {
   router.push({
     name: 'organization-fp-detail',
@@ -924,6 +1337,14 @@ function getLatestAvailableClosingMonth() {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   return `${year}-${month}`
+}
+
+function getTodayDateInputValue() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 const StatusBadge = defineComponent({
@@ -1120,6 +1541,16 @@ const PaginationBar = defineComponent({
   border-color: #e2b8a8;
   background: #eef4fb;
   color: #1f2937;
+}
+
+.button--danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .organization-workspace {
@@ -1569,6 +2000,38 @@ tbody tr:last-child td {
   text-align: center;
 }
 
+.table-action-button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #e2b8a8;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #4b332a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-action-button--danger {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.table-action-button:hover {
+  background: #fff7ed;
+}
+
+.table-action-button:disabled {
+  border-color: #d8dce3;
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.table-action-button:disabled:hover {
+  background: #f8fafc;
+}
+
 .clickable-row {
   cursor: pointer;
 }
@@ -1644,6 +2107,16 @@ tbody tr:last-child td {
   display: flex;
   gap: 18px;
   align-items: center;
+}
+
+.fp-profile__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.fp-profile__action {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .fp-profile__avatar {
@@ -1760,6 +2233,116 @@ tbody tr:last-child td {
   line-height: 1;
 }
 
+.termination-alert {
+  margin-top: -4px;
+}
+
+.termination-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.termination-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.termination-modal__panel {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
+}
+
+.termination-modal__header,
+.termination-modal__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.termination-modal__header h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.termination-modal__header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.termination-modal__header button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.termination-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.termination-summary div {
+  min-height: 70px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #e8eef5;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.termination-summary dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.termination-summary dd {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.termination-notice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.termination-modal__actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .state-box {
   min-height: 220px;
   display: grid;
@@ -1837,7 +2420,15 @@ tbody tr:last-child td {
     margin-left: 0;
   }
 
+  .fp-profile__action {
+    margin-left: 0;
+  }
+
   .fp-profile dl {
+    grid-template-columns: 1fr;
+  }
+
+  .termination-summary {
     grid-template-columns: 1fr;
   }
 

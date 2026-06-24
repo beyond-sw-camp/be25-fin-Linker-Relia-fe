@@ -54,6 +54,11 @@ export async function getOrganizationFpContracts(fpId, params = {}) {
   return unwrapResult(response) ?? createEmptyPage(params)
 }
 
+export async function resignOrganizationFp(fpId, payload) {
+  const response = await authApi.patch(`/organizations/fps/${fpId}/resign`, payload)
+  return unwrapResult(response) ?? null
+}
+
 function createEmptyPage(params = {}) {
   return {
     content: [],
