@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 docs/design-ref
+.env
+.env.*

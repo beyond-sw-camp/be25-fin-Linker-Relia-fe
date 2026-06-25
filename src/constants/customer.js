@@ -1,0 +1,85 @@
+export const CUSTOMER_STATUS_OPTIONS = [
+  { label: '잠재 고객', value: 'PROSPECT' },
+  { label: '계약 고객', value: 'CONTRACTED' },
+  { label: '종료 고객', value: 'CLOSED' },
+]
+
+export const CONTRACT_STATUS_OPTIONS = [
+  { label: '전체', value: '' },
+  { label: '유지', value: 'MAINTENANCE' },
+  { label: '만기', value: 'COMPLETED' },
+  { label: '해지', value: 'TERMINATED' },
+  { label: '실효', value: 'LAPSED' },
+]
+
+export const INTEREST_REASON_OPTIONS = [
+  { label: '보험료 미납', value: 'UNPAID' },
+  { label: '갱신 예정', value: 'RENEWAL_DUE' },
+  { label: '만기 예정', value: 'MATURITY_DUE' },
+]
+
+export const CUSTOMER_STATUS_LABELS = Object.freeze({
+  PROSPECT: '잠재 고객',
+  CONTRACTED: '계약 고객',
+  CLOSED: '종료 고객',
+})
+
+export const INTEREST_REASON_LABELS = Object.freeze({
+  UNPAID: '보험료 미납',
+  RENEWAL_DUE: '갱신 예정',
+  MATURITY_DUE: '만기 예정',
+})
+
+export const CUSTOMER_GRADE_LABELS = Object.freeze({
+  VIP: 'VIP',
+  GOLD: 'Gold',
+  NORMAL: 'Normal',
+  SILVER: 'Silver',
+  BRONZE: 'Bronze',
+})
+
+export const CONSULTATION_TYPE_LABELS = Object.freeze({
+  NEW_CONTRACT: '신규',
+  CLAIM: '보험금 청구',
+  TERMINATION: '해지',
+  RENEWAL: '갱신',
+})
+
+export const CONSULTATION_CHANNEL_LABELS = Object.freeze({
+  VISIT: '방문',
+  PHONE: '전화',
+  MESSAGE: '메시지',
+  ONLINE: '온라인',
+})
+
+export const CONTRACT_STATUS_LABELS = Object.freeze({
+  MAINTENANCE: '계약 유지',
+  MATURED: '만기',
+  COMPLETED: '만기',
+  LAPSED: '실효',
+  TERMINATED: '해지',
+})
+
+export function getCustomerStatusLabel(value) {
+  return CUSTOMER_STATUS_LABELS[value] ?? value ?? '-'
+}
+
+export function getInterestReasonLabel(value) {
+  return INTEREST_REASON_LABELS[value] ?? value ?? '-'
+}
+
+export function getCustomerGradeLabel(value) {
+  return CUSTOMER_GRADE_LABELS[value] ?? value ?? '-'
+}
+
+export function getConsultationTypeLabel(value) {
+  return CONSULTATION_TYPE_LABELS[value] ?? value ?? '-'
+}
+
+export function getConsultationChannelLabel(value) {
+  return CONSULTATION_CHANNEL_LABELS[value] ?? value ?? '-'
+}
+
+export function getContractStatusLabel(value) {
+  return CONTRACT_STATUS_LABELS[value] ?? value ?? '-'
+}
