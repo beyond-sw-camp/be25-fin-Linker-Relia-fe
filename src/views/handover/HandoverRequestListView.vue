@@ -82,8 +82,10 @@
           <thead>
             <tr>
               <th>고객명</th>
+              <th>등급</th>
               <th v-if="showBranchColumn">지점</th>
-              <th>현재 담당</th>
+              <th>현재 FP</th>
+              <th>추천 FP</th>
               <th>요청 유형</th>
               <th>진행 상태</th>
               <th>요청일</th>
@@ -109,10 +111,16 @@
                   {{ handover.customerName }}
                 </button>
               </td>
+              <td>{{ getCustomerGradeLabel(handover.customerGrade) }}</td>
               <td v-if="showBranchColumn">{{ handover.organizationName }}</td>
               <td>
                 <span :class="{ 'handover-table__muted': !handover.currentManagerName }">
                   {{ handover.currentManagerName || '- (해촉)' }}
+                </span>
+              </td>
+              <td>
+                <span :class="{ 'handover-table__muted': !handover.recommendedFpName }">
+                  {{ handover.recommendedFpName || '-' }}
                 </span>
               </td>
               <td>
@@ -171,6 +179,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getHandovers, getHandoverSummary } from '../../api/handovers'
 import { useBranchFilter } from '../../composables/useBranchFilter'
+import { getCustomerGradeLabel } from '../../constants/customer'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -213,9 +222,13 @@ const isLoading = ref(false)
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const showBranchColumn = computed(() => isHqManager.value)
-const tableColumnCount = computed(() => (showBranchColumn.value ? 8 : 7))
+const tableColumnCount = computed(() => (showBranchColumn.value ? 10 : 9))
 const filteredRows = computed(() => handoverRows.value)
 const primaryActionLabel = computed(() => (isHqManager.value ? '상세 보기' : '결재 처리'))
+
+const selectedBranchOption = computed(() =>
+  branches.value.find((branch) => branch.value === filters.organizationCode) ?? null,
+)
 
 const rangeLabel = computed(() => {
   if (totalElements.value === 0) {
@@ -311,6 +324,9 @@ function buildRequestParams() {
 
   if (showBranchFilter.value && filters.organizationCode) {
     params.organizationCode = filters.organizationCode
+    if (selectedBranchOption.value?.organizationId) {
+      params.organizationId = selectedBranchOption.value.organizationId
+    }
   }
 
   params.page = currentPage.value
@@ -324,6 +340,9 @@ function buildSummaryParams() {
 
   if (showBranchFilter.value && filters.organizationCode) {
     params.organizationCode = filters.organizationCode
+    if (selectedBranchOption.value?.organizationId) {
+      params.organizationId = selectedBranchOption.value.organizationId
+    }
   }
 
   return params
@@ -355,8 +374,10 @@ function normalizeRows(source) {
     handoverId: handover.handoverRequestId,
     customerId: null,
     customerName: handover.customerName ?? '-',
-    organizationName: handover.organizationName ?? handover.branchName ?? '-',
+    customerGrade: handover.customerGrade ?? handover.customer?.customerGrade ?? '-',
+    organizationName: resolveBranchName(handover) ?? handover.organizationName ?? handover.branchName ?? '-',
     currentManagerName: handover.currentFpName ?? '',
+    recommendedFpName: getRecommendedFpName(handover),
     requestType: normalizeRequestType(handover.requestType),
     status: handover.requestStatus ?? 'MANAGER_PENDING',
     requestedAt: formatDate(handover.createdAt),
@@ -367,6 +388,24 @@ function normalizeRows(source) {
       handover.reviewedAt,
     ),
   }))
+}
+
+function resolveBranchName(handover = {}) {
+  const code = handover.organizationCode ?? handover.branchCode
+  if (!code) {
+    return ''
+  }
+
+  const branch = branches.value.find((branchOption) => branchOption.value === code)
+  return branch?.organizationName ?? branch?.branchName ?? ''
+}
+
+function getRecommendedFpName(handover = {}) {
+  return (
+    handover.recommendation?.recommendFpName ??
+    handover.recommendFpName ??
+    ''
+  )
 }
 
 function createSampleSummary() {
@@ -383,8 +422,10 @@ function createSampleHandovers() {
       handoverId: 'HO-001',
       customerId: null,
       customerName: '홍길동',
+      customerGrade: 'GOLD',
       organizationName: '강남지점',
       currentManagerName: '',
+      recommendedFpName: '이설계',
       requestType: 'RESIGNATION',
       status: 'MANAGER_PENDING',
       requestedAt: '2026-06-01',
@@ -394,8 +435,10 @@ function createSampleHandovers() {
       handoverId: 'HO-002',
       customerId: null,
       customerName: '김영희',
+      customerGrade: 'SILVER',
       organizationName: '서초지점',
       currentManagerName: '이설계',
+      recommendedFpName: '박설계',
       requestType: 'VOLUNTARY',
       status: 'MANAGER_PENDING',
       requestedAt: '2026-05-28',
@@ -405,8 +448,10 @@ function createSampleHandovers() {
       handoverId: 'HO-003',
       customerId: null,
       customerName: '박민수',
+      customerGrade: 'VIP',
       organizationName: '강남지점',
       currentManagerName: '',
+      recommendedFpName: '최설계',
       requestType: 'RESIGNATION',
       status: 'COMPLETED',
       requestedAt: '2026-05-20',
