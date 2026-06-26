@@ -646,12 +646,14 @@ function getChannelLabel(channel) {
   const labels = {
     PHONE: '전화',
     VISIT: '방문',
+    MESSAGE: '메시지',
     ONLINE: '온라인',
     VIDEO: '화상',
     CHAT: '채팅',
   }
+  const normalizedChannel = String(channel ?? '').toUpperCase()
 
-  return labels[channel] || channel || '-'
+  return labels[normalizedChannel] || channel || '-'
 }
 
 function getGradeClass(grade) {
