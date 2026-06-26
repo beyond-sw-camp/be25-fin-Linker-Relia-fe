@@ -4,14 +4,6 @@
       상담일지가 등록되었습니다.
     </v-snackbar>
 
-    <section class="metric-row">
-      <article v-for="metric in metrics" :key="metric.label">
-        <v-icon :icon="metric.icon" size="18" />
-        <strong>{{ metric.value }}</strong>
-        <span>{{ metric.label }}</span>
-      </article>
-    </section>
-
     <section class="filter-panel">
       <h3>검색 및 필터</h3>
       <div class="filter-grid">
@@ -101,6 +93,14 @@
           상담일지 작성
         </v-btn>
       </div>
+    </section>
+
+    <section class="metric-row">
+      <article v-for="metric in metrics" :key="metric.label">
+        <v-icon :icon="metric.icon" size="18" />
+        <strong>{{ metric.value }}</strong>
+        <span>{{ metric.label }}</span>
+      </article>
     </section>
 
     <section class="consultation-panel">
