@@ -1,19 +1,11 @@
 <template>
   <section class="organizations-page">
-    <header class="page-header">
+    <header class="page-header" :class="{ 'page-header--compact': mode === 'branches' || mode === 'fps' }">
       <div>
         <h2>{{ pageTitle }}</h2>
         <p>{{ pageDescription }}</p>
       </div>
 
-      <div v-if="mode === 'fps'" class="page-header__actions">
-        <button class="button button--secondary" type="button" @click="resetFpFilters">
-          초기화
-        </button>
-        <button class="button button--primary" type="button" @click="loadFps">
-          조회
-        </button>
-      </div>
     </header>
 
     <template v-if="mode === 'chart'">
@@ -142,18 +134,22 @@
           </table>
         </div>
 
-        <PaginationBar
-          :page="organizationListPage"
-          :total-pages="organizationListTotalPages"
-          :total-count="filteredOrganizationRows.length"
-          @change="changeOrganizationListPage"
-        />
+        <div class="organization-pagination">
+          <span>총 {{ formatCount(filteredOrganizationRows.length) }}건</span>
+          <v-pagination
+            :model-value="organizationListPage"
+            :length="Math.max(organizationListTotalPages, 1)"
+            total-visible="7"
+            rounded="circle"
+            @update:model-value="changeOrganizationListPage"
+          />
+        </div>
         </section>
       </div>
     </template>
 
     <template v-else-if="mode === 'branches'">
-      <section class="panel">
+      <section class="panel organization-list-panel">
         <div class="panel__header">
           <div>
             <h3>지점 목록</h3>
@@ -164,7 +160,7 @@
         <LoadingState v-if="isBranchesLoading" message="지점 목록을 불러오고 있습니다." />
         <ErrorState v-else-if="branchesError" :message="branchesError" />
         <EmptyState v-else-if="branches.length === 0" message="조회된 지점이 없습니다." />
-        <div v-else class="table-scroll">
+        <div v-else class="table-scroll organization-table-scroll">
           <table>
             <thead>
               <tr>
@@ -192,7 +188,7 @@
     </template>
 
     <template v-else-if="mode === 'fps'">
-      <section class="panel">
+      <section class="panel organization-filter-panel">
         <div class="filter-grid">
           <label class="field">
             <span>검색어</span>
@@ -226,10 +222,18 @@
             :max="latestAvailableClosingMonth"
             class="organization-month-field"
           />
+          <div class="organization-filter-actions">
+            <button class="button button--secondary" type="button" @click="resetFpFilters">
+              초기화
+            </button>
+            <button class="button button--primary" type="button" @click="loadFps">
+              조회
+            </button>
+          </div>
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel organization-list-panel">
         <div class="panel__header">
           <div>
             <h3>FP 목록</h3>
@@ -241,7 +245,7 @@
         <ErrorState v-else-if="fpsError" :message="fpsError" />
         <EmptyState v-else-if="fpPage.content.length === 0" message="조회된 FP가 없습니다." />
         <template v-else>
-          <div class="table-scroll">
+          <div class="table-scroll organization-table-scroll">
             <table>
               <thead>
                 <tr>
@@ -285,18 +289,22 @@
               </tbody>
             </table>
           </div>
-          <PaginationBar
-            :page="fpPage.page"
-            :total-pages="fpPage.totalPages"
-            :total-count="fpPage.totalElements"
-            @change="changeFpPage"
-          />
+          <div class="organization-pagination">
+            <span>총 {{ formatCount(fpPage.totalElements) }}건</span>
+            <v-pagination
+              :model-value="fpPage.page"
+              :length="Math.max(fpPage.totalPages, 1)"
+              total-visible="7"
+              rounded="circle"
+              @update:model-value="changeFpPage"
+            />
+          </div>
         </template>
       </section>
     </template>
 
     <template v-else>
-      <section class="panel">
+      <section class="panel organization-detail-panel">
         <div class="detail-toolbar">
           <button class="button button--secondary" type="button" @click="goToFpList">
             목록으로
@@ -392,7 +400,7 @@
         </template>
       </section>
 
-      <section class="panel">
+      <section class="panel organization-list-panel">
         <div class="panel__header">
           <div>
             <h3>FP 계약 목록</h3>
@@ -404,7 +412,7 @@
         <ErrorState v-else-if="contractsError" :message="contractsError" />
         <EmptyState v-else-if="contractPage.content.length === 0" message="조회된 계약이 없습니다." />
         <template v-else>
-          <div class="table-scroll">
+          <div class="table-scroll organization-table-scroll">
             <table>
               <thead>
                 <tr>
@@ -428,12 +436,16 @@
               </tbody>
             </table>
           </div>
-          <PaginationBar
-            :page="contractPage.page"
-            :total-pages="contractPage.totalPages"
-            :total-count="contractPage.totalElements"
-            @change="changeContractPage"
-          />
+          <div class="organization-pagination">
+            <span>총 {{ formatCount(contractPage.totalElements) }}건</span>
+            <v-pagination
+              :model-value="contractPage.page"
+              :length="Math.max(contractPage.totalPages, 1)"
+              total-visible="7"
+              rounded="circle"
+              @update:model-value="changeContractPage"
+            />
+          </div>
         </template>
       </section>
     </template>
@@ -1418,52 +1430,6 @@ const EmptyState = defineComponent({
   },
 })
 
-const PaginationBar = defineComponent({
-  props: {
-    page: {
-      type: Number,
-      required: true,
-    },
-    totalPages: {
-      type: Number,
-      required: true,
-    },
-    totalCount: {
-      type: Number,
-      required: true,
-    },
-  },
-  emits: ['change'],
-  setup(componentProps, { emit }) {
-    return () => {
-      const totalPages = Math.max(componentProps.totalPages || 1, 1)
-      const pages = Array.from({ length: totalPages }, (_, index) => index + 1)
-
-      return h('div', { class: 'pagination-bar' }, [
-        h('span', `총 ${Number(componentProps.totalCount ?? 0).toLocaleString('ko-KR')}건`),
-        h('div', { class: 'pagination-bar__buttons' }, [
-          h('button', {
-            type: 'button',
-            disabled: componentProps.page <= 1,
-            onClick: () => emit('change', componentProps.page - 1),
-            'aria-label': '이전 페이지',
-          }, '<'),
-          ...pages.map((page) => h('button', {
-            type: 'button',
-            class: { active: page === componentProps.page },
-            onClick: () => emit('change', page),
-          }, String(page))),
-          h('button', {
-            type: 'button',
-            disabled: componentProps.page >= totalPages,
-            onClick: () => emit('change', componentProps.page + 1),
-            'aria-label': '다음 페이지',
-          }, '>'),
-        ]),
-      ])
-    }
-  },
-})
 </script>
 
 <style scoped>
@@ -1476,7 +1442,7 @@ const PaginationBar = defineComponent({
 .page-header,
 .panel__header,
 .detail-toolbar,
-.pagination-bar {
+.organization-pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1489,17 +1455,20 @@ const PaginationBar = defineComponent({
   line-height: 1.25;
 }
 
+.page-header--compact h2 {
+  font-size: 18px;
+}
+
 .page-header p,
 .panel__header p {
   margin: 6px 0 0;
   color: #3f2a22;
 }
 
-.page-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
+.page-header--compact p {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .panel {
@@ -1509,6 +1478,75 @@ const PaginationBar = defineComponent({
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+}
+
+.organization-filter-panel,
+.organization-list-panel,
+.organization-detail-panel {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.organization-list-panel .panel__header {
+  margin-bottom: 14px;
+}
+
+.organization-list-panel .panel__header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.organization-list-panel .panel__header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.organization-detail-panel .detail-toolbar {
+  margin-bottom: 14px;
+}
+
+.organization-detail-panel .fp-profile {
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.organization-detail-panel .fp-profile__avatar {
+  width: 52px;
+  height: 52px;
+  background: #fff7ed;
+  color: #f97316;
+  font-size: 20px;
+}
+
+.organization-detail-panel .fp-profile h3 {
+  font-size: 18px;
+}
+
+.organization-detail-panel .fp-profile p {
+  margin: 4px 0 12px;
+  font-size: 12px;
+}
+
+.organization-detail-panel .summary-grid {
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.organization-detail-panel .summary-card {
+  min-height: 108px;
+  padding: 16px;
+  box-shadow: none;
+}
+
+.organization-detail-panel .summary-card__value {
+  font-size: 26px;
 }
 
 .panel__header {
@@ -1918,6 +1956,17 @@ const PaginationBar = defineComponent({
   gap: 14px;
 }
 
+.organization-filter-panel .filter-grid {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 220px auto;
+  align-items: end;
+}
+
+.organization-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -1989,6 +2038,30 @@ th {
   color: #3f2a22;
   font-size: 14px;
   font-weight: 700;
+}
+
+.organization-table-scroll {
+  border: 1px solid #f0f3f8;
+  border-radius: 8px;
+}
+
+.organization-table-scroll table {
+  min-width: 980px;
+}
+
+.organization-table-scroll th,
+.organization-table-scroll td {
+  padding: 11px 13px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #475569;
+  font-size: 12px;
+  text-align: left;
+}
+
+.organization-table-scroll th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 800;
 }
 
 tbody tr:last-child td {
@@ -2066,41 +2139,19 @@ tbody tr:last-child td {
   color: #64748b;
 }
 
-.pagination-bar {
-  min-height: 86px;
-  margin-top: 0;
-  padding: 18px 30px;
-  background: #eaf4ff;
-}
-
-.pagination-bar span {
+.organization-pagination {
+  margin-top: 14px;
   color: #64748b;
   font-size: 13px;
 }
 
-.pagination-bar__buttons {
-  display: flex;
-  gap: 10px;
+.organization-list .organization-pagination {
+  padding: 0 30px 18px;
 }
 
-.pagination-bar button {
-  min-width: 40px;
-  height: 40px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: transparent;
-  cursor: pointer;
-  font-weight: 800;
-}
-
-.pagination-bar button.active {
-  background: #b33a00;
+.organization-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
   color: #ffffff;
-}
-
-.pagination-bar button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .fp-profile {
@@ -2391,6 +2442,14 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .organization-filter-panel .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .organization-filter-actions {
+    justify-content: flex-start;
+  }
+
   .organization-workspace {
     grid-template-columns: 1fr;
   }
@@ -2402,7 +2461,7 @@ tbody tr:last-child td {
   .page-header,
   .panel__header,
   .detail-toolbar,
-  .pagination-bar,
+  .organization-pagination,
   .fp-profile,
   .organization-list__header,
   .organization-list__tools {

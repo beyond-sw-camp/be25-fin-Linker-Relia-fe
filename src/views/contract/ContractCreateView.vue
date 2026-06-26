@@ -12,7 +12,7 @@
         <p>등록된 고객 정보를 불러와 보험 계약 정보를 등록할 수 있습니다.</p>
       </div>
       <v-btn variant="outlined" class="contract-create-page__back-button" @click="goToContractList">
-        ← 보유 계약 목록으로 돌아가기
+        목록
       </v-btn>
     </div>
 
@@ -725,7 +725,7 @@ function goToContractList() {
 }
 
 .contract-create-page__back-button {
-  min-width: 210px;
+  min-width: 72px;
   color: #334155;
   border-color: #d1d5db;
   font-weight: 700;

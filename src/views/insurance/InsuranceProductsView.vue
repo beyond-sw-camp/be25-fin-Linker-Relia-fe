@@ -1,11 +1,5 @@
 <template>
   <section class="insurance-products-page">
-    <div class="insurance-products-page__breadcrumb">
-      <span>보험 상품 관리</span>
-      <span class="insurance-products-page__breadcrumb-separator">/</span>
-      <strong>보험 상품 목록</strong>
-    </div>
-
     <div class="insurance-products-page__header">
       <div>
         <h2>{{ title }}</h2>
@@ -530,20 +524,6 @@ function getApiErrorMessage(error, fallbackMessage) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-}
-
-.insurance-products-page__header h2 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.25;
-  color: #111827;
-  font-weight: 800;
-}
-
-.insurance-products-page__header p {
-  margin: 8px 0 0;
-  color: #6b7280;
-  font-size: 13px;
 }
 
 .insurance-products-page__create-button {
