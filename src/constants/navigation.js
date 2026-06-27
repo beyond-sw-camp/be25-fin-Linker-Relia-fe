@@ -97,7 +97,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'consultations/fp',
     name: 'fp-consultations',
-    title: '상담일지 목록 조회',
+    title: '상담일지 목록',
     description: '완전히 등록된 상담일지 목록을 조회합니다.',
     roles: [USER_ROLES.FP],
   },
@@ -334,7 +334,7 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-clipboard-text-outline',
       children: [
         { title: '상담일지 작성', to: { name: 'consultation-create' } },
-        { title: '상담일지 목록 조회', to: { name: 'fp-consultations' } },
+        { title: '상담일지 목록', to: { name: 'fp-consultations' } },
       ],
     },
     {
