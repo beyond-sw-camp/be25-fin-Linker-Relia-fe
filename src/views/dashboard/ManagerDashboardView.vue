@@ -41,12 +41,6 @@
         </article>
       </div>
 
-      <div class="top-performer-grid">
-        <article v-for="performer in topPerformers" :key="performer.eyebrow" class="top-performer-card">
-          <span>{{ performer.eyebrow }}</span>
-          <p><strong>{{ performer.name }}</strong> {{ performer.meta }}</p>
-        </article>
-      </div>
     </section>
 
     <div class="chart-grid">
@@ -79,6 +73,13 @@
           </ul>
         </div>
       </section>
+    </div>
+
+    <div class="top-performer-grid">
+      <article v-for="performer in topPerformers" :key="performer.eyebrow" class="top-performer-card">
+        <span>{{ performer.eyebrow }}</span>
+        <p><strong>{{ performer.name }}</strong> {{ performer.meta }}</p>
+      </article>
     </div>
 
     <section class="ranking-panel">

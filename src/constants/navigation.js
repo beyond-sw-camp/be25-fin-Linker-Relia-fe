@@ -284,8 +284,8 @@ export const APP_PAGE_SPECS = [
   {
     path: 'commissions/hq',
     name: 'hq-commissions',
-    title: '수수료 대시보드',
-    description: '전사 수수료 대시보드 화면입니다.',
+    title: '전체 수수료 현황',
+    description: '전사 수수료 현황 화면입니다.',
     roles: [USER_ROLES.HQ_MANAGER],
   },
   {
@@ -352,6 +352,8 @@ export const MENU_BY_ROLE = {
         { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
       ],
     },
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
+    INSURANCE_PARTNER_MENU_SECTION,
     {
       title: '수수료 관리',
       icon: 'mdi-trending-up',
@@ -359,8 +361,6 @@ export const MENU_BY_ROLE = {
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
-    INSURANCE_PARTNER_MENU_SECTION,
   ],
   [USER_ROLES.BRANCH_MANAGER]: [
     {
@@ -391,19 +391,14 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '인수인계',
+      title: '인수인계 관리',
       icon: 'mdi-swap-horizontal',
       children: [
         { title: '인수인계 요청 목록', to: { name: 'handover-requests' } },
       ],
     },
-    {
-      title: '지점 설계사 관리',
-      icon: 'mdi-account-tie-outline',
-      children: [
-        { title: '지점 설계사 목록', to: { name: 'branch-advisors' } },
-      ],
-    },
+    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
+    INSURANCE_PARTNER_MENU_SECTION,
     {
       title: '수수료 관리',
       icon: 'mdi-trending-up',
@@ -411,8 +406,6 @@ export const MENU_BY_ROLE = {
         { title: '지점 수수료 현황', to: { name: 'branch-commissions' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
-    INSURANCE_PARTNER_MENU_SECTION,
   ],
   [USER_ROLES.HQ_MANAGER]: [
     {
@@ -429,17 +422,17 @@ export const MENU_BY_ROLE = {
       ],
     },
     {
-      title: '계약 관리',
-      icon: 'mdi-file-document-outline',
-      children: [
-        { title: '전체 계약 목록', to: { name: 'hq-contracts' } },
-      ],
-    },
-    {
       title: '상담 관리',
       icon: 'mdi-clipboard-text-outline',
       children: [
         { title: '전체 상담 목록', to: { name: 'hq-consultations' } },
+      ],
+    },
+    {
+      title: '계약 관리',
+      icon: 'mdi-file-document-outline',
+      children: [
+        { title: '전체 계약 목록', to: { name: 'hq-contracts' } },
       ],
     },
     {
@@ -455,7 +448,7 @@ export const MENU_BY_ROLE = {
       title: '수수료 관리',
       icon: 'mdi-trending-up',
       children: [
-        { title: '수수료 대시보드', to: { name: 'hq-commissions' } },
+        { title: '전체 수수료 현황', to: { name: 'hq-commissions' } },
       ],
     },
   ],

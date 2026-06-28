@@ -39,6 +39,18 @@
         </div>
 
         <div class="customer-page__search-group">
+          <v-select
+            v-model="filters.sortOrder"
+            :items="sortOptions"
+            item-title="label"
+            item-value="value"
+            label="정렬"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="customer-page__sort-filter"
+          />
+
           <v-text-field
             v-model="filters.customerName"
             label="고객명"
@@ -177,6 +189,11 @@ const {
 } = useCustomerList(authStore)
 
 const statusOptions = CUSTOMER_STATUS_OPTIONS
+const sortOptions = [
+  { label: '고객명', value: 'customerName,asc' },
+  { label: '최근 상담일시', value: 'lastConsultedAt,desc' },
+  { label: '오래된 상담일시', value: 'lastConsultedAt,asc' },
+]
 
 const summaryCards = computed(() => [
   {
@@ -273,6 +290,11 @@ function goToCustomerDetail(customerId) {
   width: 240px;
   max-width: 100%;
   flex: 1 1 240px;
+}
+
+.customer-page__sort-filter {
+  width: 180px;
+  flex: 0 0 auto;
 }
 
 .status-tabs {

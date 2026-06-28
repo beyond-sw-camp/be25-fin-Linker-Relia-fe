@@ -12,6 +12,7 @@ export function useInterestCustomerList(authStore, route, router) {
     customerName: '',
     organizationCode: '',
     interestReason: '',
+    sortOrder: 'lastConsultedAt,desc',
   })
 
   const isResettingFilters = ref(false)
@@ -33,7 +34,7 @@ export function useInterestCustomerList(authStore, route, router) {
   } = useBranchFilter(authStore)
 
   watch(
-    () => [filters.organizationCode, filters.interestReason],
+    () => [filters.organizationCode, filters.interestReason, filters.sortOrder],
     () => {
       if (isResettingFilters.value || isApplyingRouteQuery.value) {
         return
@@ -92,6 +93,7 @@ export function useInterestCustomerList(authStore, route, router) {
     filters.customerName = ''
     filters.organizationCode = ''
     filters.interestReason = ''
+    filters.sortOrder = 'lastConsultedAt,desc'
 
     isResettingFilters.value = false
     await loadCustomers()
@@ -121,6 +123,7 @@ export function useInterestCustomerList(authStore, route, router) {
     filters.customerName = toStringOrEmpty(route.query.customerName)
     filters.organizationCode = showBranchFilter.value ? toStringOrEmpty(route.query.organizationCode) : ''
     filters.interestReason = toStringOrEmpty(route.query.interestReason)
+    filters.sortOrder = toStringOrEmpty(route.query.sortOrder) || 'lastConsultedAt,desc'
 
     isApplyingRouteQuery.value = false
   }
@@ -147,6 +150,7 @@ function buildInterestCustomerParams(filters, includeOrganizationCode) {
   const params = {
     page: Math.max(filters.page, 1),
     size: Math.max(filters.size, 1),
+    sort: filters.sortOrder,
   }
 
   if (filters.customerName) {
@@ -181,6 +185,8 @@ function buildQueryFromFilters(filters, includeOrganizationCode) {
   if (filters.interestReason) {
     query.interestReason = filters.interestReason
   }
+
+  query.sortOrder = filters.sortOrder
 
   return query
 }
