@@ -1857,6 +1857,8 @@ async function applyStructuredDraft(draft) {
     return
   }
 
+  const toArray = (value) => (Array.isArray(value) ? [...value] : [])
+
   const normalizedConsultationType = normalizeEnumValue(
     draft.consultationType,
     typeOptions.map((option) => option.value),
@@ -1873,7 +1875,7 @@ async function applyStructuredDraft(draft) {
     consultationChannel: normalizedConsultationChannel,
     consultedAt: draft.consultedAt ? toLocalInputValue(draft.consultedAt) : form.consultedAt,
     consultationContent: draft.consultationContent || draft.summaryText || '',
-    specialNote: '',
+    specialNote: draft.specialNote || '',
     nextScheduledAt: draft.nextScheduledAt ? toLocalInputValue(draft.nextScheduledAt) : '',
     contractId: draft.contractId || '',
   })
@@ -1934,39 +1936,36 @@ async function applyStructuredDraft(draft) {
 
   if (draft.claimDetail) {
     Object.assign(claimDetail, {
-      claimType: normalizeOptionValue(draft.claimDetail.claimType, claimTypeOptions),
+      claimType: draft.claimDetail.claimType || '',
       claimReason: draft.claimDetail.claimReason || '',
       incidentDate: draft.claimDetail.incidentDate || '',
       hospitalName: draft.claimDetail.hospitalName || '',
       diagnosisOrTreatment: draft.claimDetail.diagnosisOrTreatment || '',
-      hospitalizationStatus: normalizeOptionValue(
-        draft.claimDetail.hospitalizationStatus,
-        hospitalizationStatusOptions,
-      ),
-      surgeryStatus: normalizeOptionValue(draft.claimDetail.surgeryStatus, surgeryStatusOptions),
+      hospitalizationStatus: draft.claimDetail.hospitalizationStatus || '',
+      surgeryStatus: draft.claimDetail.surgeryStatus || '',
       claimAmount: normalizeAiMoneyValue(draft.claimDetail.claimAmount),
-      reviewItems: normalizeOptionArray(draft.claimDetail.reviewItems, claimReviewOptions),
-      result: normalizeOptionValue(draft.claimDetail.result, claimResultOptions),
-      nextActions: normalizeOptionArray(draft.claimDetail.nextActions, claimNextActionOptions),
+      reviewItems: toArray(draft.claimDetail.reviewItems),
+      result: draft.claimDetail.result || '',
+      nextActions: toArray(draft.claimDetail.nextActions),
     })
   }
 
   if (draft.renewalDetail) {
-  Object.assign(renewalDetail, {
-    renewalReason: draft.renewalDetail.renewalReason || '',
-    desiredRenewalDate: draft.renewalDetail.desiredRenewalDate || '',
-    expectedPremium: normalizeAiMoneyValue(draft.renewalDetail.expectedPremium),
-    renewalScheduledDate: draft.renewalDetail.renewalScheduledDate || '',
-    currentPremium: normalizeAiMoneyValue(draft.renewalDetail.currentPremium),
-    renewalPremium: normalizeAiMoneyValue(draft.renewalDetail.renewalPremium),
-    changeType: normalizeOptionValue(draft.renewalDetail.changeType, renewalChangeTypeOptions),
-    changeDetail: draft.renewalDetail.changeDetail || '',
-    premiumChangeReasons: normalizeOptionArray(draft.renewalDetail.premiumChangeReasons, renewalPremiumReasonOptions),
-    customerResponses: normalizeOptionArray(draft.renewalDetail.customerResponses, renewalCustomerResponseOptions),
-    customerInterests: normalizeOptionArray(draft.renewalDetail.customerInterests, renewalCustomerInterestOptions),
-    result: normalizeOptionValue(draft.renewalDetail.result, renewalResultOptions),
-    nextActions: normalizeOptionArray(draft.renewalDetail.nextActions, renewalNextActionOptions),
-    decisionExpectedDate: draft.renewalDetail.decisionExpectedDate || '',
+    Object.assign(renewalDetail, {
+      renewalReason: draft.renewalDetail.renewalReason || '',
+      desiredRenewalDate: draft.renewalDetail.desiredRenewalDate || '',
+      expectedPremium: normalizeAiMoneyValue(draft.renewalDetail.expectedPremium),
+      renewalScheduledDate: draft.renewalDetail.renewalScheduledDate || '',
+      currentPremium: normalizeAiMoneyValue(draft.renewalDetail.currentPremium),
+      renewalPremium: normalizeAiMoneyValue(draft.renewalDetail.renewalPremium),
+      changeType: draft.renewalDetail.changeType || '',
+      changeDetail: draft.renewalDetail.changeDetail || '',
+      premiumChangeReasons: toArray(draft.renewalDetail.premiumChangeReasons),
+      customerResponses: toArray(draft.renewalDetail.customerResponses),
+      customerInterests: toArray(draft.renewalDetail.customerInterests),
+      result: draft.renewalDetail.result || '',
+      nextActions: toArray(draft.renewalDetail.nextActions),
+      decisionExpectedDate: draft.renewalDetail.decisionExpectedDate || '',
     })
   }
 
@@ -1974,17 +1973,13 @@ async function applyStructuredDraft(draft) {
     Object.assign(cancelDetail, {
       ...cancelDetail,
       ...draft.cancelDetail,
-      reviewReasons: normalizeOptionArray(draft.cancelDetail.reviewReasons, terminationReasonOptions),
-      retentionPlans: normalizeOptionArray(draft.cancelDetail.retentionPlans, terminationRetentionPlanOptions),
-      nextActions: normalizeOptionArray(draft.cancelDetail.nextActions, terminationNextActionOptions),
-      customerIntent: normalizeOptionValue(draft.cancelDetail.customerIntent, terminationCustomerIntentOptions),
-      result: normalizeOptionValue(draft.cancelDetail.result, terminationResultOptions),
+      reviewReasons: toArray(draft.cancelDetail.reviewReasons),
+      retentionPlans: toArray(draft.cancelDetail.retentionPlans),
+      nextActions: toArray(draft.cancelDetail.nextActions),
+      customerIntent: draft.cancelDetail.customerIntent || '',
+      result: draft.cancelDetail.result || '',
       reasonDetail: draft.cancelDetail.reasonDetail || '',
-      retentionPossibility: normalizeEnumValue(
-        draft.cancelDetail.retentionPossibility,
-        terminationPossibilityOptions.map((option) => option.value),
-        retentionPossibilityAliases,
-      ) || cancelDetail.retentionPossibility,
+      retentionPossibility: draft.cancelDetail.retentionPossibility || cancelDetail.retentionPossibility,
     })
   }
 

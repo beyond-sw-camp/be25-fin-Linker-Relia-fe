@@ -151,15 +151,6 @@
             </div>
           </section>
 
-          <v-alert
-            v-if="serverHasPendingResolution && editableStructuredData"
-            type="warning"
-            density="comfortable"
-            variant="tonal"
-          >
-            확인이 필요한 항목은 상담일지 반영 시 `null`로 처리됩니다.
-          </v-alert>
-
           <section v-if="warnings.length" class="stt-summary-card stt-summary-card--meta">
             <div class="stt-results__header">
               <strong>주의 항목</strong>
