@@ -1758,8 +1758,8 @@ function hydrateDraft() {
     consultationType: draft.consultationType || 'NEW_CONTRACT',
     consultationChannel: draft.consultationChannel || 'VISIT',
     consultedAt: draft.consultedAt || toLocalInputValue(new Date()),
-    consultationContent: draft.consultationContent || draft.specialNote || '',
-    specialNote: draft.specialNote || draft.consultationContent || '',
+    consultationContent: draft.consultationContent || '',
+    specialNote: draft.specialNote || '',
     nextScheduledAt: draft.nextScheduledAt ? toLocalInputValue(draft.nextScheduledAt) : '',
     contractId: draft.contractId || '',
   })
@@ -1872,8 +1872,8 @@ async function applyStructuredDraft(draft) {
     consultationType: normalizedConsultationType,
     consultationChannel: normalizedConsultationChannel,
     consultedAt: draft.consultedAt ? toLocalInputValue(draft.consultedAt) : form.consultedAt,
-    consultationContent: draft.consultationContent || draft.summaryText || draft.specialNote || '',
-    specialNote: draft.specialNote || draft.summaryText || draft.consultationContent || '',
+    consultationContent: draft.consultationContent || draft.summaryText || '',
+    specialNote: '',
     nextScheduledAt: draft.nextScheduledAt ? toLocalInputValue(draft.nextScheduledAt) : '',
     contractId: draft.contractId || '',
   })
