@@ -37,7 +37,7 @@
                 type="button"
                 :class="{ active: selectedOrganizationId === root.id }"
                 :aria-expanded="expandedOrganizationIds.includes(root.id)"
-                @click="toggleOrganization(root.id)"
+                @click="selectHeadquarters(root)"
               >
                 <span
                   class="mdi"
@@ -60,8 +60,12 @@
                   :key="branch.id"
                   class="tree-child-button"
                   type="button"
-                  :class="{ active: selectedOrganizationId === branch.id }"
-                  @click="selectOrganization(branch.id)"
+                  :class="{
+                    active: selectedOrganizationId === branch.id,
+                    disabled: isOrganizationDisabled(branch),
+                  }"
+                  :disabled="isOrganizationDisabled(branch)"
+                  @click="selectBranchOrganization(branch)"
                 >
                   {{ branch.organizationName }}
                 </button>
@@ -71,79 +75,123 @@
         </section>
 
         <section class="organization-list panel">
-        <div class="organization-list__header">
-          <h3>조직 리스트</h3>
-          <div class="organization-list__tools">
-            <span>
-              전체 <strong>{{ formatCount(filteredOrganizationRows.length) }}개</strong> 조직
-            </span>
-            <div class="status-tabs" aria-label="조직 상태 필터">
-              <button
-                v-for="option in organizationStatusOptions"
-                :key="option.value"
-                type="button"
-                :class="{ active: organizationStatus === option.value }"
-                @click="changeOrganizationStatus(option.value)"
-              >
-                {{ option.label }}
-              </button>
+          <div class="organization-list__header">
+            <div>
+              <h3>구성원 목록</h3>
+              <p>{{ selectedOrganizationLabel }}</p>
+            </div>
+            <div class="organization-list__tools">
+              <span>
+                전체 <strong>{{ formatCount(organizationMemberTotalElements) }}명</strong>
+              </span>
             </div>
           </div>
-        </div>
 
-        <div class="table-scroll table-scroll--flush">
-          <table>
-            <thead>
-              <tr>
-                <th>조직명</th>
-                <th>조직 코드</th>
-                <th>주소</th>
-                <th>전화번호</th>
-                <th>상태</th>
-                <th class="table-action-cell">관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="organization in paginatedOrganizationRows"
-                :key="organization.id"
-                :class="{ 'clickable-row': organization.organizationType === 'BRANCH' }"
-                @click="goToBranchAdvisors(organization)"
+          <form class="organization-member-filters" @submit.prevent="searchOrganizationMembers">
+            <label class="field">
+              <span>이름</span>
+              <input
+                v-model.trim="organizationMemberFilters.keyword"
+                type="search"
+                placeholder="이름 검색"
+                @keyup.enter="searchOrganizationMembers"
+              />
+            </label>
+            <label class="field">
+              <span>지점명</span>
+              <input
+                v-model.trim="organizationMemberFilters.branchKeyword"
+                type="search"
+                placeholder="지점명 검색"
+                @keyup.enter="searchOrganizationMembers"
+              />
+            </label>
+            <label class="field">
+              <span>지점</span>
+              <select
+                v-model="organizationMemberFilters.organizationId"
+                :disabled="!canAccessAllOrganizations"
+                @change="searchOrganizationMembers"
               >
-                <td>
-                  <strong :class="{ 'text-accent': organization.organizationType === 'HQ' }">
-                    {{ organization.organizationName }}
-                  </strong>
-                </td>
-                <td>{{ organization.organizationCode }}</td>
-                <td>{{ organization.organizationAddress || '-' }}</td>
-                <td>{{ organization.organizationPhone || '-' }}</td>
-                <td><StatusBadge :status="organization.organizationStatus" /></td>
-                <td class="table-action-cell">
-                  <button class="icon-button icon-button--ghost" type="button" aria-label="조직 수정" @click.stop>
-                    <span class="mdi mdi-pencil-outline" aria-hidden="true"></span>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="paginatedOrganizationRows.length === 0">
-                <td colspan="6">
-                  <EmptyState compact message="조회된 조직 정보가 없습니다." />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                <option value="">전체 지점</option>
+                <option
+                  v-for="branch in organizationBranchRows"
+                  :key="branch.id"
+                  :value="branch.id"
+                >
+                  {{ branch.organizationName }}
+                </option>
+              </select>
+            </label>
+            <label class="field">
+              <span>정렬</span>
+              <select v-model="organizationMemberFilters.sort" @change="searchOrganizationMembers">
+                <option
+                  v-for="option in organizationMemberSortOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <div class="organization-member-filter-actions">
+              <button class="button button--secondary" type="button" @click="resetOrganizationMemberFilters">
+                초기화
+              </button>
+              <button class="button button--primary" type="submit">
+                조회
+              </button>
+            </div>
+          </form>
 
-        <div class="organization-pagination">
-          <span>총 {{ formatCount(filteredOrganizationRows.length) }}건</span>
-          <v-pagination
-            :model-value="organizationListPage"
-            :length="Math.max(organizationListTotalPages, 1)"
-            total-visible="7"
-            rounded="circle"
-            @update:model-value="changeOrganizationListPage"
-          />
-        </div>
+          <LoadingState v-if="isOrganizationMembersLoading" message="구성원 목록을 불러오고 있습니다." />
+          <ErrorState v-else-if="organizationMembersError" :message="organizationMembersError" />
+          <div v-else class="table-scroll table-scroll--flush organization-member-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>소속 지점</th>
+                  <th>역할</th>
+                  <th>사번 또는 코드</th>
+                  <th>이메일</th>
+                  <th>전화번호</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="member in organizationMemberRows"
+                  :key="member.id"
+                >
+                  <td><strong>{{ member.userName }}</strong></td>
+                  <td>{{ member.organizationName }}</td>
+                  <td>{{ getRoleLabel(member.userRole) }}</td>
+                  <td>{{ member.empCode || '-' }}</td>
+                  <td>{{ member.email || '-' }}</td>
+                  <td>{{ member.phone || '-' }}</td>
+                  <td><StatusBadge :status="member.userStatus" /></td>
+                </tr>
+                <tr v-if="organizationMemberRows.length === 0">
+                  <td colspan="7">
+                    <EmptyState compact message="조회된 구성원이 없습니다." />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="organization-pagination">
+            <span>총 {{ formatCount(organizationMemberTotalElements) }}건</span>
+            <v-pagination
+              :model-value="organizationMemberFilters.page"
+              :length="organizationMemberTotalPages"
+              total-visible="7"
+              rounded="circle"
+              @update:model-value="changeOrganizationMemberPage"
+            />
+          </div>
         </section>
       </div>
     </template>
@@ -570,6 +618,7 @@ import {
   getOrganizationFpContracts,
   getOrganizationFpDetail,
   getOrganizationFps,
+  getOrganizationMembers,
   getOrganizations,
   getOrganizationsBranches,
   resignOrganizationFp,
@@ -602,6 +651,7 @@ const resignModalPanel = ref(null)
 const resignModalTrigger = ref(null)
 
 const isOrganizationLoading = ref(false)
+const isOrganizationMembersLoading = ref(false)
 const isBranchesLoading = ref(false)
 const isFpsLoading = ref(false)
 const isFpDetailLoading = ref(false)
@@ -610,6 +660,7 @@ const isResignModalOpen = ref(false)
 const isResignSubmitting = ref(false)
 
 const organizationError = ref('')
+const organizationMembersError = ref('')
 const branchesError = ref('')
 const fpsError = ref('')
 const fpDetailError = ref('')
@@ -622,8 +673,19 @@ const organizationStatus = ref('')
 const organizationListPage = ref(1)
 const organizationListSize = 5
 const selectedOrganizationId = ref('')
+const selectedOrganizationType = ref('')
 const expandedOrganizationIds = ref([])
 const detailClosingMonth = ref(getLatestAvailableClosingMonth())
+const organizationMembersPage = ref(createEmptyPage(10))
+
+const organizationMemberFilters = reactive({
+  page: 1,
+  size: 10,
+  keyword: '',
+  branchKeyword: '',
+  organizationId: '',
+  sort: 'ROLE_ASC',
+})
 
 const fpFilters = reactive({
   page: 1,
@@ -644,8 +706,20 @@ const organizationStatusOptions = [
   { label: '비활성', value: 'INACTIVE' },
 ]
 
+const organizationMemberSortOptions = [
+  { label: '역할순', value: 'ROLE_ASC' },
+  { label: '이름 오름차순', value: 'NAME_ASC' },
+  { label: '이름 내림차순', value: 'NAME_DESC' },
+  { label: '지점명순', value: 'BRANCH_ASC' },
+  { label: '사번순', value: 'EMP_CODE_ASC' },
+]
+
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
 const canResignFp = computed(() => authStore.userRole === USER_ROLES.BRANCH_MANAGER)
+const canAccessAllOrganizations = computed(() => (
+  authStore.userRole === USER_ROLES.SYSTEM_ADMIN ||
+  authStore.userRole === USER_ROLES.HQ_MANAGER
+))
 
 const selectedResignFpName = computed(() => (
   selectedResignFp.value?.fpName
@@ -688,6 +762,29 @@ const organizationRoots = computed(() => (
   }))
 ))
 const organizationRows = computed(() => flattenOrganizations(organizations.value))
+const organizationBranchRows = computed(() => (
+  organizationRows.value.filter((organization) => organization.organizationType === 'BRANCH')
+))
+const currentUserOrganizationName = computed(() => (
+  authStore.organizationName || authStore.user?.organizationName || ''
+))
+const organizationMemberRows = computed(() => organizationMembersPage.value.content ?? [])
+const organizationMemberTotalPages = computed(() => (
+  Math.max(Number(organizationMembersPage.value.totalPages ?? 0), 1)
+))
+const organizationMemberTotalElements = computed(() => (
+  Number(organizationMembersPage.value.totalElements ?? organizationMemberRows.value.length)
+))
+const selectedOrganizationLabel = computed(() => {
+  const effectiveOrganizationId = organizationMemberFilters.organizationId || selectedOrganizationId.value
+  const selected = organizationRows.value.find((organization) => String(organization.id) === String(effectiveOrganizationId))
+
+  if (selected?.organizationType === 'BRANCH') {
+    return `${selected.organizationName} 구성원`
+  }
+
+  return '전체 구성원'
+})
 
 const filteredOrganizationRows = computed(() => {
   const selectedOrganization = organizationRows.value.find((organization) => organization.id === selectedOrganizationId.value)
@@ -727,6 +824,12 @@ watch(organizationListTotalPages, (totalPages) => {
   }
 })
 
+watch(organizationMemberTotalPages, (totalPages) => {
+  if (organizationMemberFilters.page > totalPages) {
+    organizationMemberFilters.page = totalPages
+  }
+})
+
 onMounted(() => {
   initializePage()
 })
@@ -737,7 +840,7 @@ onBeforeUnmount(() => {
 
 async function initializePage() {
   if (props.mode === 'chart') {
-    await loadOrganizations()
+    await loadOrganizationChart()
     return
   }
 
@@ -755,6 +858,11 @@ async function initializePage() {
   await reloadFpDetail()
 }
 
+async function loadOrganizationChart() {
+  await loadOrganizations()
+  await loadOrganizationMembers()
+}
+
 async function loadOrganizations() {
   organizationError.value = ''
   isOrganizationLoading.value = true
@@ -762,18 +870,68 @@ async function loadOrganizations() {
   try {
     organizations.value = await getOrganizations()
     organizationListPage.value = 1
+    branches.value = organizationBranchRows.value.map(normalizeBranch)
     expandedOrganizationIds.value = collectExpandableOrganizationIds(organizations.value)
-    if (!selectedOrganizationId.value) {
-      selectedOrganizationId.value = findDefaultRootOrganizationId(organizations.value)
-    }
+    applyDefaultSelectedOrganization()
   } catch {
     organizations.value = []
     selectedOrganizationId.value = ''
+    selectedOrganizationType.value = ''
     expandedOrganizationIds.value = []
     organizationError.value = '조직 정보를 불러오지 못했습니다.'
   } finally {
     isOrganizationLoading.value = false
   }
+}
+
+async function loadOrganizationMembers() {
+  organizationMembersError.value = ''
+  isOrganizationMembersLoading.value = true
+
+  try {
+    organizationMembersPage.value = normalizePageResponse(
+      await getOrganizationMembers(buildOrganizationMemberParams()),
+      organizationMemberFilters,
+    )
+  } catch {
+    organizationMembersPage.value = createEmptyPage(organizationMemberFilters.size)
+    organizationMembersError.value = '구성원 목록을 불러오지 못했습니다.'
+  } finally {
+    isOrganizationMembersLoading.value = false
+  }
+}
+
+function buildOrganizationMemberParams() {
+  const params = {
+    page: organizationMemberFilters.page,
+    size: organizationMemberFilters.size,
+    sort: organizationMemberFilters.sort || 'ROLE_ASC',
+    ...(organizationMemberFilters.keyword ? { keyword: organizationMemberFilters.keyword } : {}),
+    ...(organizationMemberFilters.branchKeyword ? { branchKeyword: organizationMemberFilters.branchKeyword } : {}),
+  }
+
+  const organizationId = resolveMemberOrganizationId()
+  if (organizationId) {
+    params.organizationId = organizationId
+  }
+
+  return params
+}
+
+function resolveMemberOrganizationId() {
+  if (!canAccessAllOrganizations.value) {
+    return findCurrentUserBranch()?.id || ''
+  }
+
+  if (organizationMemberFilters.organizationId) {
+    return organizationMemberFilters.organizationId
+  }
+
+  if (selectedOrganizationType.value === 'BRANCH') {
+    return selectedOrganizationId.value
+  }
+
+  return ''
 }
 
 async function loadBranches() {
@@ -891,15 +1049,54 @@ function changeOrganizationListPage(page) {
   organizationListPage.value = page
 }
 
-function selectOrganization(organizationId) {
-  selectedOrganizationId.value = organizationId
-  organizationListPage.value = 1
+function searchOrganizationMembers() {
+  organizationMemberFilters.page = 1
+  loadOrganizationMembers()
 }
 
-function toggleOrganization(organizationId) {
-  selectedOrganizationId.value = organizationId
-  organizationListPage.value = 1
+function resetOrganizationMemberFilters() {
+  organizationMemberFilters.page = 1
+  organizationMemberFilters.keyword = ''
+  organizationMemberFilters.branchKeyword = ''
+  organizationMemberFilters.organizationId = canAccessAllOrganizations.value && selectedOrganizationType.value === 'BRANCH'
+    ? selectedOrganizationId.value
+    : ''
+  organizationMemberFilters.sort = 'ROLE_ASC'
+  loadOrganizationMembers()
+}
 
+function changeOrganizationMemberPage(page) {
+  organizationMemberFilters.page = page
+  loadOrganizationMembers()
+}
+
+function selectHeadquarters(organization) {
+  toggleOrganizationExpansion(organization.id)
+
+  if (!canAccessAllOrganizations.value) {
+    return
+  }
+
+  selectedOrganizationId.value = organization.id
+  selectedOrganizationType.value = 'HQ'
+  organizationMemberFilters.page = 1
+  organizationMemberFilters.organizationId = ''
+  loadOrganizationMembers()
+}
+
+function selectBranchOrganization(organization) {
+  if (isOrganizationDisabled(organization)) {
+    return
+  }
+
+  selectedOrganizationId.value = organization.id
+  selectedOrganizationType.value = 'BRANCH'
+  organizationMemberFilters.page = 1
+  organizationMemberFilters.organizationId = canAccessAllOrganizations.value ? organization.id : ''
+  loadOrganizationMembers()
+}
+
+function toggleOrganizationExpansion(organizationId) {
   if (expandedOrganizationIds.value.includes(organizationId)) {
     expandedOrganizationIds.value = expandedOrganizationIds.value.filter((id) => id !== organizationId)
     return
@@ -1273,6 +1470,92 @@ function findDefaultRootOrganizationId(nodes) {
   return nodes[0]?.id ?? ''
 }
 
+function applyDefaultSelectedOrganization() {
+  if (canAccessAllOrganizations.value) {
+    const rootId = findDefaultRootOrganizationId(organizations.value)
+    selectedOrganizationId.value = rootId
+    selectedOrganizationType.value = rootId ? 'HQ' : ''
+    organizationMemberFilters.organizationId = ''
+    return
+  }
+
+  const currentBranch = findCurrentUserBranch()
+  selectedOrganizationId.value = currentBranch?.id ?? ''
+  selectedOrganizationType.value = currentBranch ? 'BRANCH' : ''
+  organizationMemberFilters.organizationId = ''
+}
+
+function findCurrentUserBranch() {
+  const currentOrganizationName = currentUserOrganizationName.value
+  if (!currentOrganizationName) return null
+
+  return organizationBranchRows.value.find((branch) => branch.organizationName === currentOrganizationName) ?? null
+}
+
+function isOrganizationDisabled(organization) {
+  if (canAccessAllOrganizations.value || organization.organizationType !== 'BRANCH') {
+    return false
+  }
+
+  return !isCurrentUserBranch(organization)
+}
+
+function isCurrentUserBranch(organization) {
+  return Boolean(currentUserOrganizationName.value) && organization.organizationName === currentUserOrganizationName.value
+}
+
+function normalizePageResponse(source, fallbackFilters) {
+  const content = Array.isArray(source?.content)
+    ? source.content
+    : Array.isArray(source?.members)
+      ? source.members
+      : Array.isArray(source)
+        ? source
+        : []
+
+  return {
+    content: content.map(normalizeOrganizationMember),
+    page: Number(source?.page ?? source?.number ?? fallbackFilters.page ?? 1),
+    size: Number(source?.size ?? fallbackFilters.size ?? 10),
+    totalElements: Number(source?.totalElements ?? source?.totalCount ?? content.length),
+    totalPages: Number(source?.totalPages ?? Math.ceil(content.length / Number(fallbackFilters.size ?? 10)) ?? 0),
+  }
+}
+
+function normalizeOrganizationMember(member) {
+  return {
+    id: member.id ?? member.userId ?? member.empCode ?? `${member.userName}-${member.email}`,
+    empCode: member.empCode ?? member.employeeCode ?? member.code ?? '',
+    userName: member.userName ?? member.name ?? '-',
+    organizationId: member.organizationId ?? '',
+    organizationName: member.organizationName ?? member.branchName ?? '-',
+    userRole: member.userRole ?? member.role ?? '',
+    email: member.email ?? '',
+    phone: member.phone ?? member.phoneNumber ?? '',
+    userStatus: member.userStatus ?? member.status ?? '',
+  }
+}
+
+function getRoleLabel(role) {
+  const roleMap = {
+    HQ_MANAGER: '본사 영업 담당자',
+    BRANCH_MANAGER: '지점장',
+    FP: '설계사',
+    SYSTEM_ADMIN: '시스템 관리자',
+  }
+
+  return roleMap[role] ?? role ?? '-'
+}
+
+function getUserStatusLabel(status) {
+  const statusMap = {
+    ACTIVE: '재직',
+    RESIGNED: '퇴사',
+  }
+
+  return statusMap[status] ?? status ?? '-'
+}
+
 function createEmptyPage(size) {
   return {
     content: [],
@@ -1372,6 +1655,7 @@ const StatusBadge = defineComponent({
       const statusMap = {
         ACTIVE: ['ACTIVE', 'success'],
         INACTIVE: ['INACTIVE', 'muted'],
+        RESIGNED: ['퇴사', 'danger'],
         NORMAL: ['정상', 'success'],
         LAPSED: ['실효', 'danger'],
       }
@@ -1732,6 +2016,40 @@ const EmptyState = defineComponent({
   background: #fff0e9;
   color: #f05a1a;
   font-weight: 800;
+}
+
+.tree-child-button.disabled,
+.tree-child-button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.tree-child-button.disabled::before,
+.tree-child-button:disabled::before {
+  background: #e5e7eb;
+}
+
+.organization-member-filters {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1fr) minmax(150px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.organization-member-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.organization-member-table table {
+  min-width: 980px;
 }
 
 .org-canvas {

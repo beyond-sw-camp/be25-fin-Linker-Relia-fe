@@ -34,6 +34,11 @@ export async function getOrganizations(params = {}) {
   return unwrapResult(response)?.organizations ?? []
 }
 
+export async function getOrganizationMembers(params = {}) {
+  const response = await authApi.get('/organizations/members', { params })
+  return unwrapResult(response) ?? createEmptyPage(params)
+}
+
 export async function getOrganizationsBranches() {
   const response = await publicApi.get('/organizations/branches')
   return unwrapResult(response) ?? []
