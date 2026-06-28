@@ -257,7 +257,7 @@ function mergeSavedDetail(serverDetail) {
   return {
     ...localDetail,
     ...serverDetail,
-    specialNote: serverDetail.specialNote || localDetail.specialNote || localDetail.consultationContent,
+    specialNote: serverDetail.specialNote || localDetail.specialNote || '',
     consultationContent: serverDetail.consultationContent || serverDetail.specialNote || localDetail.consultationContent || localDetail.specialNote,
     newDetail: mergeDetailObject(localDetail.newDetail, serverDetail.newDetail),
     claimDetail: mergeDetailObject(localDetail.claimDetail, serverDetail.claimDetail),
