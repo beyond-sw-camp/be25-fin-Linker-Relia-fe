@@ -34,6 +34,17 @@
         <v-btn variant="outlined" class="commission-page__reset-button" @click="resetFilters">
           초기화
         </v-btn>
+        <v-btn
+          color="#f97316"
+          variant="flat"
+          prepend-icon="mdi-file-pdf-box"
+          class="commission-page__pdf-button"
+          :loading="isPdfLoading"
+          :disabled="Boolean(validationMessage)"
+          @click="openStatementPdf"
+        >
+          PDF 명세서
+        </v-btn>
       </div>
     </div>
 
@@ -299,10 +310,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 
 import {
+  getBranchCommissionStatementPdf,
   getCommissionInsuranceCompanySummary,
   getCommissionFpList,
   getCommissionOrganizationList,
   getCommissionPaymentTypeSummary,
+  getHqCommissionStatementPdf,
+  getOwnBranchCommissionStatementPdf,
   getOrganizationCommissionSummary,
 } from '../../api/commissions'
 import { useBranchFilter } from '../../composables/useBranchFilter'
@@ -347,6 +361,7 @@ const isPaymentTypeLoading = ref(false)
 const isInsuranceCompanyLoading = ref(false)
 const isFpListLoading = ref(false)
 const isOrganizationListLoading = ref(false)
+const isPdfLoading = ref(false)
 
 const summaryErrorMessage = ref('')
 const paymentTypeErrorMessage = ref('')
@@ -654,6 +669,50 @@ function resetFilters() {
   filters.closingMonth = latestAvailableClosingMonth.value
   filters.organizationCode = ''
   resetListPages()
+}
+
+async function openStatementPdf() {
+  validationMessage.value = ''
+
+  if (!isValidClosingMonth(filters.closingMonth)) {
+    validationMessage.value = '정산 월은 YYYY-MM 형식으로 입력해주세요.'
+    return
+  }
+
+  isPdfLoading.value = true
+
+  try {
+    const params = { closingMonth: filters.closingMonth }
+    const blob = await getStatementPdfBlob(params)
+
+    openPdfBlob(blob)
+  } catch (error) {
+    validationMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '수수료 명세서 PDF를 열지 못했습니다.'
+  } finally {
+    isPdfLoading.value = false
+  }
+}
+
+function getStatementPdfBlob(params) {
+  if (props.scope === 'branch') {
+    return getOwnBranchCommissionStatementPdf(params)
+  }
+
+  if (filters.organizationCode) {
+    return getBranchCommissionStatementPdf(filters.organizationCode, params)
+  }
+
+  return getHqCommissionStatementPdf(params)
+}
+
+function openPdfBlob(blob) {
+  const pdfBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' })
+  const url = window.URL.createObjectURL(pdfBlob)
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60000)
 }
 
 function resetListPages() {
@@ -1274,6 +1333,13 @@ function getLatestAvailableClosingMonth() {
   border-radius: 12px;
   border-color: #d1d5db;
   color: #475569;
+}
+
+.commission-page__pdf-button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 .commission-summary {
