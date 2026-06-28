@@ -12,6 +12,7 @@ export function useCustomerList(authStore) {
     customerName: '',
     organizationCode: '',
     customerStatus: '',
+    sortOrder: 'lastConsultedAt,desc',
   })
   const isResettingFilters = ref(false)
 
@@ -31,7 +32,7 @@ export function useCustomerList(authStore) {
   } = useBranchFilter(authStore)
 
   watch(
-    () => [filters.organizationCode, filters.customerStatus],
+    () => [filters.organizationCode, filters.customerStatus, filters.sortOrder],
     () => {
       if (isResettingFilters.value) {
         return
@@ -87,6 +88,7 @@ export function useCustomerList(authStore) {
     filters.customerName = ''
     filters.organizationCode = ''
     filters.customerStatus = ''
+    filters.sortOrder = 'lastConsultedAt,desc'
 
     isResettingFilters.value = false
     await loadCustomers()
@@ -114,6 +116,7 @@ function buildCustomerParams(filters, includeOrganizationCode) {
   const params = {
     page: Math.max(filters.page, 1),
     size: filters.size,
+    sort: filters.sortOrder,
   }
 
   if (filters.customerName) {
