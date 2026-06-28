@@ -52,7 +52,7 @@ export function normalizeDraftResponse(draft) {
     consultationChannel: draft.consultationChannel ?? parsedDraftData.consultationChannel,
     consultedAt: draft.consultedAt ?? parsedDraftData.consultedAt,
     specialNote: draft.specialNote ?? parsedDraftData.specialNote,
-    consultationContent: parsedDraftData.consultationContent ?? draft.specialNote,
+    consultationContent: parsedDraftData.consultationContent ?? draft.consultationContent,
     nextScheduledAt: draft.nextScheduledAt ?? parsedDraftData.nextScheduledAt,
     updatedAt: draft.lastSavedAt ?? draft.updatedAt ?? parsedDraftData.updatedAt,
     createdAt: parsedDraftData.createdAt ?? draft.lastSavedAt,
