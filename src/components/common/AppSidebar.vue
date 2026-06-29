@@ -51,6 +51,19 @@
       </section>
     </nav>
 
+    <div class="app-sidebar__esg">
+      <EsgImpactCard
+        :impact="esgImpact"
+        :collapsed="isCollapsed"
+        @click="isEsgDrawerOpen = true"
+      />
+    </div>
+
+    <EsgImpactDrawer
+      v-model="isEsgDrawerOpen"
+      :impact="esgImpact"
+    />
+
     <button class="app-sidebar__toggle" type="button" @click="isCollapsed = !isCollapsed">
       <v-icon icon="mdi-chevron-double-left" size="20" :class="{ rotated: isCollapsed }" />
       <span v-if="!isCollapsed">메뉴 닫기</span>
@@ -59,20 +72,43 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import EsgImpactCard from '../esg/EsgImpactCard.vue'
+import EsgImpactDrawer from '../esg/EsgImpactDrawer.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { MENU_BY_ROLE } from '../../constants/navigation'
 import { useAuthStore } from '../../stores/auth'
+import { useEsgImpactStore } from '../../stores/esgImpactStore'
 
 const authStore = useAuthStore()
+const esgImpactStore = useEsgImpactStore()
 const route = useRoute()
 
 const isCollapsed = ref(false)
+const isEsgDrawerOpen = ref(false)
 const openSections = ref([])
 
 const menuSections = computed(() => MENU_BY_ROLE[authStore.userRole] ?? [])
+const esgImpact = computed(() => esgImpactStore.data ?? {
+  targetMonth: getCurrentMonth(),
+  level: 4,
+  recoveryRate: 68,
+  paperSavedCount: 218,
+  co2SavedKg: 3.2,
+  seaLevelContribution: 0.08,
+  earthTemperatureReduction: 0.08,
+  consultationCount: 12,
+  aiBriefingCount: 5,
+  handoverCount: 2,
+  eSignCount: 8,
+  activities: [],
+})
+
+onMounted(() => {
+  esgImpactStore.fetchMyImpact(getCurrentMonth())
+})
 
 watch(
   [menuSections, () => route.name, () => route.query.from],
@@ -123,6 +159,12 @@ function toggleSection(title) {
   }
 
   openSections.value = [...openSections.value, title]
+}
+
+function getCurrentMonth() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${now.getFullYear()}-${month}`
 }
 </script>
 
@@ -203,6 +245,11 @@ function toggleSection(title) {
 .app-sidebar__nav {
   flex: 1;
   padding: 22px 12px;
+}
+
+.app-sidebar__esg {
+  margin-top: auto;
+  padding: 0 12px 10px;
 }
 
 .app-sidebar__section + .app-sidebar__section {
@@ -304,6 +351,15 @@ function toggleSection(title) {
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
+  }
+
+  .app-sidebar__esg :deep(.esg-card) {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .app-sidebar__esg :deep(.esg-card__content) {
+    display: none;
   }
 }
 </style>

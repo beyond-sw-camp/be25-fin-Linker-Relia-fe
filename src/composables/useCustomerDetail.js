@@ -8,10 +8,12 @@ import {
   getCustomerDetail,
   getCustomerFpHistories,
 } from '../api/customers'
+import { useEsgImpactStore } from '../stores/esgImpactStore'
 
 const DEFAULT_PAGE_SIZE = 10
 
 export function useCustomerDetail(customerId) {
+  const esgImpactStore = useEsgImpactStore()
   const customer = ref(null)
   const isLoadingCustomer = ref(false)
   const customerErrorMessage = ref('')
@@ -177,6 +179,10 @@ export function useCustomerDetail(customerId) {
       const response = await createCustomerAiBriefing(customerId.value)
       briefing.item = response?.result ?? null
       briefing.loaded = true
+      esgImpactStore.recordActivity(
+        'AI_BRIEFING',
+        response?.result?.createdAt ?? response?.result?.updatedAt,
+      )
     } catch (error) {
       briefing.errorMessage = getAiBriefingCreateErrorMessage(error)
     } finally {

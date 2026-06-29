@@ -998,10 +998,12 @@ import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
 import { getInsuranceProducts } from '../../api/insurance'
+import { useEsgImpactStore } from '../../stores/esgImpactStore'
 import { getConsultationDraft, saveConsultationDraft } from '../../utils/consultationDrafts'
 
 const route = useRoute()
 const router = useRouter()
+const esgImpactStore = useEsgImpactStore()
 const isSttPreviewOpen = ref(false)
 
 const typeOptions = [
@@ -2009,7 +2011,11 @@ async function submitConsultation() {
       throw new Error('청구 유형이 올바르게 설정되지 않았습니다. 다시 선택해주세요.')
     }
 
-    await createConsultation(payload)
+    const response = await createConsultation(payload)
+    esgImpactStore.recordActivity(
+      'CONSULTATION',
+      response?.result?.createdAt ?? response?.result?.consultedAt ?? payload.consultedAt,
+    )
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
     await router.push({
