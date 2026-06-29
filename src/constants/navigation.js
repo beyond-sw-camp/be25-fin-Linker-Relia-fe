@@ -225,7 +225,7 @@ export const APP_PAGE_SPECS = [
     name: 'handover-monitoring',
     title: '전체 인수인계 현황',
     description: '전사 인수인계 현황 모니터링 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
   },
   {
     path: 'organizations/chart',
@@ -467,6 +467,13 @@ export const MENU_BY_ROLE = {
         { title: '사용자 관리', to: { name: 'admin-users' } },
         { title: '조직 관리', to: { name: 'admin-organizations' } },
         { title: '권한 관리', to: { name: 'admin-roles' } },
+      ],
+    },
+    {
+      title: '인수인계 관리',
+      icon: 'mdi-monitor-eye',
+      children: [
+        { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
       ],
     },
     HQ_INSURANCE_MENU_SECTION,
