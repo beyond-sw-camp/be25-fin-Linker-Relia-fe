@@ -982,8 +982,8 @@ function formatCount(value) {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: #eaf5ff;
-  color: #2f8de4;
+  background: #fff7ed;
+  color: #f97316;
 }
 
 .esg-criteria-link strong {
@@ -1002,16 +1002,17 @@ function formatCount(value) {
   align-items: start;
   gap: 10px;
   padding: 14px;
-  background: #f1f7ff;
+  border-color: #fed7aa;
+  background: #fff7ed;
 }
 
 .esg-criteria__notice :deep(.v-icon) {
-  color: #34a853;
+  color: #22c55e;
 }
 
 .esg-criteria__notice p {
   margin: 0;
-  color: #1d5fa8;
+  color: #9a3412;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.55;
@@ -1049,13 +1050,13 @@ function formatCount(value) {
   min-height: 72px;
   padding: 10px 6px;
   border-radius: 8px;
-  background: #f8fbff;
+  background: #fffaf5;
   color: #102033;
   text-align: center;
 }
 
 .esg-criteria__activity-grid :deep(.v-icon) {
-  color: #4a9ce8;
+  color: #f97316;
 }
 
 .esg-criteria__activity-grid strong,
@@ -1071,9 +1072,18 @@ function formatCount(value) {
   font-weight: 800;
 }
 
+.esg-criteria__stage-grid span {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.esg-criteria__stage-grid strong {
+  font-size: 11px;
+}
+
 .esg-criteria__table {
   overflow: hidden;
-  border: 1px solid #e3edf8;
+  border: 1px solid #fed7aa;
   border-radius: 8px;
 }
 
@@ -1094,8 +1104,8 @@ function formatCount(value) {
 }
 
 .esg-criteria__table .is-active {
-  background: #eaf3ff;
-  color: #1d5fa8;
+  background: #ffedd5;
+  color: #9a3412;
 }
 
 .esg-criteria__table span,
@@ -1112,7 +1122,7 @@ function formatCount(value) {
   gap: 8px;
   min-height: 58px;
   border-radius: 8px;
-  background: #f8fbff;
+  background: #fffaf5;
   color: #334155;
   font-size: 11px;
   font-weight: 800;
@@ -1120,7 +1130,7 @@ function formatCount(value) {
 }
 
 .esg-criteria__formula span {
-  color: #1d5fa8;
+  color: #ea580c;
   font-weight: 900;
 }
 
@@ -1149,11 +1159,11 @@ function formatCount(value) {
   min-height: 44px;
   padding: 0 12px;
   border-radius: 8px;
-  background: #f8fbff;
+  background: #fffaf5;
 }
 
 .esg-criteria__conversion :deep(.v-icon) {
-  color: #4a9ce8;
+  color: #f97316;
 }
 
 .esg-criteria__conversion strong {
@@ -1171,8 +1181,9 @@ function formatCount(value) {
 .esg-criteria__footnote {
   margin: 0;
   padding: 14px;
-  background: #f1f7ff;
-  color: #3b6ea8;
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.6;
