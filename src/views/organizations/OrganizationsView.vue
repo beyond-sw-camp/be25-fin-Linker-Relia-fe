@@ -62,9 +62,8 @@
                   type="button"
                   :class="{
                     active: selectedOrganizationId === branch.id,
-                    disabled: isOrganizationDisabled(branch),
+                    limited: isOrganizationLimited(branch),
                   }"
-                  :disabled="isOrganizationDisabled(branch)"
                   @click="selectBranchOrganization(branch)"
                 >
                   {{ branch.organizationName }}
@@ -87,7 +86,11 @@
             </div>
           </div>
 
-          <form class="organization-member-filters" @submit.prevent="searchOrganizationMembers">
+          <form
+            class="organization-member-filters"
+            :class="{ 'organization-member-filters--restricted': !canAccessAllOrganizations }"
+            @submit.prevent="searchOrganizationMembers"
+          >
             <label class="field">
               <span>이름</span>
               <input
@@ -97,7 +100,7 @@
                 @keyup.enter="searchOrganizationMembers"
               />
             </label>
-            <label class="field">
+            <label v-if="canAccessAllOrganizations" class="field">
               <span>지점명</span>
               <input
                 v-model.trim="organizationMemberFilters.branchKeyword"
@@ -106,12 +109,11 @@
                 @keyup.enter="searchOrganizationMembers"
               />
             </label>
-            <label class="field">
+            <label v-if="canAccessAllOrganizations" class="field">
               <span>지점</span>
               <select
                 v-model="organizationMemberFilters.organizationId"
-                :disabled="!canAccessAllOrganizations"
-                @change="searchOrganizationMembers"
+                @change="changeOrganizationMemberBranchFilter"
               >
                 <option value="">전체 지점</option>
                 <option
@@ -145,53 +147,78 @@
             </div>
           </form>
 
-          <LoadingState v-if="isOrganizationMembersLoading" message="구성원 목록을 불러오고 있습니다." />
-          <ErrorState v-else-if="organizationMembersError" :message="organizationMembersError" />
-          <div v-else class="table-scroll table-scroll--flush organization-member-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>이름</th>
-                  <th>소속 지점</th>
-                  <th>역할</th>
-                  <th>사번 또는 코드</th>
-                  <th>이메일</th>
-                  <th>전화번호</th>
-                  <th>상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="member in organizationMemberRows"
-                  :key="member.id"
-                >
-                  <td><strong>{{ member.userName }}</strong></td>
-                  <td>{{ member.organizationName }}</td>
-                  <td>{{ getRoleLabel(member.userRole) }}</td>
-                  <td>{{ member.empCode || '-' }}</td>
-                  <td>{{ member.email || '-' }}</td>
-                  <td>{{ member.phone || '-' }}</td>
-                  <td><StatusBadge :status="member.userStatus" /></td>
-                </tr>
-                <tr v-if="organizationMemberRows.length === 0">
-                  <td colspan="7">
-                    <EmptyState compact message="조회된 구성원이 없습니다." />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="selectedBranchSummary" class="branch-summary-strip">
+            <div class="branch-summary-strip__main">
+              <strong>{{ selectedBranchSummary.organizationName }}</strong>
+              <span>{{ selectedBranchSummary.organizationCode }}</span>
+            </div>
+            <StatusBadge :status="selectedBranchSummary.organizationStatus" />
+            <div class="branch-summary-strip__meta">
+              <span>{{ selectedBranchSummary.organizationAddress || '-' }}</span>
+              <span>{{ selectedBranchSummary.organizationPhone || '-' }}</span>
+            </div>
           </div>
 
-          <div class="organization-pagination">
-            <span>총 {{ formatCount(organizationMemberTotalElements) }}건</span>
-            <v-pagination
-              :model-value="organizationMemberFilters.page"
-              :length="organizationMemberTotalPages"
-              total-visible="7"
-              rounded="circle"
-              @update:model-value="changeOrganizationMemberPage"
-            />
-          </div>
+          <template v-if="!isSelectedBranchSummaryOnly">
+            <LoadingState v-if="isOrganizationMembersLoading" message="구성원 목록을 불러오고 있습니다." />
+            <ErrorState v-else-if="organizationMembersError" :message="organizationMembersError" />
+            <div v-else class="table-scroll table-scroll--flush organization-member-table">
+              <table>
+                <colgroup>
+                  <col class="member-col--name" />
+                  <col class="member-col--branch" />
+                  <col class="member-col--role" />
+                  <col class="member-col--code" />
+                  <col class="member-col--email" />
+                  <col class="member-col--phone" />
+                  <col class="member-col--status" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>소속 지점</th>
+                    <th>역할</th>
+                    <th>사번 또는 코드</th>
+                    <th>이메일</th>
+                    <th>전화번호</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="member in organizationMemberRows"
+                    :key="member.id"
+                    :class="{ 'clickable-row': isClickableFpMember(member) }"
+                    @click="goToOrganizationMemberDetail(member)"
+                  >
+                    <td><strong>{{ member.userName }}</strong></td>
+                    <td>{{ member.organizationName }}</td>
+                    <td>{{ getRoleLabel(member.userRole) }}</td>
+                    <td>{{ member.empCode || '-' }}</td>
+                    <td>{{ member.email || '-' }}</td>
+                    <td>{{ member.phone || '-' }}</td>
+                    <td><StatusBadge :status="member.userStatus" /></td>
+                  </tr>
+                  <tr v-if="organizationMemberRows.length === 0">
+                    <td colspan="7">
+                      <EmptyState compact message="조회된 구성원이 없습니다." />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="organization-pagination">
+              <span>총 {{ formatCount(organizationMemberTotalElements) }}건</span>
+              <v-pagination
+                :model-value="organizationMemberFilters.page"
+                :length="organizationMemberTotalPages"
+                total-visible="7"
+                rounded="circle"
+                @update:model-value="changeOrganizationMemberPage"
+              />
+            </div>
+          </template>
         </section>
       </div>
     </template>
@@ -213,6 +240,7 @@
             <thead>
               <tr>
                 <th>지점명</th>
+                <th>지점장명</th>
                 <th>지점 코드</th>
                 <th>주소</th>
                 <th>전화번호</th>
@@ -223,6 +251,7 @@
             <tbody>
               <tr v-for="branch in branches" :key="branch.organizationId">
                 <td>{{ branch.organizationName }}</td>
+                <td>{{ getBranchManagerName(branch) }}</td>
                 <td>{{ branch.organizationCode }}</td>
                 <td>{{ branch.organizationAddress || '-' }}</td>
                 <td>{{ branch.organizationPhone || '-' }}</td>
@@ -237,17 +266,20 @@
 
     <template v-else-if="mode === 'fps'">
       <section class="panel organization-filter-panel">
-        <div class="filter-grid">
+        <div
+          class="filter-grid"
+          :class="{ 'filter-grid--restricted-fp': !canAccessAllOrganizations }"
+        >
           <label class="field">
             <span>검색어</span>
             <input
               v-model.trim="fpFilters.keyword"
               type="search"
-              placeholder="사번 또는 이름 검색"
+              placeholder="이름 검색"
               @keyup.enter="searchFps"
             />
           </label>
-          <label class="field">
+          <label v-if="canAccessAllOrganizations" class="field">
             <span>지점</span>
             <select v-model="fpFilters.organizationId">
               <option value="">전체 지점</option>
@@ -260,16 +292,18 @@
               </option>
             </select>
           </label>
-          <v-text-field
-            v-model="fpFilters.closingMonth"
-            type="month"
-            label="기준월"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            :max="latestAvailableClosingMonth"
-            class="organization-month-field"
-          />
+          <label class="field">
+            <span>정렬</span>
+            <select v-model="fpFilters.sort" @change="searchFps">
+              <option
+                v-for="option in fpSortOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
           <div class="organization-filter-actions">
             <button class="button button--secondary" type="button" @click="resetFpFilters">
               초기화
@@ -297,14 +331,12 @@
             <table>
               <thead>
                 <tr>
-                  <th>순위</th>
-                  <th>사번</th>
                   <th>이름</th>
+                  <th>사번</th>
                   <th>소속 지점</th>
-                  <th>기준월</th>
-                  <th>고객 수</th>
-                  <th>계약 수</th>
-                  <th>유지율</th>
+                  <th>전화번호</th>
+                  <th>이메일</th>
+                  <th>상태</th>
                   <th v-if="canResignFp" class="table-action-cell">관리</th>
                 </tr>
               </thead>
@@ -312,17 +344,13 @@
                 <tr
                   v-for="fp in fpPage.content"
                   :key="fp.id"
-                  class="clickable-row"
-                  @click="goToFpDetail(fp.id)"
                 >
-                  <td>{{ formatRank(getFpListRank(fp)) }}</td>
-                  <td>{{ fp.empCode }}</td>
                   <td><strong>{{ fp.userName }}</strong></td>
+                  <td>{{ fp.empCode || '-' }}</td>
                   <td>{{ fp.organizationName }}</td>
-                  <td>{{ fp.closingMonth || '-' }}</td>
-                  <td>{{ formatCount(fp.customerCount) }}</td>
-                  <td>{{ formatCount(fp.contractCount) }}</td>
-                  <td>{{ formatPercent(fp.retentionRate) }}</td>
+                  <td>{{ fp.phone || '-' }}</td>
+                  <td>{{ fp.email || '-' }}</td>
+                  <td><StatusBadge :status="fp.userStatus" /></td>
                   <td v-if="canResignFp" class="table-action-cell">
                     <button
                       class="table-action-button table-action-button--danger"
@@ -354,7 +382,7 @@
     <template v-else>
       <section class="panel organization-detail-panel">
         <div class="detail-toolbar">
-          <button class="button button--secondary" type="button" @click="goToFpList">
+          <button v-if="!isFpMyPage" class="button button--secondary" type="button" @click="goToFpList">
             목록으로
           </button>
           <v-text-field
@@ -366,7 +394,7 @@
             hide-details
             :max="latestAvailableClosingMonth"
             class="organization-month-field organization-month-field--detail"
-            @update:model-value="reloadFpDetail"
+            @update:model-value="reloadCurrentFpDetail"
           />
         </div>
 
@@ -395,7 +423,7 @@
               </dl>
             </div>
             <button
-              v-if="canResignFp"
+              v-if="canResignFp && !isFpMyPage"
               class="button button--danger fp-profile__action"
               type="button"
               :disabled="isResignedFp(fpDetail)"
@@ -451,8 +479,8 @@
       <section class="panel organization-list-panel">
         <div class="panel__header">
           <div>
-            <h3>FP 계약 목록</h3>
-            <p>해당 FP가 담당하는 계약 목록입니다.</p>
+            <h3>{{ isFpMyPage ? '내 계약 목록' : 'FP 계약 목록' }}</h3>
+            <p>{{ isFpMyPage ? '내가 담당하는 계약 목록입니다.' : '해당 FP가 담당하는 계약 목록입니다.' }}</p>
           </div>
         </div>
 
@@ -617,7 +645,8 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   getOrganizationFpContracts,
   getOrganizationFpDetail,
-  getOrganizationFps,
+  getMyOrganizationFpContracts,
+  getMyOrganizationFpDetail,
   getOrganizationMembers,
   getOrganizations,
   getOrganizationsBranches,
@@ -631,7 +660,7 @@ const props = defineProps({
     type: String,
     default: 'chart',
     validator(value) {
-      return ['chart', 'branches', 'fps', 'fp-detail'].includes(value)
+      return ['chart', 'branches', 'fps', 'fp-detail', 'fp-my-page'].includes(value)
     },
   },
 })
@@ -692,7 +721,7 @@ const fpFilters = reactive({
   size: 10,
   keyword: '',
   organizationId: '',
-  closingMonth: getLatestAvailableClosingMonth(),
+  sort: 'NAME_ASC',
 })
 
 const contractFilters = reactive({
@@ -714,12 +743,20 @@ const organizationMemberSortOptions = [
   { label: '사번순', value: 'EMP_CODE_ASC' },
 ]
 
+const fpSortOptions = [
+  { label: '이름 오름차순', value: 'NAME_ASC' },
+  { label: '이름 내림차순', value: 'NAME_DESC' },
+  { label: '지점명순', value: 'BRANCH_ASC' },
+  { label: '사번순', value: 'EMP_CODE_ASC' },
+]
+
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
 const canResignFp = computed(() => authStore.userRole === USER_ROLES.BRANCH_MANAGER)
 const canAccessAllOrganizations = computed(() => (
   authStore.userRole === USER_ROLES.SYSTEM_ADMIN ||
   authStore.userRole === USER_ROLES.HQ_MANAGER
 ))
+const isFpMyPage = computed(() => props.mode === 'fp-my-page')
 
 const selectedResignFpName = computed(() => (
   selectedResignFp.value?.fpName
@@ -742,6 +779,7 @@ const pageTitle = computed(() => {
   if (props.mode === 'branches') return '지점 목록 조회'
   if (props.mode === 'fps' && selectedFpBranchName.value) return `${selectedFpBranchName.value} 설계사 목록`
   if (props.mode === 'fps') return 'FP 목록'
+  if (props.mode === 'fp-my-page') return '마이 페이지'
   return 'FP 상세'
 })
 
@@ -752,6 +790,7 @@ const pageDescription = computed(() => {
     return `${selectedFpBranchName.value}에 소속된 설계사 목록을 조회합니다.`
   }
   if (props.mode === 'fps') return '검색 조건으로 FP 실적 목록을 조회합니다.'
+  if (props.mode === 'fp-my-page') return '내 기본 정보와 성과 정보를 조회합니다.'
   return 'FP 기본 정보, 성과 요약, 계약 목록을 조회합니다.'
 })
 
@@ -775,6 +814,15 @@ const organizationMemberTotalPages = computed(() => (
 const organizationMemberTotalElements = computed(() => (
   Number(organizationMembersPage.value.totalElements ?? organizationMemberRows.value.length)
 ))
+const selectedBranchOrganization = computed(() => (
+  organizationBranchRows.value.find((organization) => String(organization.id) === String(selectedOrganizationId.value)) ?? null
+))
+const isSelectedBranchSummaryOnly = computed(() => (
+  !canAccessAllOrganizations.value &&
+  selectedOrganizationType.value === 'BRANCH' &&
+  Boolean(selectedBranchOrganization.value) &&
+  !isCurrentUserBranch(selectedBranchOrganization.value)
+))
 const selectedOrganizationLabel = computed(() => {
   const effectiveOrganizationId = organizationMemberFilters.organizationId || selectedOrganizationId.value
   const selected = organizationRows.value.find((organization) => String(organization.id) === String(effectiveOrganizationId))
@@ -784,6 +832,17 @@ const selectedOrganizationLabel = computed(() => {
   }
 
   return '전체 구성원'
+})
+const selectedBranchSummary = computed(() => {
+  const organizationId = organizationMemberFilters.organizationId || (
+    selectedOrganizationType.value === 'BRANCH' ? selectedOrganizationId.value : ''
+  )
+
+  if (!organizationId) return null
+
+  return branches.value.find((branch) => String(branch.organizationId) === String(organizationId)) ||
+    organizationBranchRows.value.find((branch) => String(branch.id) === String(organizationId)) ||
+    null
 })
 
 const filteredOrganizationRows = computed(() => {
@@ -855,11 +914,23 @@ async function initializePage() {
     return
   }
 
+  if (props.mode === 'fp-my-page') {
+    await loadMyFpDetail()
+    return
+  }
+
   await reloadFpDetail()
 }
 
 async function loadOrganizationChart() {
   await loadOrganizations()
+  await loadBranches()
+
+  if (applyOrganizationSelectionFromQuery()) {
+    await loadOrganizationMembers()
+    return
+  }
+
   await loadOrganizationMembers()
 }
 
@@ -885,6 +956,13 @@ async function loadOrganizations() {
 }
 
 async function loadOrganizationMembers() {
+  if (isSelectedBranchSummaryOnly.value) {
+    organizationMembersPage.value = createEmptyPage(organizationMemberFilters.size)
+    organizationMembersError.value = ''
+    isOrganizationMembersLoading.value = false
+    return
+  }
+
   organizationMembersError.value = ''
   isOrganizationMembersLoading.value = true
 
@@ -907,7 +985,9 @@ function buildOrganizationMemberParams() {
     size: organizationMemberFilters.size,
     sort: organizationMemberFilters.sort || 'ROLE_ASC',
     ...(organizationMemberFilters.keyword ? { keyword: organizationMemberFilters.keyword } : {}),
-    ...(organizationMemberFilters.branchKeyword ? { branchKeyword: organizationMemberFilters.branchKeyword } : {}),
+    ...(canAccessAllOrganizations.value && organizationMemberFilters.branchKeyword
+      ? { branchKeyword: organizationMemberFilters.branchKeyword }
+      : {}),
   }
 
   const organizationId = resolveMemberOrganizationId()
@@ -968,7 +1048,10 @@ async function loadFps() {
   isFpsLoading.value = true
 
   try {
-    fpPage.value = await getOrganizationFps(buildFpParams())
+    fpPage.value = normalizePageResponse(
+      await getOrganizationMembers(buildFpParams()),
+      fpFilters,
+    )
   } catch {
     fpPage.value = createEmptyPage(fpFilters.size)
     fpsError.value = 'FP 목록을 불러오지 못했습니다.'
@@ -987,6 +1070,15 @@ async function reloadFpDetail() {
   }
 
   await Promise.all([loadFpDetail(String(fpId)), loadFpContracts(String(fpId))])
+}
+
+async function reloadCurrentFpDetail() {
+  if (isFpMyPage.value) {
+    await loadMyFpDetail()
+    return
+  }
+
+  await reloadFpDetail()
 }
 
 async function loadFpDetail(fpId) {
@@ -1017,14 +1109,68 @@ async function loadFpContracts(fpId) {
   }
 }
 
+async function loadMyFpContracts() {
+  contractsError.value = ''
+  isContractsLoading.value = true
+
+  try {
+    contractPage.value = await getMyOrganizationFpContracts(contractFilters)
+  } catch {
+    contractPage.value = createEmptyPage(contractFilters.size)
+    contractsError.value = '계약 목록을 불러오지 못했습니다.'
+  } finally {
+    isContractsLoading.value = false
+  }
+}
+
 function buildFpParams() {
   return {
     page: fpFilters.page,
     size: fpFilters.size,
+    role: USER_ROLES.FP,
+    sort: fpFilters.sort || 'NAME_ASC',
     ...(fpFilters.keyword ? { keyword: fpFilters.keyword } : {}),
     ...(fpFilters.organizationId ? { organizationId: fpFilters.organizationId } : {}),
-    ...(fpFilters.closingMonth ? { closingMonth: fpFilters.closingMonth } : {}),
   }
+}
+
+async function loadMyFpDetail() {
+  fpDetailError.value = ''
+  isFpDetailLoading.value = true
+  contractPage.value = createEmptyPage(contractFilters.size)
+  const contractsPromise = loadMyFpContracts()
+
+  try {
+    fpDetail.value = await getMyOrganizationFpDetail(buildDetailParams())
+  } catch (error) {
+    fpDetail.value = null
+    fpDetailError.value = getMyFpDetailErrorMessage(error)
+  } finally {
+    isFpDetailLoading.value = false
+  }
+
+  await contractsPromise
+}
+
+function applyOrganizationSelectionFromQuery() {
+  const organizationId = normalizeQueryValue(route.query.organizationId)
+  const organizationType = normalizeQueryValue(route.query.organizationType)
+
+  if (!organizationId || organizationType !== 'BRANCH') return false
+
+  const branch = organizationBranchRows.value.find((organization) => (
+    String(organization.id) === String(organizationId)
+  ))
+
+  if (!branch) return false
+
+  selectedOrganizationId.value = branch.id
+  selectedOrganizationType.value = 'BRANCH'
+  organizationMemberFilters.page = 1
+  organizationMemberFilters.sort = 'ROLE_ASC'
+  organizationMemberFilters.organizationId = canAccessAllOrganizations.value ? branch.id : ''
+
+  return true
 }
 
 function applyFpFiltersFromQuery() {
@@ -1051,6 +1197,29 @@ function changeOrganizationListPage(page) {
 
 function searchOrganizationMembers() {
   organizationMemberFilters.page = 1
+  loadOrganizationMembers()
+}
+
+function changeOrganizationMemberBranchFilter() {
+  organizationMemberFilters.page = 1
+
+  if (!organizationMemberFilters.organizationId) {
+    const rootId = findDefaultRootOrganizationId(organizations.value)
+    selectedOrganizationId.value = rootId
+    selectedOrganizationType.value = rootId ? 'HQ' : ''
+    loadOrganizationMembers()
+    return
+  }
+
+  const selectedBranch = organizationBranchRows.value.find((organization) => (
+    String(organization.id) === String(organizationMemberFilters.organizationId)
+  ))
+
+  if (selectedBranch) {
+    selectedOrganizationId.value = selectedBranch.id
+    selectedOrganizationType.value = 'BRANCH'
+  }
+
   loadOrganizationMembers()
 }
 
@@ -1085,14 +1254,18 @@ function selectHeadquarters(organization) {
 }
 
 function selectBranchOrganization(organization) {
-  if (isOrganizationDisabled(organization)) {
-    return
-  }
-
   selectedOrganizationId.value = organization.id
   selectedOrganizationType.value = 'BRANCH'
   organizationMemberFilters.page = 1
+  organizationMemberFilters.sort = 'ROLE_ASC'
   organizationMemberFilters.organizationId = canAccessAllOrganizations.value ? organization.id : ''
+
+  if (!canAccessAllOrganizations.value && !isCurrentUserBranch(organization)) {
+    organizationMembersError.value = ''
+    organizationMembersPage.value = createEmptyPage(organizationMemberFilters.size)
+    return
+  }
+
   loadOrganizationMembers()
 }
 
@@ -1114,7 +1287,7 @@ function resetFpFilters() {
   fpFilters.page = 1
   fpFilters.keyword = ''
   fpFilters.organizationId = ''
-  fpFilters.closingMonth = latestAvailableClosingMonth.value
+  fpFilters.sort = 'NAME_ASC'
   loadFps()
 }
 
@@ -1125,6 +1298,12 @@ function changeFpPage(page) {
 
 function changeContractPage(page) {
   contractFilters.page = page
+
+  if (isFpMyPage.value) {
+    loadMyFpContracts()
+    return
+  }
+
   loadFpContracts(String(route.params.fpId))
 }
 
@@ -1134,9 +1313,24 @@ async function openResignModal(fp, event = null) {
   }
 
   resignModalTrigger.value = event?.currentTarget ?? getActiveElement()
-  selectedResignFp.value = normalizeResignTargetFp(fp)
   resignErrorMessage.value = ''
   resignResult.value = null
+
+  const fpId = getFpIdentifier(fp)
+  let fpDetailForResign = null
+
+  if (fpId) {
+    try {
+      fpDetailForResign = await getOrganizationFpDetail(fpId, buildDetailParams())
+    } catch {
+      fpDetailForResign = null
+    }
+  }
+
+  selectedResignFp.value = normalizeResignTargetFp({
+    ...fp,
+    ...(fpDetailForResign ?? {}),
+  })
   isResignModalOpen.value = true
 
   await nextTick()
@@ -1288,8 +1482,23 @@ function normalizeResignTargetFp(fp) {
 
   return {
     ...fp,
-    customerCount: fp.customerCount ?? null,
-    contractCount: fp.contractCount ?? null,
+    customerCount: fp.customerCount
+      ?? fp.customerTotalCount
+      ?? fp.totalCustomerCount
+      ?? fp.performanceSummary?.customerCount
+      ?? fp.performanceSummary?.customerTotalCount
+      ?? fp.performanceSummary?.totalCustomerCount
+      ?? null,
+    contractCount: fp.contractCount
+      ?? fp.heldContractCount
+      ?? fp.activeContractCount
+      ?? fp.totalContractCount
+      ?? fp.performanceSummary?.contractCount
+      ?? fp.performanceSummary?.heldContractCount
+      ?? fp.performanceSummary?.activeContractCount
+      ?? fp.performanceSummary?.completedContractCount
+      ?? fp.performanceSummary?.totalContractCount
+      ?? null,
   }
 }
 
@@ -1304,8 +1513,8 @@ function isResignedFp(fp) {
 }
 
 function getFpIdentifier(fp) {
-  return fp?.id
-    ?? fp?.fpId
+  return fp?.fpId
+    ?? fp?.id
     ?? fp?.userId
     ?? fp?.advisorId
     ?? null
@@ -1364,6 +1573,24 @@ function getResignErrorMessage(error) {
   return error?.response?.data?.message || '해촉 처리에 실패했습니다.'
 }
 
+function getMyFpDetailErrorMessage(error) {
+  const status = error?.response?.status
+
+  if (status === 401) {
+    return '로그인이 만료되었거나 인증 정보가 없습니다. 다시 로그인해 주세요.'
+  }
+
+  if (status === 403) {
+    return '마이 페이지에 접근할 권한이 없습니다.'
+  }
+
+  if (status === 404) {
+    return '설계사 정보를 찾을 수 없습니다.'
+  }
+
+  return error?.response?.data?.message || '내 정보를 불러오지 못했습니다.'
+}
+
 function isAlreadyResignedError(error) {
   const status = error?.response?.status
   const errorCode = error?.response?.data?.errorCode
@@ -1381,8 +1608,28 @@ function goToFpDetail(fpId) {
   router.push({
     name: 'organization-fp-detail',
     params: { fpId },
-    query: { from: route.name },
+    query: {
+      from: route.name,
+      ...(selectedOrganizationType.value === 'BRANCH'
+        ? {
+            organizationId: selectedOrganizationId.value,
+            organizationType: selectedOrganizationType.value,
+          }
+        : {}),
+    },
   })
+}
+
+function isClickableFpMember(member) {
+  return authStore.userRole !== USER_ROLES.FP &&
+    member.userRole === USER_ROLES.FP &&
+    Boolean(member.fpId)
+}
+
+function goToOrganizationMemberDetail(member) {
+  if (!isClickableFpMember(member)) return
+
+  goToFpDetail(member.fpId)
 }
 
 function goToBranchAdvisors(organization) {
@@ -1400,6 +1647,24 @@ function goToBranchAdvisors(organization) {
 }
 
 function goToFpList() {
+  const fromRouteName = normalizeQueryValue(route.query.from)
+
+  if (fromRouteName === 'organization-chart' || fromRouteName === 'admin-organizations') {
+    router.push({
+      name: fromRouteName,
+      query: {
+        ...(route.query.organizationId ? { organizationId: route.query.organizationId } : {}),
+        ...(route.query.organizationType ? { organizationType: route.query.organizationType } : {}),
+      },
+    })
+    return
+  }
+
+  if (authStore.userRole === USER_ROLES.SYSTEM_ADMIN) {
+    router.push({ name: 'admin-organizations' })
+    return
+  }
+
   router.push({ name: 'hq-advisors' })
 }
 
@@ -1444,13 +1709,13 @@ function getBranchAdvisorCount(branch) {
     ?? null
 }
 
-function getFpListRank(fp) {
-  return fp.rank
-    ?? fp.ranking
-    ?? fp.totalRank
-    ?? fp.performanceRank
-    ?? fp.branchRank
-    ?? null
+function getBranchManagerName(branch) {
+  return branch.branchManagerName
+    ?? branch.managerName
+    ?? branch.organizationManagerName
+    ?? branch.manager?.userName
+    ?? branch.branchManager?.userName
+    ?? '-'
 }
 
 function getContractKey(contract) {
@@ -1492,7 +1757,7 @@ function findCurrentUserBranch() {
   return organizationBranchRows.value.find((branch) => branch.organizationName === currentOrganizationName) ?? null
 }
 
-function isOrganizationDisabled(organization) {
+function isOrganizationLimited(organization) {
   if (canAccessAllOrganizations.value || organization.organizationType !== 'BRANCH') {
     return false
   }
@@ -1525,6 +1790,7 @@ function normalizePageResponse(source, fallbackFilters) {
 function normalizeOrganizationMember(member) {
   return {
     id: member.id ?? member.userId ?? member.empCode ?? `${member.userName}-${member.email}`,
+    fpId: member.fpId ?? '',
     empCode: member.empCode ?? member.employeeCode ?? member.code ?? '',
     userName: member.userName ?? member.name ?? '-',
     organizationId: member.organizationId ?? '',
@@ -1573,13 +1839,6 @@ function formatCount(value) {
 function formatNullableCount(value) {
   if (value === null || value === undefined || value === '') return '-'
   return formatCount(value)
-}
-
-function formatRank(value) {
-  if (value === null || value === undefined || value === '') return '-'
-  const rank = Number(value)
-  if (!Number.isFinite(rank) || rank < 1) return '-'
-  return `${formatCount(rank)}위`
 }
 
 function formatPercent(value) {
@@ -1885,8 +2144,11 @@ const EmptyState = defineComponent({
 .organization-tree-panel {
   min-height: 640px;
   overflow: hidden;
-  padding: 0;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .organization-tree-panel__header {
@@ -1894,17 +2156,19 @@ const EmptyState = defineComponent({
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 42px;
-  padding: 0 10px;
-  border-bottom: 1px solid #e8b9a8;
+  min-height: 32px;
+  margin-bottom: 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .tree-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #3f2a22;
+  color: #111827;
   font-size: 13px;
+  font-weight: 800;
 }
 
 .tree-title .mdi {
@@ -1931,7 +2195,7 @@ const EmptyState = defineComponent({
 }
 
 .organization-tree {
-  padding: 18px 12px 24px;
+  padding: 2px 0 4px;
 }
 
 .organization-tree__root {
@@ -2018,16 +2282,18 @@ const EmptyState = defineComponent({
   font-weight: 800;
 }
 
-.tree-child-button.disabled,
 .tree-child-button:disabled {
   color: #94a3b8;
-  cursor: not-allowed;
   opacity: 0.58;
 }
 
-.tree-child-button.disabled::before,
 .tree-child-button:disabled::before {
   background: #e5e7eb;
+}
+
+.tree-child-button.limited.active {
+  color: #f05a1a;
+  opacity: 1;
 }
 
 .organization-member-filters {
@@ -2036,10 +2302,14 @@ const EmptyState = defineComponent({
   gap: 12px;
   align-items: end;
   margin-bottom: 14px;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #f8fafc;
+  background: #ffffff;
+}
+
+.organization-member-filters--restricted {
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.7fr) auto;
 }
 
 .organization-member-filter-actions {
@@ -2048,8 +2318,115 @@ const EmptyState = defineComponent({
   gap: 8px;
 }
 
+.branch-summary-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+  padding: 13px 16px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #fffbf7;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.branch-summary-strip__main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.branch-summary-strip__main strong {
+  color: #f97316;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.branch-summary-strip__main span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.branch-summary-strip__meta {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.branch-summary-strip__meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .organization-member-table table {
-  min-width: 980px;
+  width: 100%;
+  min-width: 860px;
+  table-layout: fixed;
+}
+
+.organization-member-table {
+  border: 1px solid #f0f3f8;
+  border-radius: 8px;
+}
+
+.organization-member-table th,
+.organization-member-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #475569;
+  font-size: 12px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organization-member-table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.member-col--name {
+  width: 10%;
+}
+
+.member-col--branch {
+  width: 13%;
+}
+
+.member-col--role {
+  width: 15%;
+}
+
+.member-col--code {
+  width: 13%;
+}
+
+.member-col--email {
+  width: 24%;
+}
+
+.member-col--phone {
+  width: 17%;
+}
+
+.member-col--status {
+  width: 8%;
+}
+
+.organization-member-table td:nth-child(7) .status-badge {
+  justify-content: center;
+  min-width: 54px;
 }
 
 .org-canvas {
@@ -2205,23 +2582,36 @@ const EmptyState = defineComponent({
 
 .organization-list {
   overflow: hidden;
-  padding: 0;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .organization-list__header {
-  min-height: 76px;
+  min-height: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 30px;
-  border-bottom: 1px solid #e8b9a8;
-  background: #eaf4ff;
+  margin-bottom: 14px;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .organization-list__header h3 {
   margin: 0;
-  font-size: 26px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.organization-list__header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .organization-list__tools {
@@ -2231,12 +2621,13 @@ const EmptyState = defineComponent({
 }
 
 .organization-list__tools span {
-  color: #3f2a22;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .organization-list__tools strong,
 .text-accent {
-  color: #b33a00;
+  color: #f97316;
 }
 
 .status-tabs {
@@ -2277,6 +2668,10 @@ const EmptyState = defineComponent({
 .organization-filter-panel .filter-grid {
   grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 220px auto;
   align-items: end;
+}
+
+.organization-filter-panel .filter-grid--restricted-fp {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 0.8fr) auto;
 }
 
 .organization-filter-actions {
@@ -2769,6 +3164,10 @@ tbody tr:last-child td {
   }
 
   .organization-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .branch-summary-strip {
     grid-template-columns: 1fr;
   }
 
