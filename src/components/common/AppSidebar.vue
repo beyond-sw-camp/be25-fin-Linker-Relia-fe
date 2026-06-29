@@ -250,6 +250,7 @@ function getCurrentMonth() {
 .app-sidebar__esg {
   margin-top: auto;
   padding: 0 12px 10px;
+  overflow: hidden;
 }
 
 .app-sidebar__section + .app-sidebar__section {

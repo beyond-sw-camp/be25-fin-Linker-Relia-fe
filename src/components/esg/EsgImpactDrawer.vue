@@ -13,13 +13,23 @@
     <Transition name="esg-drawer">
       <aside v-if="modelValue" class="esg-drawer" aria-label="ESG Impact 상세">
         <header class="esg-drawer__header">
+          <button
+            v-if="currentView === 'criteria'"
+            type="button"
+            class="esg-drawer__back-button"
+            aria-label="ESG Impact 상세로 돌아가기"
+            @click="currentView = 'main'"
+          >
+            <v-icon icon="mdi-chevron-left" size="21" />
+          </button>
+          <h2 class="esg-drawer__title">{{ currentView === 'criteria' ? '산정 기준 안내' : 'ESG Impact 상세' }}</h2>
           <h2>ESG Impact 상세</h2>
           <button type="button" aria-label="닫기" @click="close">
             <v-icon icon="mdi-close" size="18" />
           </button>
         </header>
 
-        <main class="esg-drawer__body">
+        <main v-if="currentView === 'main'" class="esg-drawer__body">
           <section class="esg-hero">
             <h3>바다 수위 안정 현황</h3>
             <span>현재 회복률</span>
@@ -103,6 +113,91 @@
               오늘 기록된 환경 기여 활동이 없습니다.
             </div>
           </section>
+
+          <section class="esg-tip">
+            <v-icon icon="mdi-lightbulb-on-outline" size="18" />
+            <p>Paperless 업무 전환이 늘어날수록 종이 사용량과 이동 비용이 함께 줄어듭니다.</p>
+          </section>
+
+          <button type="button" class="esg-criteria-link" @click="currentView = 'criteria'">
+            <span>
+              <v-icon icon="mdi-information-outline" size="19" />
+            </span>
+            <strong>산정 기준 안내</strong>
+            <v-icon icon="mdi-chevron-right" size="20" />
+          </button>
+        </main>
+
+        <main v-else class="esg-drawer__body esg-criteria">
+          <section class="esg-criteria__notice">
+            <v-icon icon="mdi-leaf" size="18" />
+            <p>ESG Impact는 실제 환경 측정값이 아니라, 디지털 업무 활동을 내부 환산 기준으로 계산한 예상 기여 지표입니다.</p>
+          </section>
+
+          <section class="esg-criteria__section">
+            <h3>1. 활동별 종이 절감 기준</h3>
+            <div class="esg-criteria__activity-grid">
+              <article v-for="item in paperCriteria" :key="item.label">
+                <v-icon :icon="item.icon" size="22" />
+                <strong>{{ item.label }}</strong>
+                <span>{{ item.value }}</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="esg-criteria__section">
+            <h3>2. 레벨 산정 기준 <small>(종이 절감 장수 기준)</small></h3>
+            <div class="esg-criteria__table">
+              <div v-for="item in levelCriteria" :key="item.level" :class="{ 'is-active': item.level === `Lv.${impact.level}` }">
+                <span>{{ item.level }}</span>
+                <strong>{{ item.label }}</strong>
+                <b>{{ item.range }}</b>
+              </div>
+            </div>
+          </section>
+
+          <section class="esg-criteria__section">
+            <h3>3. 회복률 산정 기준</h3>
+            <div class="esg-criteria__formula">
+              <span>회복률</span>
+              <strong>종이 절감 장수</strong>
+              <i>/</i>
+              <strong>320</strong>
+              <i>×</i>
+              <strong>100</strong>
+              <small>(최대 100%로 표시)</small>
+            </div>
+          </section>
+
+          <section class="esg-criteria__section">
+            <h3>4. 단계 산정 기준 <small>(회복률 기준)</small></h3>
+            <div class="esg-criteria__stage-grid">
+              <article v-for="item in stageCriteria" :key="item.range">
+                <span>{{ item.range }}</span>
+                <strong>{{ item.label }}</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="esg-criteria__section">
+            <h3>5. 환경 지표 환산 기준</h3>
+            <div class="esg-criteria__conversion">
+              <article>
+                <v-icon icon="mdi-molecule-co2" size="22" />
+                <strong>예상 CO₂ 절감량</strong>
+                <span>= 종이 절감 장수 × 0.015 kg</span>
+              </article>
+              <article>
+                <v-icon icon="mdi-waves" size="22" />
+                <strong>바다 수위 안정 기여도</strong>
+                <span>= 종이 절감 장수 × 0.00037 m</span>
+              </article>
+            </div>
+          </section>
+
+          <p class="esg-criteria__footnote">
+            ※ 위 수치는 실제 환경 측정값이 아니라, Paperless 업무 전환 효과를 설명하기 위한 서비스 내부 예상 환산 지표입니다.
+          </p>
         </main>
       </aside>
     </Transition>
@@ -110,7 +205,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import seaLevelIslandImage from '../../assets/esg/sea-level-island.png'
 
@@ -126,12 +221,42 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const currentView = ref('main')
+
+const paperCriteria = [
+  { icon: 'mdi-file-document-outline', label: '상담일지 작성', value: '1건 = 종이 3장' },
+  { icon: 'mdi-text-box-outline', label: 'AI 브리핑 생성', value: '1건 = 종이 5장' },
+  { icon: 'mdi-account-switch-outline', label: '인수인계 완료', value: '1건 = 종이 4장' },
+  { icon: 'mdi-draw-pen', label: '전자서명 완료', value: '1건 = 종이 2장' },
+]
+
+const levelCriteria = [
+  { level: 'Lv.1', label: '시작 단계', range: '0 ~ 59장' },
+  { level: 'Lv.2', label: '안정 단계', range: '60 ~ 119장' },
+  { level: 'Lv.3', label: '회복 단계', range: '120 ~ 179장' },
+  { level: 'Lv.4', label: '고도 회복 단계', range: '180 ~ 239장' },
+  { level: 'Lv.5', label: '이상 완전 회복 단계', range: '240장 이상' },
+]
+
+const stageCriteria = [
+  { range: '0 ~ 25%', label: '시작 단계' },
+  { range: '26 ~ 50%', label: '안정 단계' },
+  { range: '51 ~ 75%', label: '회복 단계' },
+  { range: '76 ~ 100%', label: '고도 회복 단계' },
+]
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (!isOpen) currentView.value = 'main'
+  },
+)
 
 const metrics = computed(() => [
   { icon: 'mdi-file-document-outline', label: '종이 절감', value: `${formatCount(props.impact.paperSavedCount)} 장` },
   { icon: 'mdi-weather-cloudy', label: 'CO₂ 절감', value: `${formatNumber(props.impact.co2SavedKg)} kg` },
-  { icon: 'mdi-earth', badgeIcon: 'mdi-thermometer-low', label: '지구 온도 완화', value: `${formatNumber(props.impact.earthTemperatureReduction)} ℃` },
-  { icon: 'mdi-waves', label: '해수면 감소 기여', value: `${formatNumber(props.impact.seaLevelContribution)} m` },
+  { icon: 'mdi-earth', badgeIcon: 'mdi-thermometer-low', label: '환경 기여 지수', value: `${formatNumber(props.impact.earthTemperatureReduction)} ℃` },
+  { icon: 'mdi-waves', label: '바다 회복 지수', value: `${formatNumber(props.impact.seaLevelContribution)} m` },
 ])
 
 const activities = computed(() => Array.isArray(props.impact.activities) ? props.impact.activities : [])
@@ -141,6 +266,7 @@ const seaFill = computed(() => {
 })
 
 function close() {
+  currentView.value = 'main'
   emit('update:modelValue', false)
 }
 
@@ -211,7 +337,12 @@ function formatCount(value) {
   border-bottom: 1px solid #edf1f6;
 }
 
+.esg-drawer__header > h2:not(.esg-drawer__title) {
+  display: none;
+}
+
 .esg-drawer__header h2 {
+  flex: 1;
   margin: 0;
   color: #111827;
   font-size: 14px;
@@ -229,6 +360,11 @@ function formatCount(value) {
   background: transparent;
   color: #334155;
   cursor: pointer;
+}
+
+.esg-drawer__back-button {
+  margin-left: -6px;
+  margin-right: 4px;
 }
 
 .esg-drawer__body {
@@ -791,6 +927,255 @@ function formatCount(value) {
   font-size: 12px;
   font-weight: 800;
   box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
+}
+
+.esg-tip,
+.esg-criteria-link,
+.esg-criteria__notice,
+.esg-criteria__section,
+.esg-criteria__footnote {
+  border: 1px solid #e3edf8;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+}
+
+.esg-tip {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  color: #0f766e;
+}
+
+.esg-tip p {
+  margin: 0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.esg-criteria-link {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px 1fr 24px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 13px 14px;
+  color: #102033;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.esg-criteria-link:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.esg-criteria-link span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #eaf5ff;
+  color: #2f8de4;
+}
+
+.esg-criteria-link strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.esg-criteria {
+  display: grid;
+  gap: 14px;
+}
+
+.esg-criteria__notice {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 14px;
+  background: #f1f7ff;
+}
+
+.esg-criteria__notice :deep(.v-icon) {
+  color: #34a853;
+}
+
+.esg-criteria__notice p {
+  margin: 0;
+  color: #1d5fa8;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.esg-criteria__section {
+  padding: 13px;
+}
+
+.esg-criteria__section h3 {
+  margin: 0 0 10px;
+  color: #102033;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.esg-criteria__section h3 small {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.esg-criteria__activity-grid,
+.esg-criteria__stage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.esg-criteria__activity-grid article,
+.esg-criteria__stage-grid article {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 72px;
+  padding: 10px 6px;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #102033;
+  text-align: center;
+}
+
+.esg-criteria__activity-grid :deep(.v-icon) {
+  color: #4a9ce8;
+}
+
+.esg-criteria__activity-grid strong,
+.esg-criteria__stage-grid strong {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.esg-criteria__activity-grid span,
+.esg-criteria__stage-grid span {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.esg-criteria__table {
+  overflow: hidden;
+  border: 1px solid #e3edf8;
+  border-radius: 8px;
+}
+
+.esg-criteria__table div {
+  display: grid;
+  grid-template-columns: 58px 1fr 110px;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid #edf2f7;
+  color: #334155;
+  font-size: 11px;
+}
+
+.esg-criteria__table div:last-child {
+  border-bottom: 0;
+}
+
+.esg-criteria__table .is-active {
+  background: #eaf3ff;
+  color: #1d5fa8;
+}
+
+.esg-criteria__table span,
+.esg-criteria__table strong,
+.esg-criteria__table b {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.esg-criteria__formula {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 58px;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  flex-wrap: wrap;
+}
+
+.esg-criteria__formula span {
+  color: #1d5fa8;
+  font-weight: 900;
+}
+
+.esg-criteria__formula strong {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #102033;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.esg-criteria__formula small {
+  color: #64748b;
+}
+
+.esg-criteria__conversion {
+  display: grid;
+  gap: 8px;
+}
+
+.esg-criteria__conversion article {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.esg-criteria__conversion :deep(.v-icon) {
+  color: #4a9ce8;
+}
+
+.esg-criteria__conversion strong {
+  color: #102033;
+  font-size: 11px;
+}
+
+.esg-criteria__conversion span {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.esg-criteria__footnote {
+  margin: 0;
+  padding: 14px;
+  background: #f1f7ff;
+  color: #3b6ea8;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.6;
 }
 
 .esg-activity {
