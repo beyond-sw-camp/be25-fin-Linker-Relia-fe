@@ -105,7 +105,7 @@ function getFallbackActiveRouteName() {
     return 'handover-received'
   }
 
-  if (authStore.userRole === USER_ROLES.HQ_MANAGER) {
+  if ([USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN].includes(authStore.userRole)) {
     return 'handover-monitoring'
   }
 
