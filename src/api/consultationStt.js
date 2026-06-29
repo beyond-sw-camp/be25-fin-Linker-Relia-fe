@@ -15,8 +15,8 @@ export async function getConsultationSttAiDraft(sessionId) {
   return response.data
 }
 
-export async function applyConsultationAiNote(aiNoteId) {
-  const response = await authApi.patch(`/consultation-ai-notes/${aiNoteId}/apply`)
+export async function getConsultationAiDraft(sessionId) {
+  const response = await authApi.get(`/consultation-stt-sessions/${sessionId}/ai-draft`)
   return response.data
 }
 

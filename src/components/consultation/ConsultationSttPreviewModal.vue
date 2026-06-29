@@ -11,7 +11,7 @@
     <section class="stt-preview-modal__panel">
       <header class="stt-preview-modal__header">
         <div>
-          <p>STT Recorder</p>
+          <p>AI 녹음</p>
           <h2 id="stt-preview-modal-title">녹음</h2>
         </div>
         <button type="button" aria-label="Close" @click="handleClose">×</button>
@@ -98,47 +98,75 @@
               <p>STEP 2</p>
               <h3>AI 요약 미리보기</h3>
             </div>
-            <span>{{ summaryStepLabel }}</span>
+            <span v-if="summaryStepLabel">{{ summaryStepLabel }}</span>
           </div>
 
-          <v-alert v-if="aiDraftLoading" type="info" density="comfortable" variant="tonal">
-            AI 초안을 불러오는 중입니다.
+          <v-alert v-if="isDraftLoading" type="info" density="comfortable" variant="tonal">
+            AI 초안을 불러오는 중입니다. {{ draftPollingMessage }}
           </v-alert>
 
-          <v-alert v-else-if="aiDraftError" type="warning" density="comfortable" variant="tonal">
-            {{ aiDraftError }}
+          <v-alert v-else-if="draftErrorMessage" type="warning" density="comfortable" variant="tonal">
+            {{ draftErrorMessage }}
           </v-alert>
 
-          <v-alert v-if="applyErrorMessage" type="error" density="comfortable" variant="tonal">
-            {{ applyErrorMessage }}
-          </v-alert>
+          <section v-if="summaryText" class="stt-summary-card stt-summary-card--summary">
+            <div class="stt-results__header">
+              <strong>요약 카드</strong>
+              <span v-if="draftStatusLabel">{{ draftStatusLabel }}</span>
+            </div>
+            <div class="stt-summary-text">
+              <p>{{ summaryText }}</p>
+            </div>
+          </section>
 
           <section class="stt-summary-card stt-summary-card--preview">
             <div class="stt-results__header">
               <strong>상담일지 미리보기</strong>
-              <span>{{ aiDraftStatusLabel }}</span>
+              <span v-if="draftPreviewStatusLabel">{{ draftPreviewStatusLabel }}</span>
             </div>
-            <div v-if="structuredPreviewRows.length" class="stt-preview-sheet">
-              <div
-                v-for="row in structuredPreviewRows"
-                :key="row.key"
-                class="stt-preview-row"
+            <div v-if="draftSections.length" class="stt-preview-sections">
+              <section
+                v-for="section in draftSections"
+                :key="section.key"
+                class="stt-preview-section"
               >
-                <dt>{{ row.label }}</dt>
-                <dd>{{ row.value }}</dd>
-              </div>
+                <div class="stt-preview-section__header">
+                  <strong>{{ section.title }}</strong>
+                  <span>{{ section.rows.length }}개 항목</span>
+                </div>
+                <dl class="stt-preview-sheet">
+                  <div
+                    v-for="row in section.rows"
+                    :key="row.key"
+                    class="stt-preview-row"
+                  >
+                    <dt>{{ row.label }}</dt>
+                    <dd>{{ row.value }}</dd>
+                  </div>
+                </dl>
+              </section>
             </div>
             <div v-else class="stt-results__body is-empty">
               <p>AI 구조화 초안이 준비되면 상담일지 입력값 기준으로 여기에 표시됩니다.</p>
             </div>
           </section>
 
+          <section v-if="warnings.length" class="stt-summary-card stt-summary-card--meta">
+            <div class="stt-results__header">
+              <strong>주의 항목</strong>
+              <span>{{ warnings.length }}건</span>
+            </div>
+            <ul class="stt-warning-list">
+              <li v-for="(warning, index) in warnings" :key="`warning-${index}`">{{ formatWarning(warning) }}</li>
+            </ul>
+          </section>
+
           <details class="stt-details">
-            <summary>STT 원문 보기</summary>
+            <summary>AI 녹음 원문 보기</summary>
             <div class="stt-details__content">
               <section class="stt-detail-card stt-detail-card--wide">
-                <div class="stt-results__body" :class="{ 'is-empty': !displayTranscript }">
-                  <p v-if="displayTranscript">{{ displayTranscript }}</p>
+                <div class="stt-results__body stt-results__body--expanded" :class="{ 'is-empty': !displayTranscriptSource }">
+                  <p v-if="displayTranscriptSource">{{ displayTranscriptSource }}</p>
                   <p v-else>전사 결과가 아직 준비되지 않았습니다.</p>
                 </div>
               </section>
@@ -148,6 +176,15 @@
           <div class="stt-summary-actions">
             <button type="button" class="stt-button" @click="goToStep(1)">이전 단계</button>
             <button
+              v-if="canRetryDraft"
+              type="button"
+              class="stt-button"
+              :disabled="isDraftLoading"
+              @click="handleRetryAiDraft"
+            >
+              초안 다시 조회
+            </button>
+            <button
               v-if="showApplyButton"
               type="button"
               class="stt-button stt-button--primary"
@@ -155,14 +192,6 @@
               @click="handleApplyAiDraft"
             >
               {{ applyButtonLabel }}
-            </button>
-            <button
-              v-else-if="aiDraftStatus === 'APPLIED'"
-              type="button"
-              class="stt-button stt-button--primary"
-              disabled
-            >
-              적용 완료
             </button>
           </div>
         </section>
@@ -189,8 +218,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { applyConsultationAiNote, getConsultationSttAiDraft } from '../../api/consultationStt'
 import { getInsuranceProducts } from '../../api/insurance'
+import { useConsultationAiDraftState } from '../../composables/useConsultationAiDraftState'
 import { useConsultationSttPreview } from '../../composables/useConsultationSttPreview'
 
 const props = defineProps({
@@ -248,32 +277,37 @@ const {
 const currentStep = ref(1)
 const elapsedSeconds = ref(0)
 const timerId = ref(0)
-const manualSummaryDraft = ref('')
-const aiDraftLoading = ref(false)
-const aiDraftError = ref('')
-const aiDraftRecord = ref(null)
-const aiStructuredDraft = ref(null)
-const applyLoading = ref(false)
-const applyErrorMessage = ref('')
 const toastMessage = ref('')
 const toastType = ref('success')
 const toastTimerId = ref(0)
 const insuranceProducts = ref([])
 const isInsuranceProductsLoading = ref(false)
 
+const {
+  draftRecord,
+  editableStructuredData,
+  draftStatus,
+  summaryText,
+  sttRawText,
+  warnings,
+  canApply,
+  isLoading: isDraftLoading,
+  isPolling: isDraftPolling,
+  isFailed: isDraftFailed,
+  errorMessage: draftErrorMessage,
+  pollAttempt,
+  startPolling,
+  retry: retryAiDraft,
+  reset: resetAiDraft,
+  serverHasPendingResolution,
+} = useConsultationAiDraftState()
+
 const canStartCombined = computed(() => canStartSession.value && !isBusy.value)
 const canOpenSummaryStep = computed(() => {
   return Boolean(finalText.value || partialText.value || endedAt.value || sessionStatus.value === 'PROCESSING')
 })
 const displayTranscript = computed(() => normalizeText(finalText.value || partialText.value))
-const generatedSummaryText = computed(() => {
-  const draft = aiStructuredDraft.value
-  if (!draft) return ''
-
-  return normalizeText(
-    draft.summaryText || draft.consultationContent || draft.specialNote || draft.newDetail?.existingInsuranceNote || '',
-  )
-})
+const displayTranscriptSource = computed(() => normalizeText(sttRawText.value || finalText.value || partialText.value))
 const formattedElapsedTime = computed(() => formatElapsedTime(elapsedSeconds.value))
 const canToggleRecording = computed(() => {
   if (sessionStatus.value === 'PROCESSING') return false
@@ -300,42 +334,50 @@ const transcriptStateLabel = computed(() => {
   return '대기 중'
 })
 const summaryStepLabel = computed(() => {
-  if (applyLoading.value) return '상담일지 반영 중'
-  if (aiDraftStatus.value === 'APPLIED') return '적용 완료'
-  if (aiDraftStatus.value === 'GPT_COMPLETED') return '적용 대기'
-  if (aiDraftLoading.value) return 'AI 초안 불러오는 중'
-  if (aiStructuredDraft.value) return 'AI 초안 반영 가능'
-  if (sessionStatus.value === 'PROCESSING') return '전사 결과 정리 중'
+  if (draftStatus.value === 'GPT_COMPLETED') return '적용 대기'
+  if (isDraftLoading.value) return 'AI 초안 불러오는 중'
+  if (editableStructuredData.value) return 'AI 초안 반영 가능'
+  if (sessionStatus.value === 'PROCESSING') return '결과 정리 중'
   if (finalText.value) return '전사 반영 완료'
   return '수동 작성 단계'
 })
-const aiDraftId = computed(() => {
-  const record = aiDraftRecord.value
-  return record?.id || record?.aiNoteId || record?.consultationAiNoteId || ''
+const draftStatusLabel = computed(() => {
+  if (draftStatus.value === 'FAILED') return '생성 실패'
+  if (draftStatus.value === 'GPT_COMPLETED') return '생성 완료'
+  if (draftStatus.value === 'STT_COMPLETED' || draftStatus.value === 'PENDING') return '생성 중'
+  return editableStructuredData.value ? '구조화 완료' : '생성 대기'
 })
-const aiDraftStatus = computed(() => {
-  const record = aiDraftRecord.value
-  return record?.status || record?.aiNoteStatus || record?.draftStatus || ''
+const draftPreviewStatusLabel = computed(() => {
+  if (showApplyButton.value) return '적용 가능'
+  if (draftStatus.value === 'FAILED') return '생성 실패'
+  return draftStatusLabel.value
 })
-const aiDraftStatusLabel = computed(() => {
-  if (applyLoading.value) return '반영 중'
-  if (aiDraftStatus.value === 'GPT_COMPLETED') return '적용 가능'
-  if (aiDraftStatus.value === 'APPLIED') return '적용 완료'
-  return structuredPreviewRows.value.length ? '구조화 완료' : '생성 대기'
+const showApplyButton = computed(() => {
+  return Boolean(editableStructuredData.value)
 })
-const showApplyButton = computed(() => aiDraftStatus.value === 'GPT_COMPLETED')
-const canApplyAiDraft = computed(() => Boolean(aiStructuredDraft.value && aiDraftId.value) && !applyLoading.value)
-const applyButtonLabel = computed(() => (applyLoading.value ? '반영 중...' : '상담일지에 반영'))
-const structuredPreviewRows = computed(() => {
-  const draft = aiStructuredDraft.value
+const canApplyAiDraft = computed(() => {
+  return Boolean(editableStructuredData.value) && canApply.value
+})
+const canRetryDraft = computed(() => {
+  return Boolean(sessionId.value) && (isDraftFailed.value || draftErrorMessage.value || draftStatus.value === 'FAILED')
+})
+const draftPollingMessage = computed(() => {
+  if (!isDraftLoading.value && !isDraftPolling.value) return ''
+  return `${pollAttempt.value}회차`
+})
+const applyButtonLabel = computed(() => '상담일지에 반영')
+const draftSections = computed(() => {
+  const draft = editableStructuredData.value
   if (!draft) return []
 
-  const rows = [
+  const commonRows = [
     ['consultationType', '상담 유형', draft.consultationType],
     ['consultationChannel', '상담 채널', draft.consultationChannel],
     ['consultedAt', '상담 일시', formatDateTimeValue(draft.consultedAt)],
     ['specialNote', '특이사항', draft.specialNote],
     ['nextScheduledAt', '다음 일정', formatDateTimeValue(draft.nextScheduledAt)],
+  ]
+  const customerRows = [
     ['customerName', '고객명', draft.customerInfo?.customerName],
     ['customerPhone', '연락처', draft.customerInfo?.customerPhone],
     ['customerAnnualIncome', '연소득', formatMoneyValue(draft.customerInfo?.customerAnnualIncome)],
@@ -343,33 +385,42 @@ const structuredPreviewRows = computed(() => {
     ['customerCompanyName', '직장명', draft.customerInfo?.customerCompanyName],
     ['customerMaritalStatus', '혼인 상태', draft.customerInfo?.customerMaritalStatus],
     ['underlyingDiseaseCodes', '기저 질환', formatListValue(draft.customerInfo?.underlyingDiseaseCodes)],
+  ]
+  const typeRows = {
+    NEW_CONTRACT: [
     ['monthlyIncome', '월 소득', formatMoneyValue(draft.newDetail?.monthlyIncome)],
     ['hasExistingInsurance', '기존 보험 가입', formatBooleanValue(draft.newDetail?.hasExistingInsurance)],
     ['monthlyInsurancePremium', '기존 보험료', formatMoneyValue(draft.newDetail?.monthlyInsurancePremium)],
     ['insurancePriority', '보험 우선순위', draft.newDetail?.insurancePriority],
     ['coverageTypes', '관심 보장', formatCoverageTypeList(draft.newDetail?.coverageTypes)],
     ['proposedProductCodes', '추천 상품', formatProposedProductList(draft.newDetail?.proposedProductCodes)],
+    ],
+    CLAIM: [
     ['claimType', '청구 유형', draft.claimDetail?.claimType],
     ['claimReason', '청구 사유', draft.claimDetail?.claimReason],
     ['incidentDate', '사고/진단일', draft.claimDetail?.incidentDate],
     ['claimAmount', '청구 금액', formatMoneyValue(draft.claimDetail?.claimAmount)],
+    ],
+    RENEWAL: [
     ['renewalScheduledDate', '갱신 예정일', draft.renewalDetail?.renewalScheduledDate],
     ['currentPremium', '현재 보험료', formatMoneyValue(draft.renewalDetail?.currentPremium)],
     ['renewalPremium', '갱신 보험료', formatMoneyValue(draft.renewalDetail?.renewalPremium)],
     ['changeType', '변경 유형', draft.renewalDetail?.changeType],
+    ],
+    TERMINATION: [
     ['reviewReasons', '해지 검토 사유', formatListValue(draft.cancelDetail?.reviewReasons)],
     ['customerIntent', '고객 의사', draft.cancelDetail?.customerIntent],
     ['retentionPossibility', '유지 가능성', draft.cancelDetail?.retentionPossibility],
-    ['summaryText', '요약', generatedSummaryText.value],
+    ],
+  }
+
+  const sections = [
+    createPreviewSection('consultation', '상담 기본 정보', commonRows),
+    createPreviewSection('customer', '고객 정보', customerRows),
+    createPreviewSection('typed', getConsultationTypeSectionTitle(draft.consultationType), typeRows[draft.consultationType] || []),
   ]
 
-  return rows
-    .filter(([, , value]) => hasMeaningfulValue(value))
-    .map(([key, label, value]) => ({
-      key,
-      label,
-      value,
-    }))
+  return sections.filter((section) => section.rows.length > 0)
 })
 
 function syncInitialValues() {
@@ -475,97 +526,26 @@ async function handlePrimaryRecorderAction() {
   await handleStart()
 }
 
-function isDraftNotReadyError(error) {
-  const status = error?.response?.status
-  const message = String(error?.response?.data?.message || error?.message || '')
-  return status === 404 || message.includes('AI 상담 초안을 찾을 수 없습니다')
-}
-
-async function loadAiDraft(options = {}) {
-  if (!sessionId.value) {
-    return
-  }
-
-  const { retry = false } = options
-  aiDraftLoading.value = true
-  aiDraftError.value = ''
-
-  try {
-    const maxAttempts = retry ? 6 : 1
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      try {
-        const response = await getConsultationSttAiDraft(sessionId.value)
-        const result = response?.result ?? response
-        aiDraftRecord.value = result || null
-        const structuredData = result?.structuredData ?? result?.draft ?? result
-
-        aiStructuredDraft.value = structuredData || null
-
-        if (structuredData) {
-          manualSummaryDraft.value = normalizeText(
-            structuredData.summaryText || structuredData.consultationContent || structuredData.specialNote || '',
-          )
-        }
-
-        return
-      } catch (error) {
-        if (retry && isDraftNotReadyError(error) && attempt < maxAttempts - 1) {
-          await wait(1500)
-          continue
-        }
-
-        throw error
-      }
-    }
-  } catch (error) {
-    if (isDraftNotReadyError(error)) {
-      aiDraftError.value = 'AI 구조화 초안이 아직 생성되지 않았습니다. 잠시 후 다시 자동 반영됩니다.'
-      return
-    }
-
-    aiDraftError.value = error?.response?.data?.message || error?.message || 'AI 초안 조회에 실패했습니다.'
-  } finally {
-    aiDraftLoading.value = false
-  }
-}
-
 async function handleStopAndContinue() {
   await stopRecording()
 
   if (recordingState.value === 'STOPPED' || sessionStatus.value === 'PROCESSING') {
     currentStep.value = 2
-    await loadAiDraft({ retry: true })
+    if (finalText.value) {
+      await startPolling(sessionId.value)
+    }
   }
 }
 
 async function handleApplyAiDraft() {
   if (!canApplyAiDraft.value) {
+    showToast('AI 초안이 아직 준비되지 않았습니다.', 'error')
     return
   }
 
-  applyLoading.value = true
-  applyErrorMessage.value = ''
-
-  try {
-    const response = await applyConsultationAiNote(aiDraftId.value)
-    const result = response?.result ?? response
-
-    aiDraftRecord.value = {
-      ...(aiDraftRecord.value || {}),
-      ...(result || {}),
-      status: result?.status || result?.aiNoteStatus || result?.draftStatus || 'APPLIED',
-    }
-
-    emit('apply-structured-draft', aiStructuredDraft.value)
-    showToast('상담일지에 초안을 반영했습니다.', 'success')
-    await handleClose()
-  } catch (error) {
-    applyErrorMessage.value = error?.response?.data?.message || error?.message || '상담일지 반영에 실패했습니다.'
-    showToast('상담일지 반영에 실패했습니다.', 'error')
-  } finally {
-    applyLoading.value = false
-  }
+  emit('apply-structured-draft', editableStructuredData.value)
+  showToast('상담일지에 초안을 반영했습니다.', 'success')
+  await handleClose()
 }
 
 async function ensureInsuranceProductsLoaded() {
@@ -587,26 +567,11 @@ async function ensureInsuranceProductsLoaded() {
   }
 }
 
-async function applyStructuredDraftToForm() {
-  if (!aiStructuredDraft.value) {
-    return
-  }
-
-  emit('apply-structured-draft', aiStructuredDraft.value)
-  await handleClose()
-}
-
 async function handleClose() {
   stopTimer()
   elapsedSeconds.value = 0
   currentStep.value = 1
-  manualSummaryDraft.value = ''
-  aiDraftLoading.value = false
-  aiDraftError.value = ''
-  aiDraftRecord.value = null
-  aiStructuredDraft.value = null
-  applyLoading.value = false
-  applyErrorMessage.value = ''
+  resetAiDraft()
   await dispose()
   resetRuntimeState()
   emit('update:open', false)
@@ -618,13 +583,7 @@ watch(
     if (isOpen) {
       elapsedSeconds.value = 0
       currentStep.value = 1
-      manualSummaryDraft.value = ''
-      aiDraftLoading.value = false
-      aiDraftError.value = ''
-      aiDraftRecord.value = null
-      aiStructuredDraft.value = null
-      applyLoading.value = false
-      applyErrorMessage.value = ''
+      resetAiDraft()
       resetRuntimeState()
       syncInitialValues()
       return
@@ -633,13 +592,7 @@ watch(
     stopTimer()
     elapsedSeconds.value = 0
     currentStep.value = 1
-    manualSummaryDraft.value = ''
-    aiDraftLoading.value = false
-    aiDraftError.value = ''
-    aiDraftRecord.value = null
-    aiStructuredDraft.value = null
-    applyLoading.value = false
-    applyErrorMessage.value = ''
+    resetAiDraft()
     await dispose()
     resetRuntimeState()
   },
@@ -680,8 +633,8 @@ watch(
 watch(
   () => finalText.value,
   async (value) => {
-    if (value && currentStep.value === 2 && !aiStructuredDraft.value && !aiDraftLoading.value) {
-      await loadAiDraft({ retry: true })
+    if (value && sessionId.value && !draftRecord.value && !isDraftLoading.value) {
+      await startPolling(sessionId.value)
     }
   },
 )
@@ -689,20 +642,24 @@ watch(
 watch(
   () => currentStep.value,
   async (step) => {
-    if (step === 2 && !aiStructuredDraft.value && !aiDraftLoading.value && sessionId.value) {
-      await loadAiDraft({ retry: true })
+    if (step === 2 && finalText.value && !draftRecord.value && !isDraftLoading.value && sessionId.value) {
+      await startPolling(sessionId.value)
     }
   },
 )
 
 watch(
-  () => aiStructuredDraft.value?.newDetail?.proposedProductCodes,
+  () => editableStructuredData.value?.newDetail?.proposedProductCodes,
   async (codes) => {
     if (Array.isArray(codes) && codes.length > 0) {
       await ensureInsuranceProductsLoaded()
     }
   },
 )
+
+async function handleRetryAiDraft() {
+  await retryAiDraft()
+}
 
 onBeforeUnmount(() => {
   stopTimer()
@@ -712,15 +669,42 @@ onBeforeUnmount(() => {
   }
 })
 
-function wait(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
-}
-
 function hasMeaningfulValue(value) {
   if (Array.isArray(value)) return value.length > 0
   return value !== null && value !== undefined && String(value).trim() !== ''
+}
+
+function formatWarning(warning) {
+  if (warning === null || warning === undefined) {
+    return ''
+  }
+
+  if (typeof warning === 'string') {
+    return warning
+  }
+
+  return warning.message || warning.warningMessage || JSON.stringify(warning)
+}
+
+function createPreviewSection(key, title, rows) {
+  return {
+    key,
+    title,
+    rows: rows
+      .filter(([, , value]) => hasMeaningfulValue(value))
+      .map(([rowKey, label, value]) => ({
+        key: rowKey,
+        label,
+        value,
+      })),
+  }
+}
+
+function getConsultationTypeSectionTitle(type) {
+  if (type === 'CLAIM') return '청구 정보'
+  if (type === 'RENEWAL') return '갱신 정보'
+  if (type === 'TERMINATION') return '해지 상담 정보'
+  return '신규 상담 정보'
 }
 
 function formatListValue(value) {
@@ -1139,6 +1123,12 @@ function formatDateTimeValue(value) {
   color: #9ca3af;
 }
 
+.stt-results__body--expanded {
+  min-height: 140px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 .stt-summary-hero {
   display: flex;
   align-items: flex-start;
@@ -1188,6 +1178,99 @@ function formatDateTimeValue(value) {
 
 .stt-summary-card--preview {
   gap: 12px;
+}
+
+.stt-summary-card--summary,
+.stt-summary-card--meta,
+.stt-summary-card--editor {
+  gap: 12px;
+}
+
+.stt-warning-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.stt-summary-text {
+  padding: 14px 16px;
+  border: 1px solid #ddd6fe;
+  border-radius: 18px;
+  background: #faf5ff;
+}
+
+.stt-summary-text p {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.stt-preview-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.stt-preview-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #ede9fe;
+  border-radius: 18px;
+  background: #fcfcff;
+}
+
+.stt-preview-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stt-preview-section__header strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.stt-preview-section__header span {
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.stt-preview-sheet {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.stt-preview-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.stt-preview-row dt {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.stt-preview-row dd {
+  margin: 0;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .stt-summary-textarea {
@@ -1432,7 +1515,8 @@ function formatDateTimeValue(value) {
   }
 
   .stt-results__header,
-  .stt-summary-hero {
+  .stt-summary-hero,
+  .stt-preview-section__header {
     display: grid;
   }
 }
