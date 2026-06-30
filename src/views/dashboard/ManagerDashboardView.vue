@@ -1,23 +1,35 @@
 <template>
   <section class="manager-dashboard" aria-label="관리자 대시보드">
     <div class="dashboard-filter">
-      <label v-if="isHqManager" class="dashboard-filter__field">
-        <span>지점 선택</span>
-        <select v-model="selectedBranch" :disabled="isLoadingBranches">
-          <option v-for="branch in branchOptions" :key="branch.value" :value="branch.value">
-            {{ branch.label }}
-          </option>
-        </select>
+      <label v-if="isHqManager" class="dashboard-filter__field dashboard-filter__field--branch">
+        <v-select
+          v-model="selectedBranch"
+          :items="branchOptions"
+          item-title="label"
+          item-value="value"
+          label="지점 선택"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :loading="isLoadingBranches"
+          :disabled="isLoadingBranches"
+          class="dashboard-filter__branch-field"
+        />
         <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
       </label>
 
-      <label class="dashboard-filter__field">
-        <span>기간 선택</span>
-        <select v-model="selectedMonth" :disabled="isLoadingMonths">
-          <option v-for="month in monthOptions" :key="month.value" :value="month.value">
-            {{ month.label }}
-          </option>
-        </select>
+      <label class="dashboard-filter__field dashboard-filter__field--month">
+        <v-text-field
+          v-model="selectedMonth"
+          type="month"
+          label="정산 월"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :disabled="isLoadingMonths"
+          :max="latestAvailableMonth"
+          class="dashboard-filter__month-field"
+        />
         <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
       </label>
     </div>
@@ -308,6 +320,7 @@ const monthOptions = ref(fallbackMonthOptions)
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const latestAvailableMonth = computed(() => monthOptions.value[0]?.value ?? fallbackMonthOptions[0]?.value ?? '')
 const selectedBranchOption = computed(() =>
   branchOptions.value.find((branch) => branch.value === selectedBranch.value) ?? null,
 )
@@ -1350,12 +1363,18 @@ function getAdvisorCellValue(advisor, key) {
 .dashboard-filter {
   display: flex;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 14px;
 }
 
 .dashboard-filter__field {
   display: grid;
   gap: 8px;
+}
+
+.dashboard-filter__field--branch,
+.dashboard-filter__field--month {
+  gap: 0;
 }
 
 .dashboard-filter__field span {
@@ -1367,6 +1386,14 @@ function getAdvisorCellValue(advisor, key) {
 .dashboard-filter__error {
   color: #dc2626;
   font-size: 12px;
+}
+
+.dashboard-filter__month-field {
+  width: 180px;
+}
+
+.dashboard-filter__branch-field {
+  width: 220px;
 }
 
 .dashboard-filter__field select,
@@ -1984,7 +2011,8 @@ function getAdvisorCellValue(advisor, key) {
   }
 
   .dashboard-filter__field select,
-  .dashboard-filter__field select {
+  .dashboard-filter__branch-field,
+  .dashboard-filter__month-field {
     width: 100%;
   }
 
