@@ -17,7 +17,7 @@
     </div>
 
     <form class="contract-create-page__form" @submit.prevent="submitContract">
-      <section class="contract-create-card">
+      <section ref="selectedCustomerInfoSection" class="contract-create-card">
         <header class="contract-create-card__header">
           <h3>1. 고객 정보 불러오기</h3>
         </header>
@@ -296,7 +296,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createContract } from '../../api/contracts'
@@ -312,6 +312,7 @@ const router = useRouter()
 const customerSearchKeyword = ref('')
 const customerRows = ref([])
 const selectedCustomer = ref(null)
+const selectedCustomerInfoSection = ref(null)
 const isCustomerSearchLoading = ref(false)
 const customerSearchError = ref('')
 const customerCurrentPage = ref(1)
@@ -428,6 +429,7 @@ async function loadCustomers() {
 async function selectCustomer(customer) {
   const normalizedCustomer = normalizeCustomer(customer)
   selectedCustomer.value = normalizedCustomer
+  scrollToSelectedCustomerInfo()
 
   try {
     const response = await getCustomerDetail(customer.customerId)
@@ -442,6 +444,15 @@ async function selectCustomer(customer) {
   } catch {
     // Keep the selected row data when the detail API fails.
   }
+}
+
+async function scrollToSelectedCustomerInfo() {
+  await nextTick()
+
+  selectedCustomerInfoSection.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
 }
 
 async function loadInsuranceCompanies() {
