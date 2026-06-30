@@ -12,9 +12,8 @@
 
     <Transition name="esg-drawer">
       <aside v-if="modelValue" class="esg-drawer" aria-label="ESG Impact 상세">
-        <header class="esg-drawer__header">
+        <header v-if="currentView === 'criteria'" class="esg-drawer__header">
           <button
-            v-if="currentView === 'criteria'"
             type="button"
             class="esg-drawer__back-button"
             aria-label="ESG Impact 상세로 돌아가기"
@@ -22,221 +21,199 @@
           >
             <v-icon icon="mdi-chevron-left" size="21" />
           </button>
-          <div class="esg-drawer__title-group">
-            <h2 class="esg-drawer__title">{{ currentView === 'criteria' ? '산정 기준 안내' : '바다 수위 안정 현황' }}</h2>
-            <p v-if="currentView === 'main'">당신의 친환경 활동이 높아진 바다가 조금씩 낮아지고 있어요.</p>
-          </div>
-          <h2>바다 수위 안정 현황</h2>
+          <h2>산정 기준 안내</h2>
           <button type="button" aria-label="닫기" @click="close">
             <v-icon icon="mdi-close" size="18" />
           </button>
         </header>
 
-        <main v-if="currentView === 'main'" class="esg-drawer__body">
-          <section class="esg-hero">
-            <div class="esg-status">
-              <article class="esg-status__rate">
-                <div class="esg-status__content">
-                  <span>현재 안정률</span>
-                  <strong>{{ formatNumber(impact.recoveryRate) }}%</strong>
-                  <b>▼ {{ recentSeaLevelChange }}m 지난 활동 대비</b>
-                </div>
-              </article>
-
-              <div class="esg-status__side">
-                <article class="esg-status__level">
-                  <v-icon icon="mdi-shield-wave-outline" size="22" />
-                  <div class="esg-status__content">
-                    <span>안정 단계</span>
-                    <strong>Lv. {{ impact.level }}</strong>
-                    <small>총 6단계 중 {{ impact.level }}단계 달성</small>
-                  </div>
-                </article>
-
-                <article class="esg-status__message">
-                  당신의 소중한 업무가 차오르는 바다를 진정시키고 있습니다.
-                </article>
+        <main
+          v-if="currentView === 'main'"
+          class="esg-drawer__body esg-dashboard"
+          :class="{ 'is-entered': isEntered }"
+        >
+          <section class="esg-dashboard__top">
+            <div class="esg-dashboard__headline">
+              <span class="esg-dashboard__icon">
+                <v-icon icon="mdi-waves" size="23" />
+              </span>
+              <div>
+                <h2>해수면 상승 완화 현황</h2>
+                <strong>{{ monthLabel }} ESG 챌린지</strong>
+                <p>상담일지 작성 · AI 브리핑 생성 · 인수인계 완료가 종이 사용을 줄이고 
+                  <br>
+                  해수면 상승 속도를 늦춰 섬을 지켜주고 있어요.</p>
               </div>
             </div>
 
-            <div class="esg-scene" :style="{ '--sea-fill': seaFill }" aria-hidden="true">
-              <img class="esg-scene__photo" :src="seaLevelIslandImage" alt="" />
-              <div class="esg-scene__sun"></div>
-              <div class="esg-scene__cloud esg-scene__cloud--one"></div>
-              <div class="esg-scene__cloud esg-scene__cloud--two"></div>
-              <i class="esg-scene__bird esg-scene__bird--one"></i>
-              <i class="esg-scene__bird esg-scene__bird--two"></i>
-              <i class="esg-scene__bird esg-scene__bird--three"></i>
-
-              <div class="esg-scene__island">
-                <div class="esg-scene__palm"></div>
-                <div class="esg-scene__house">
-                  <span></span>
-                </div>
+            <div class="esg-dashboard__month-wrap">
+              <button type="button" class="esg-dashboard__month" @click="monthMenuOpen = !monthMenuOpen">
+                <v-icon icon="mdi-calendar-month-outline" size="15" />
+                {{ monthLabel }} ESG 챌린지
+                <v-icon :icon="monthMenuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" size="16" />
+              </button>
+              <div v-if="monthMenuOpen" class="esg-dashboard__month-menu">
+                <button
+                  v-for="option in monthOptions"
+                  :key="option.value"
+                  type="button"
+                  :class="{ 'is-selected': option.value === targetMonthValue }"
+                  @click="selectTargetMonth(option.value)"
+                >
+                  <span>{{ option.label }} ESG 챌린지</span>
+                  <v-icon v-if="option.value === targetMonthValue" icon="mdi-check" size="15" />
+                </button>
               </div>
+            </div>
+          </section>
 
+          <section class="esg-summary">
+            <article class="esg-summary-card">
+              <span class="esg-summary-card__icon esg-summary-card__icon--blue">
+                <v-icon icon="mdi-file-document-outline" size="24" />
+              </span>
+              <div>
+                <p>이번 달 절약한 종이</p>
+                <strong>{{ formatCount(animatedPaperSavedCount) }}<small>장</small></strong>
+                <em>목표 250장</em>
+                <div class="esg-summary-card__bar">
+                  <i :style="{ width: `${paperProgress}%` }"></i>
+                </div>
+                <b>{{ paperProgress }}%</b>
+              </div>
+            </article>
+
+            <article class="esg-summary-card">
+              <span class="esg-summary-card__icon esg-summary-card__icon--green">
+                <v-icon icon="mdi-leaf" size="24" />
+              </span>
+              <div>
+                <p>절감한 CO₂</p>
+                <strong>{{ formatNumber(animatedCo2SavedKg) }}<small>kg</small></strong>
+                <em>나무 0.33그루 심은 효과</em>
+              </div>
+            </article>
+
+            <article class="esg-summary-card">
+              <span class="esg-summary-card__icon esg-summary-card__icon--violet">
+                <v-icon icon="mdi-shield-check-outline" size="24" />
+              </span>
+              <div>
+                <p>해수면 상승 완화 단계</p>
+                <strong>Lv.{{ animatedLevel }}</strong>
+                <em>{{ stageCurrentLabel }}</em>
+                <button type="button" @click="currentView = 'criteria'">단계 기준 보기</button>
+              </div>
+            </article>
+          </section>
+
+          <section class="esg-ocean-panel">
+            <div
+              class="esg-scene"
+              :class="{ 'is-entered': isEntered }"
+              :style="{ '--sea-fill': animatedSeaFill }"
+              aria-hidden="true"
+            >
+              <img class="esg-scene__photo" :src="seaLevelIslandImage" alt="" />
               <div class="esg-scene__sea">
                 <span class="esg-scene__submerged-island"></span>
                 <span class="esg-scene__wave esg-scene__wave--one"></span>
                 <span class="esg-scene__wave esg-scene__wave--two"></span>
                 <span class="esg-scene__wave esg-scene__wave--three"></span>
-                <span class="esg-scene__foam esg-scene__foam--one"></span>
-                <span class="esg-scene__foam esg-scene__foam--two"></span>
                 <span class="esg-scene__bubble esg-scene__bubble--one"></span>
                 <span class="esg-scene__bubble esg-scene__bubble--two"></span>
                 <span class="esg-scene__bubble esg-scene__bubble--three"></span>
               </div>
-              <div class="esg-scene__level-line esg-scene__level-line--current">
-                <span>
-                  현재 수위
-                  <b>+{{ formatNumber(impact.seaLevelContribution) }}m</b>
-                </span>
-                <i></i>
+              <div class="esg-sea-label esg-sea-label--baseline">
+                <strong>빠른 상승 상태</strong>
+                <span>(아무 활동도 하지 않을 경우)</span>
               </div>
-              <div class="esg-scene__level-line esg-scene__level-line--target">
-                <span>
-                  목표 수위
-                  <b>±0.00m</b>
-                </span>
-                <i></i>
+              <div class="esg-sea-label esg-sea-label--current">
+                <strong>현재 상승 상태</strong>
+                <span>(당신의 실천 결과)</span>
               </div>
-              <div class="esg-scene__level-gap">{{ formatNumber(impact.seaLevelContribution) }}m</div>
-              <div class="esg-scene__caption">
-                <span>현재 수위</span>
-                <b>+{{ formatNumber(impact.seaLevelContribution) }}m</b>
-                <span>안정 단계</span>
+              <div class="esg-sea-label esg-sea-label--recovery">
+                <strong>최소 상승 상태</strong>
+                <span>(우리의 목표)</span>
               </div>
+              <span class="esg-sea-arrow esg-sea-arrow--up-left"></span>
+              <span class="esg-sea-arrow esg-sea-arrow--up-right"></span>
+              <span class="esg-sea-arrow esg-sea-arrow--down"></span>
+              <aside class="esg-scene-note">
+                <strong>현재 상태</strong>
+                <p>이 캠페인에서는 실제 수치를 나타내는 것이 아니라, 종이 절감 활동이 해수면 상승 흐름을 완화하는 과정을 표현합니다.</p>
+              </aside>
+              <p class="esg-ocean-panel__message">
+                <v-icon icon="mdi-lightbulb-on-outline" size="16" />
+                더 많은 실천을 할수록 바다가 내려가고, 섬은 더 안전해집니다.
+              </p>
             </div>
           </section>
 
-          <section class="esg-section">
-            <h3>이번 달 달성 내역</h3>
-            <div class="esg-metrics">
-              <article v-for="metric in metrics" :key="metric.label" class="esg-metric">
-                <span>{{ metric.label }}</span>
-                <div>
-                  <span v-if="metric.badgeIcon" class="esg-metric__combo-icon">
-                    <v-icon :icon="metric.icon" size="18" />
-                    <v-icon :icon="metric.badgeIcon" size="10" />
-                  </span>
-                  <v-icon v-else :icon="metric.icon" size="18" />
-                  <strong>{{ metric.value }}</strong>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section class="esg-section">
-            <h3>이번 달 활동 내역</h3>
-            <div v-if="activities.length > 0" class="esg-activities">
+          <section class="esg-journey">
+            <h3>당신의 실천이 만들어가는 변화</h3>
+            <div class="esg-journey__steps">
               <article
-                v-for="activity in activities"
-                :key="`${activity.time}-${activity.type}`"
-                class="esg-activity"
+                v-for="step in journeySteps"
+                :key="step.level"
+                :class="{ 'is-active': step.level === currentLevel }"
               >
-                <time>{{ activity.time }}</time>
-                <span class="esg-activity__icon">
-                  <v-icon :icon="getActivityIcon(activity.type)" size="18" />
+                <span>
+                  <img :src="seaLevelIslandImage" alt="" />
                 </span>
-                <div class="esg-activity__content">
-                  <strong>{{ activity.title }}</strong>
-                  <small>{{ activity.description }}</small>
-                </div>
-                <b>
-                  수위 안정
-                  <span>{{ formatDelta(activity.seaLevelDelta) }}m</span>
-                </b>
+                <strong>{{ step.label }}</strong>
+                <b>{{ step.title }}</b>
+                <small>{{ step.description }}</small>
               </article>
             </div>
-            <div v-else class="esg-activities-empty">
-              오늘 기록된 환경 기여 활동이 없습니다.
+            <div class="esg-journey__progress">
+              현재 Lv.{{ currentLevel }} ({{ monthLabel }} 전체 목표의 {{ formatNumber(animatedRecovery) }}%)
             </div>
           </section>
-
-          <section class="esg-tip">
-            <v-icon icon="mdi-lightbulb-on-outline" size="18" />
-            <p>Paperless 업무 전환이 늘어날수록 종이 사용량과 이동 비용이 함께 줄어듭니다.</p>
-          </section>
-
-          <button type="button" class="esg-criteria-link" @click="currentView = 'criteria'">
-            <span>
-              <v-icon icon="mdi-information-outline" size="19" />
-            </span>
-            <strong>산정 기준 안내</strong>
-            <v-icon icon="mdi-chevron-right" size="20" />
-          </button>
         </main>
 
         <main v-else class="esg-drawer__body esg-criteria">
-          <section class="esg-criteria__notice">
-            <v-icon icon="mdi-leaf" size="18" />
-            <p>ESG Impact는 실제 환경 측정값이 아니라, 디지털 업무 활동을 내부 환산 기준으로 계산한 예상 기여 지표입니다.</p>
-          </section>
+          <section class="esg-criteria-card" aria-label="단계 기준">
+            <header class="esg-criteria-card__header">
+              <h3>단계 기준</h3>
+              <button type="button" aria-label="닫기" @click="currentView = 'main'">
+                <v-icon icon="mdi-close" size="16" />
+              </button>
+            </header>
 
-          <section class="esg-criteria__section">
-            <h3>1. 활동별 종이 절감 기준</h3>
-            <div class="esg-criteria__activity-grid">
-              <article v-for="item in paperCriteria" :key="item.label">
-                <v-icon :icon="item.icon" size="22" />
-                <strong>{{ item.label }}</strong>
-                <span>{{ item.value }}</span>
+            <p class="esg-criteria-card__description">
+              실천한 종이 절약량에 따라<br />
+              해수면 상승 완화 단계가 결정됩니다.
+            </p>
+
+            <div class="esg-criteria-levels">
+              <article
+                v-for="item in levelCriteria"
+                :key="item.level"
+                class="esg-criteria-level"
+                :class="{ 'is-active': item.level === currentLevel }"
+              >
+                <span class="esg-criteria-level__icon" :class="`esg-criteria-level__icon--${item.tone}`">
+                  <v-icon :icon="item.icon" size="16" />
+                </span>
+                <div class="esg-criteria-level__content">
+                  <div>
+                    <strong>{{ item.label }}</strong>
+                    <b>{{ item.range }}</b>
+                  </div>
+                  <p>{{ item.description }}</p>
+                </div>
               </article>
             </div>
-          </section>
 
-          <section class="esg-criteria__section">
-            <h3>2. 레벨 산정 기준 <small>(종이 절감 장수 기준)</small></h3>
-            <div class="esg-criteria__table">
-              <div v-for="item in levelCriteria" :key="item.level" :class="{ 'is-active': item.level === `Lv.${impact.level}` }">
-                <span>{{ item.level }}</span>
-                <strong>{{ item.label }}</strong>
-                <b>{{ item.range }}</b>
-              </div>
-            </div>
+            <footer class="esg-criteria-card__footnote">
+              <v-icon icon="mdi-information-outline" size="14" />
+              <p>
+                단계는 매월 1일에 초기화되며,<br />
+                해당 달의 실천량을 기준으로 산정됩니다.
+              </p>
+            </footer>
           </section>
-
-          <section class="esg-criteria__section">
-            <h3>3. 회복률 산정 기준</h3>
-            <div class="esg-criteria__formula">
-              <span>회복률</span>
-              <strong>종이 절감 장수</strong>
-              <i>/</i>
-              <strong>320</strong>
-              <i>×</i>
-              <strong>100</strong>
-              <small>(최대 100%로 표시)</small>
-            </div>
-          </section>
-
-          <section class="esg-criteria__section">
-            <h3>4. 단계 산정 기준 <small>(회복률 기준)</small></h3>
-            <div class="esg-criteria__stage-grid">
-              <article v-for="item in stageCriteria" :key="item.range">
-                <span>{{ item.range }}</span>
-                <strong>{{ item.label }}</strong>
-              </article>
-            </div>
-          </section>
-
-          <section class="esg-criteria__section">
-            <h3>5. 환경 지표 환산 기준</h3>
-            <div class="esg-criteria__conversion">
-              <article>
-                <v-icon icon="mdi-molecule-co2" size="22" />
-                <strong>예상 CO₂ 절감량</strong>
-                <span>= 종이 절감 장수 × 0.015 kg</span>
-              </article>
-              <article>
-                <v-icon icon="mdi-waves" size="22" />
-                <strong>바다 수위 안정 기여도</strong>
-                <span>= 종이 절감 장수 × 0.00037 m</span>
-              </article>
-            </div>
-          </section>
-
-          <p class="esg-criteria__footnote">
-            ※ 위 수치는 실제 환경 측정값이 아니라, Paperless 업무 전환 효과를 설명하기 위한 서비스 내부 예상 환산 지표입니다.
-          </p>
         </main>
       </aside>
     </Transition>
@@ -244,7 +221,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import seaLevelIslandImage from '../../assets/esg/sea-level-island.png'
 
@@ -259,74 +236,204 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'change-month'])
 const currentView = ref('main')
+const isEntered = ref(false)
+const selectedTargetMonth = ref('')
+const monthMenuOpen = ref(false)
+const animatedRecovery = ref(0)
+const animatedLevel = ref(0)
+const animatedPaperSavedCount = ref(0)
+const animatedCo2SavedKg = ref(0)
+let counterAnimationId = null
 
-const paperCriteria = [
-  { icon: 'mdi-file-document-outline', label: '상담일지 작성', value: '1건 = 종이 3장' },
-  { icon: 'mdi-text-box-outline', label: 'AI 브리핑 생성', value: '1건 = 종이 5장' },
-  { icon: 'mdi-account-switch-outline', label: '인수인계 완료', value: '1건 = 종이 4장' },
+const journeySteps = [
+  { level: 1, label: 'Lv.1', title: '침수 위기', description: '섬의 대부분이 위험한 상태' },
+  { level: 2, label: 'Lv.2', title: '희망의 시작', description: '작은 실천이 변화를 시작' },
+  { level: 3, label: 'Lv.3', title: '변화 확산', description: '지속적인 실천으로 변화가 커짐' },
+  { level: 4, label: 'Lv.4', title: '안정 확보', description: '해수면 상승 속도가 눈에 띄게 완화' },
+  { level: 5, label: 'Lv.5', title: '미래 보전', description: '미래 세대를 위한 안전을 확보' },
+  { level: 6, label: 'Lv.6', title: '투발루 수호', description: '섬이 안전하게 지켜진 상태' },
 ]
 
 const levelCriteria = [
-  { level: 'Lv.1', label: '시작 단계', range: '0 ~ 59장' },
-  { level: 'Lv.2', label: '안정 단계', range: '60 ~ 119장' },
-  { level: 'Lv.3', label: '회복 단계', range: '120 ~ 179장' },
-  { level: 'Lv.4', label: '고도 회복 단계', range: '180 ~ 239장' },
-  { level: 'Lv.5', label: '이상 완전 회복 단계', range: '240장 이상' },
-]
-
-const stageCriteria = [
-  { range: '0 ~ 25%', label: '시작 단계' },
-  { range: '26 ~ 50%', label: '안정 단계' },
-  { range: '51 ~ 75%', label: '회복 단계' },
-  { range: '76 ~ 100%', label: '고도 회복 단계' },
+  {
+    level: 1,
+    icon: 'mdi-medical-bag',
+    tone: 'red',
+    label: 'Lv.1 침수 위기',
+    description: '섬의 대부분이 침수 위협에 노출된 상태입니다.',
+    range: '0 ~ 49장',
+  },
+  {
+    level: 2,
+    icon: 'mdi-leaf',
+    tone: 'green',
+    label: 'Lv.2 희망의 시작',
+    description: '작은 실천이 변화를 만들어가기 시작했어요.',
+    range: '50 ~ 99장',
+  },
+  {
+    level: 3,
+    icon: 'mdi-recycle',
+    tone: 'teal',
+    label: 'Lv.3 변화 확산',
+    description: '지속적인 실천으로 긍정적인 변화가 커져요.',
+    range: '100 ~ 149장',
+  },
+  {
+    level: 4,
+    icon: 'mdi-account-group',
+    tone: 'blue',
+    label: 'Lv.4 안정 확보',
+    description: '해수면 상승 속도가 눈에 띄게 완화되고 있어요.',
+    range: '150 ~ 199장',
+  },
+  {
+    level: 5,
+    icon: 'mdi-account-multiple',
+    tone: 'violet',
+    label: 'Lv.5 미래 보전',
+    description: '미래 세대를 위한 안전을 확보하고 있어요.',
+    range: '200 ~ 249장',
+  },
+  {
+    level: 6,
+    icon: 'mdi-island',
+    tone: 'sky',
+    label: 'Lv.6 투발루 수호',
+    description: '투발루의 미래를 함께 지켜냈어요!',
+    range: '250장 이상',
+  },
 ]
 
 watch(
   () => props.modelValue,
   (isOpen) => {
-    if (!isOpen) currentView.value = 'main'
+    if (!isOpen) {
+      currentView.value = 'main'
+      isEntered.value = false
+      monthMenuOpen.value = false
+      cancelCounterAnimation()
+      return
+    }
+
+    startEntryAnimation()
   },
 )
 
-const metrics = computed(() => [
-  { icon: 'mdi-file-document-outline', label: '종이 절감', value: `${formatCount(props.impact.paperSavedCount)}장` },
-  { icon: 'mdi-weather-cloudy', label: 'CO₂ 절감', value: `${formatNumber(props.impact.co2SavedKg)} kg` },
-  { icon: 'mdi-waves', label: '해수면 안정 기여', value: `${formatNumber(props.impact.seaLevelContribution)} m` },
-])
+const currentLevel = computed(() => Math.round(toBoundedNumber(props.impact.level, 1, 6)))
+const targetMonthValue = computed(() => selectedTargetMonth.value || String(props.impact.targetMonth || getCurrentMonthValue()))
+const monthLabel = computed(() => {
+  const [year, month] = targetMonthValue.value.split('-')
+  if (!year || !month) return '2026년 6월'
+  return `${year}년 ${Number(month)}월`
+})
+const monthOptions = computed(() => {
+  const [baseYear, baseMonth] = targetMonthValue.value.split('-').map(Number)
+  const baseDate = new Date(baseYear || new Date().getFullYear(), (baseMonth || new Date().getMonth() + 1) - 1, 1)
 
-const activities = computed(() => Array.isArray(props.impact.activities) ? props.impact.activities : [])
-const recentSeaLevelChange = computed(() => {
-  const latestDelta = Number(activities.value[0]?.seaLevelDelta)
-  return formatNumber(Math.abs(Number.isFinite(latestDelta) ? latestDelta : 0.02))
+  return Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(baseDate.getFullYear(), baseDate.getMonth() - index, 1)
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    return {
+      value,
+      label: `${date.getFullYear()}년 ${date.getMonth() + 1}월`,
+    }
+  })
 })
-const seaFill = computed(() => {
-  const recovery = Math.min(Math.max(Number(props.impact.recoveryRate) || 0, 0), 100)
-  return `${62 - recovery * 0.16}%`
-})
+const animatedSeaFill = computed(() => isEntered.value ? getSeaFillByLevel(props.impact.level) : '88%')
+const paperProgress = computed(() => Math.min(Math.round((animatedPaperSavedCount.value / 250) * 100), 100))
+const stageCurrentLabel = computed(() => journeySteps.find((step) => step.level === currentLevel.value)?.title ?? '안정화 단계')
 
 function close() {
   currentView.value = 'main'
+  monthMenuOpen.value = false
   emit('update:modelValue', false)
 }
 
-function getActivityIcon(type) {
-  const icons = {
-    CONSULTATION: 'mdi-file-document-outline',
-    AI_BRIEFING: 'mdi-text-box-outline',
-    HANDOVER: 'mdi-account-switch-outline',
-  }
-
-  return icons[type] ?? 'mdi-file-document-outline'
+function selectTargetMonth(targetMonth) {
+  selectedTargetMonth.value = targetMonth
+  monthMenuOpen.value = false
+  emit('change-month', targetMonth)
 }
 
-function formatDelta(value) {
-  const numberValue = Number(value) || 0
-  const formattedValue = formatNumber(Math.abs(numberValue))
-  if (numberValue > 0) return `+${formattedValue}`
-  if (numberValue < 0) return `-${formattedValue}`
-  return formattedValue
+function getCurrentMonthValue() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+async function startEntryAnimation() {
+  cancelCounterAnimation()
+  isEntered.value = false
+  animatedRecovery.value = 0
+  animatedLevel.value = 0
+  animatedPaperSavedCount.value = 0
+  animatedCo2SavedKg.value = 0
+
+  await nextTick()
+  window.requestAnimationFrame(() => {
+    isEntered.value = true
+    animateCounters()
+  })
+}
+
+function animateCounters() {
+  const duration = 820
+  const startedAt = performance.now()
+  const targetRecovery = toBoundedNumber(props.impact.recoveryRate, 0, 100)
+  const targetLevel = toBoundedNumber(props.impact.level, 1, 6)
+  const targetPaperSavedCount = Math.max(Number(props.impact.paperSavedCount) || 0, 0)
+  const targetCo2SavedKg = Math.max(Number(props.impact.co2SavedKg) || 0, 0)
+
+  const tick = (timestamp) => {
+    const progress = Math.min((timestamp - startedAt) / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 3)
+
+    animatedRecovery.value = targetRecovery * eased
+    animatedLevel.value = Math.max(1, Math.round(targetLevel * eased))
+    animatedPaperSavedCount.value = Math.round(targetPaperSavedCount * eased)
+    animatedCo2SavedKg.value = targetCo2SavedKg * eased
+
+    if (progress < 1) {
+      counterAnimationId = window.requestAnimationFrame(tick)
+      return
+    }
+
+    animatedRecovery.value = targetRecovery
+    animatedLevel.value = Math.round(targetLevel)
+    animatedPaperSavedCount.value = Math.round(targetPaperSavedCount)
+    animatedCo2SavedKg.value = targetCo2SavedKg
+    counterAnimationId = null
+  }
+
+  counterAnimationId = window.requestAnimationFrame(tick)
+}
+
+function cancelCounterAnimation() {
+  if (!counterAnimationId) return
+  window.cancelAnimationFrame(counterAnimationId)
+  counterAnimationId = null
+}
+
+function toBoundedNumber(value, min, max) {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return min
+  return Math.min(Math.max(numberValue, min), max)
+}
+
+function getSeaFillByLevel(level) {
+  const waterLevel = {
+    1: '58%',
+    2: '52%',
+    3: '46%',
+    4: '40%',
+    5: '34%',
+    6: '28%',
+  }
+
+  const normalizedLevel = Math.round(toBoundedNumber(level, 1, 6))
+  return waterLevel[normalizedLevel] ?? waterLevel[1]
 }
 
 function formatNumber(value) {
@@ -359,7 +466,7 @@ function formatCount(value) {
   top: 0;
   right: 0;
   z-index: 2401;
-  width: 560px;
+  width: 760px;
   max-width: 100vw;
   height: 100vh;
   overflow-y: auto;
@@ -383,29 +490,13 @@ function formatCount(value) {
   border-bottom: 1px solid #edf1f6;
 }
 
-.esg-drawer__header > h2:not(.esg-drawer__title) {
-  display: none;
-}
-
-.esg-drawer__title-group {
-  flex: 1;
-  min-width: 0;
-}
-
 .esg-drawer__header h2 {
+  flex: 1;
   margin: 0;
   color: #111827;
   font-size: 17px;
   font-weight: 900;
   letter-spacing: 0;
-}
-
-.esg-drawer__title-group p {
-  margin: 2px 0 0;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
 }
 
 .esg-drawer__header button {
@@ -420,141 +511,290 @@ function formatCount(value) {
   cursor: pointer;
 }
 
-.esg-drawer__back-button {
-  margin-left: -6px;
-  margin-right: 4px;
-}
-
 .esg-drawer__body {
   padding: 22px 30px 36px;
 }
 
-.esg-section h3 {
-  margin: 0 0 14px;
-  color: #16263a;
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0;
+.esg-dashboard {
+  display: grid;
+  gap: 16px;
 }
 
-.esg-status {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.esg-dashboard__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.esg-dashboard__headline {
+  display: flex;
+  align-items: flex-start;
   gap: 14px;
-  margin-bottom: 16px;
 }
 
-.esg-status__rate,
-.esg-status__level,
-.esg-status__message {
-  border: 1px solid #dbeafe;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.055);
-}
-
-.esg-status__rate {
-  position: relative;
-  min-height: 146px;
-  padding: 28px;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(125, 211, 252, 0.22), transparent 32%),
-    linear-gradient(135deg, #ffffff, #f0f9ff);
-}
-
-.esg-status__content {
-  position: absolute;
-  left: 28px;
-  top: 26px;
+.esg-dashboard__icon {
   display: grid;
-  justify-items: start;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.72);
 }
 
-.esg-status__rate span,
-.esg-status__level span {
-  color: #64748b;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.esg-status__rate strong {
-  margin-top: 8px;
+.esg-dashboard__headline h2 {
+  margin: 0;
   color: #0f172a;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 36px;
-  font-weight: 750;
+  font-size: 24px;
+  font-weight: 950;
   letter-spacing: 0;
-  line-height: 1;
 }
 
-.esg-status__rate b {
-  width: fit-content;
-  margin-top: 11px;
-  color: #059669;
+.esg-dashboard__headline strong {
+  display: block;
+  margin-top: 5px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.esg-dashboard__headline p {
+  margin: 7px 0 0;
+  color: #475569;
   font-size: 13px;
   font-weight: 800;
+  line-height: 1.45;
 }
 
-.esg-status__side {
-  display: contents;
-}
-
-.esg-status__level {
+.esg-dashboard__month-wrap {
   position: relative;
-  min-height: 146px;
-  padding: 28px;
-  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  z-index: 30;
 }
 
-.esg-status__level :deep(.v-icon) {
+.esg-dashboard__month {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+  cursor: pointer;
+}
+
+.esg-dashboard__month:hover {
+  border-color: #67e8f9;
+  box-shadow: 0 10px 22px rgba(56, 189, 248, 0.12);
+}
+
+.esg-dashboard__month-menu {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  color: #38bdf8;
-  opacity: 0.72;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  max-height: 330px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.16);
 }
 
-.esg-status__level strong {
-  display: block;
-  margin-top: 8px;
-  color: #0f172a;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 36px;
-  font-weight: 750;
-  letter-spacing: 0;
-  line-height: 1;
-}
-
-.esg-status__level small {
-  display: block;
-  margin-top: 11px;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.esg-status__message {
+.esg-dashboard__month-menu button {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.esg-dashboard__month-menu button:hover,
+.esg-dashboard__month-menu button.is-selected {
+  background: #effaff;
+  color: #0284c7;
+}
+
+.esg-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.esg-summary-card {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: center;
+  gap: 14px;
+  min-height: 124px;
+  padding: 18px 17px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 9px 18px rgba(15, 23, 42, 0.04);
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+
+.esg-dashboard.is-entered .esg-summary-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.esg-dashboard.is-entered .esg-summary-card:nth-child(2) {
+  transition-delay: 0.06s;
+}
+
+.esg-dashboard.is-entered .esg-summary-card:nth-child(3) {
+  transition-delay: 0.12s;
+}
+
+.esg-summary-card__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+}
+
+.esg-summary-card > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   justify-content: center;
-  grid-column: 1 / -1;
-  min-height: 66px;
-  padding: 15px 18px;
-  background: #f8fbff;
+}
+
+.esg-summary-card__icon--blue {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.esg-summary-card__icon--green {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.esg-summary-card__icon--violet {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.esg-summary-card p,
+.esg-summary-card em {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+.esg-summary-card strong {
+  display: block;
+  margin-top: 5px;
+  color: #1e3a8a;
+  font-size: 27px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.esg-summary-card strong small {
+  margin-left: 3px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.esg-summary-card em {
+  display: block;
+  margin-top: 7px;
+}
+
+.esg-summary-card__bar {
+  height: 5px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.esg-summary-card__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #2dd4bf);
+  transition: width 0.82s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.esg-summary-card b {
+  display: block;
+  margin-top: 5px;
   color: #0f766e;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.45;
-  text-align: center;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.esg-summary-card button {
+  width: fit-content;
+  margin-top: 8px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.esg-ocean-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .esg-scene {
   position: relative;
-  height: 270px;
+  height: 318px;
   overflow: hidden;
   border-radius: 10px;
   background: #d8eef8;
   box-shadow: 0 16px 30px rgba(56, 130, 179, 0.16);
+  opacity: 0;
+  transform: translateY(14px) scale(0.992);
+  transition:
+    opacity 0.62s ease 0.12s,
+    transform 0.62s ease 0.12s;
+}
+
+.esg-scene.is-entered {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .esg-scene::after {
@@ -576,226 +816,16 @@ function formatCount(value) {
   height: 100%;
   object-fit: cover;
   object-position: center 38%;
+  opacity: 0;
+  transform: scale(1.025);
+  transition:
+    opacity 0.7s ease,
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.esg-scene__sun,
-.esg-scene__cloud,
-.esg-scene__bird,
-.esg-scene__island {
-  display: none;
-}
-
-.esg-scene__sun {
-  position: absolute;
-  top: 34px;
-  right: 42px;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 35% 35%, #fff4a6, #ffd95a 70%);
-  box-shadow: 0 0 0 14px rgba(255, 223, 113, 0.18), 0 0 34px rgba(255, 203, 68, 0.42);
-}
-
-.esg-scene__cloud {
-  position: absolute;
-  width: 50px;
-  height: 15px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
-  filter: blur(0.1px);
-  animation: esg-cloud 22s ease-in-out infinite;
-}
-
-.esg-scene__cloud::before,
-.esg-scene__cloud::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.esg-scene__cloud::before {
-  left: 8px;
-  width: 18px;
-  height: 18px;
-}
-
-.esg-scene__cloud::after {
-  right: 7px;
-  width: 23px;
-  height: 23px;
-}
-
-.esg-scene__cloud--one {
-  top: 76px;
-  left: 36px;
-  transform: scale(1.16);
-}
-
-.esg-scene__cloud--two {
-  top: 58px;
-  right: 128px;
-  opacity: 0.48;
-  transform: scale(0.78);
-  animation-duration: 27s;
-  animation-direction: reverse;
-}
-
-.esg-scene__bird {
-  position: absolute;
-  width: 17px;
-  height: 9px;
-  border-top: 2px solid #3e8dcc;
-  border-radius: 50%;
-  animation: esg-bird 16s ease-in-out infinite;
-}
-
-.esg-scene__bird::after {
-  content: '';
-  position: absolute;
-  left: 11px;
-  top: -2px;
-  width: 17px;
-  height: 9px;
-  border-top: 2px solid #3e8dcc;
-  border-radius: 50%;
-}
-
-.esg-scene__bird--one {
-  top: 54px;
-  left: 160px;
-  transform: scale(0.7);
-}
-
-.esg-scene__bird--two {
-  top: 36px;
-  left: 242px;
-  transform: scale(0.64);
-  animation-duration: 21s;
-}
-
-.esg-scene__bird--three {
-  top: 78px;
-  left: 286px;
-  transform: scale(0.58);
-  opacity: 0.75;
-  animation-duration: 18s;
-}
-
-.esg-scene__island {
-  position: absolute;
-  left: 50%;
-  bottom: 86px;
-  z-index: 5;
-  width: 168px;
-  height: 48px;
-  border-radius: 54% 46% 42% 42%;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(84, 157, 71, 0.95) 0 22px, transparent 23px),
-    radial-gradient(circle at 76% 24%, rgba(69, 135, 61, 0.86) 0 24px, transparent 25px),
-    radial-gradient(ellipse at 50% 88%, #fff0bd 0 45%, #dfb16b 46% 70%, #b97c45 100%);
-  transform: translateX(-50%);
-  box-shadow: 0 18px 28px rgba(59, 78, 92, 0.18);
-}
-
-.esg-scene__island::after {
-  content: '';
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: -10px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(255, 236, 185, 0.62);
-  filter: blur(7px);
-}
-
-.esg-scene__house {
-  position: absolute;
-  left: 72px;
-  bottom: 32px;
-  width: 52px;
-  height: 40px;
-  border: 2px solid rgba(64, 50, 43, 0.3);
-  border-radius: 3px;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 28%),
-    #d8cfbd;
-  box-shadow: 0 8px 14px rgba(63, 47, 35, 0.18);
-}
-
-.esg-scene__house::before {
-  content: '';
-  position: absolute;
-  left: -9px;
-  top: -23px;
-  width: 62px;
-  height: 32px;
-  clip-path: polygon(50% 0, 100% 76%, 0 76%);
-  background: linear-gradient(180deg, #79624a, #574535);
-}
-
-.esg-scene__house span {
-  position: absolute;
-  right: 10px;
-  bottom: 6px;
-  width: 10px;
-  height: 13px;
-  border-radius: 1px 1px 0 0;
-  background: #6e5a45;
-}
-
-.esg-scene__house span::before {
-  content: '';
-  position: absolute;
-  left: -24px;
-  top: -3px;
-  width: 10px;
-  height: 9px;
-  border-radius: 1px;
-  background: rgba(103, 83, 63, 0.72);
-  box-shadow: 13px 0 0 rgba(103, 83, 63, 0.72);
-}
-
-.esg-scene__palm {
-  position: absolute;
-  left: 42px;
-  bottom: 30px;
-  width: 7px;
-  height: 56px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #87522d, #bd8150 45%, #724124);
-  transform: rotate(9deg);
-  box-shadow: 0 6px 10px rgba(69, 44, 28, 0.22);
-}
-
-.esg-scene__palm::before {
-  content: '';
-  position: absolute;
-  left: -23px;
-  top: -24px;
-  width: 58px;
-  height: 34px;
-  border-radius: 999px 999px 999px 8px;
-  background: linear-gradient(135deg, #1f9d63, #53c978);
-  box-shadow:
-    22px 6px 0 #38b96c,
-    10px -9px 0 #2da768,
-    -9px 8px 0 #2c9a5f;
-  transform: rotate(-18deg);
-}
-
-.esg-scene__palm::after {
-  content: '';
-  position: absolute;
-  left: -16px;
-  top: -17px;
-  width: 48px;
-  height: 24px;
-  border-radius: 999px 999px 8px 999px;
-  background: linear-gradient(135deg, #2aa364, #66d27d);
-  transform: rotate(34deg);
+.esg-scene.is-entered .esg-scene__photo {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .esg-scene__sea {
@@ -806,13 +836,11 @@ function formatCount(value) {
   z-index: 6;
   display: block;
   height: var(--sea-fill);
-  min-height: 92px;
-  max-height: 150px;
+  min-height: 64px;
   overflow: visible;
   background: transparent;
   backdrop-filter: blur(2px);
-  transform: translateY(0);
-  animation: esg-sea-level 5.6s ease-in-out infinite;
+  transition: height 1.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .esg-scene__sea::before {
@@ -824,10 +852,10 @@ function formatCount(value) {
   bottom: 0;
   z-index: 1;
   background:
-    radial-gradient(circle at 18% 66%, rgba(13, 74, 109, 0.12) 0 2px, transparent 3px),
-    radial-gradient(circle at 24% 78%, rgba(13, 74, 109, 0.1) 0 2px, transparent 3px),
-    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.16) 0 2px, transparent 3px),
-    linear-gradient(180deg, rgba(25, 153, 224, 0.38), rgba(4, 117, 190, 0.56) 48%, rgba(2, 70, 129, 0.62));
+    radial-gradient(circle at 18% 66%, rgba(20, 184, 166, 0.13) 0 2px, transparent 3px),
+    radial-gradient(circle at 24% 78%, rgba(56, 189, 248, 0.12) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.22) 0 2px, transparent 3px),
+    linear-gradient(180deg, rgba(125, 229, 246, 0.42), rgba(45, 212, 191, 0.44) 46%, rgba(56, 189, 248, 0.52));
   backdrop-filter: blur(4px);
 }
 
@@ -849,18 +877,6 @@ function formatCount(value) {
   pointer-events: none;
 }
 
-.esg-scene__submerged-island::after {
-  content: '';
-  position: absolute;
-  left: 21px;
-  right: 21px;
-  bottom: 11px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(3, 68, 104, 0.18);
-  filter: blur(8px);
-}
-
 .esg-scene__wave {
   position: absolute;
   left: -28%;
@@ -868,63 +884,43 @@ function formatCount(value) {
   width: 160%;
   height: 76px;
   border-radius: 46% 54% 49% 51% / 52% 48% 52% 48%;
-  background: rgba(49, 160, 255, 0.3);
+  background: rgba(103, 232, 249, 0.28);
   filter: blur(0.2px);
-  animation: esg-wave 8s ease-in-out infinite;
+  animation: esg-wave 11s ease-in-out infinite alternate;
 }
 
 .esg-scene__wave--one {
   top: -18px;
   background:
-    radial-gradient(ellipse at 48% 8%, rgba(255, 255, 255, 0.76) 0 9%, rgba(255, 255, 255, 0.26) 10% 18%, transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(104, 196, 246, 0.2) 26%, rgba(28, 151, 222, 0.4) 50%, rgba(4, 124, 198, 0.42)),
-    rgba(16, 142, 214, 0.32);
+    radial-gradient(ellipse at 48% 8%, rgba(255, 255, 255, 0.82) 0 9%, rgba(255, 255, 255, 0.32) 10% 18%, transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(125, 229, 246, 0.24) 26%, rgba(45, 212, 191, 0.34) 50%, rgba(56, 189, 248, 0.34)),
+    rgba(103, 232, 249, 0.28);
   opacity: 0.96;
-  box-shadow: inset 0 12px 14px rgba(255, 255, 255, 0.2), 0 -2px 10px rgba(255, 255, 255, 0.24);
 }
 
 .esg-scene__wave--two {
   top: 1px;
   left: -44%;
-  height: 86px;
   width: 178%;
+  height: 86px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(75, 184, 238, 0.12) 22%, rgba(6, 132, 207, 0.34)),
-    rgba(13, 138, 211, 0.28);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(103, 232, 249, 0.16) 22%, rgba(20, 184, 166, 0.28)),
+    rgba(45, 212, 191, 0.22);
   opacity: 0.72;
-  animation-duration: 11s;
+  animation-duration: 14s;
   animation-direction: reverse;
 }
 
 .esg-scene__wave--three {
   top: 24px;
   left: -34%;
-  height: 94px;
   width: 170%;
+  height: 94px;
   background:
-    radial-gradient(ellipse at 50% 8%, rgba(255, 255, 255, 0.22) 0 12%, transparent 34%),
-    rgba(5, 119, 188, 0.2);
+    radial-gradient(ellipse at 50% 8%, rgba(255, 255, 255, 0.28) 0 12%, transparent 34%),
+    rgba(56, 189, 248, 0.2);
   opacity: 0.46;
-  animation-duration: 15s;
-}
-
-.esg-scene__foam {
-  display: none;
-}
-
-.esg-scene__foam--one {
-  left: 38px;
-  top: 31px;
-  width: 126px;
-  transform: rotate(-2deg);
-}
-
-.esg-scene__foam--two {
-  right: 52px;
-  top: 51px;
-  width: 104px;
-  transform: rotate(2deg);
-  animation-duration: 13s;
+  animation-duration: 18s;
 }
 
 .esg-scene__bubble {
@@ -958,530 +954,421 @@ function formatCount(value) {
   animation-delay: 1.3s;
 }
 
-.esg-scene__caption {
-  display: none;
-}
-
-.esg-scene__level-line {
+.esg-sea-label {
   position: absolute;
   left: 28px;
-  right: 28px;
-  z-index: 10;
-  height: 0;
+  z-index: 12;
+  display: grid;
+  gap: 2px;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
-.esg-scene__level-line::before {
+.esg-sea-label strong {
+  font-size: 12px;
+}
+
+.esg-sea-label span {
+  color: #64748b;
+  font-size: 9px;
+}
+
+.esg-sea-label::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
+  left: 112px;
+  top: 12px;
+  width: 430px;
+  border-top: 2px dashed currentColor;
+  opacity: 0.62;
 }
 
-.esg-scene__level-line span {
+.esg-sea-label--baseline {
+  top: 78px;
+  color: #ef4444;
+}
+
+.esg-sea-label--current {
+  top: 143px;
+  color: #2563eb;
+}
+
+.esg-sea-label--recovery {
+  top: 205px;
+  color: #16a34a;
+}
+
+.esg-sea-arrow {
   position: absolute;
-  left: 0;
-  top: -42px;
-  display: grid;
-  gap: 3px;
-  padding: 6px 10px;
+  z-index: 13;
+  width: 0;
+  height: 58px;
+  border-left: 3px solid currentColor;
+}
+
+.esg-sea-arrow::before,
+.esg-sea-arrow::after {
+  content: '';
+  position: absolute;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border-left: 3px solid currentColor;
+  border-top: 3px solid currentColor;
+}
+
+.esg-sea-arrow::before {
+  top: -1px;
+  transform: rotate(45deg);
+}
+
+.esg-sea-arrow::after {
+  bottom: -1px;
+  transform: rotate(225deg);
+}
+
+.esg-sea-arrow--up-left {
+  left: 17px;
+  top: 112px;
+  color: #ef4444;
+}
+
+.esg-sea-arrow--up-right {
+  right: 17px;
+  top: 112px;
+  color: #ef4444;
+}
+
+.esg-sea-arrow--down {
+  right: 18px;
+  top: 174px;
+  color: #16a34a;
+}
+
+.esg-scene-note {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 14;
+  width: 168px;
+  padding: 11px;
+  border: 1px solid #dbeafe;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.86);
   color: #475569;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1.15;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
 }
 
-.esg-scene__level-line b {
-  color: #0f172a;
-  font-size: 13px;
-}
-
-.esg-scene__level-line i {
-  position: absolute;
-  right: -3px;
-  top: -5px;
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-  background: #ffffff;
-}
-
-.esg-scene__level-line--current {
-  top: 142px;
-}
-
-.esg-scene__level-line--current::before {
-  border-top: 2px solid rgba(37, 99, 235, 0.82);
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.28);
-}
-
-.esg-scene__level-line--current i {
-  border: 3px solid #2563eb;
-}
-
-.esg-scene__level-line--target {
-  top: 188px;
-}
-
-.esg-scene__level-line--target::before {
-  border-top: 2px dashed rgba(20, 184, 166, 0.9);
-}
-
-.esg-scene__level-line--target span {
-  top: 8px;
-}
-
-.esg-scene__level-line--target b {
-  color: #059669;
-}
-
-.esg-scene__level-line--target i {
-  border: 3px solid #14b8a6;
-}
-
-.esg-scene__level-gap {
-  position: absolute;
-  right: 35px;
-  top: 154px;
-  z-index: 11;
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #0f766e;
+.esg-scene-note strong {
+  display: block;
+  color: #2563eb;
   font-size: 12px;
   font-weight: 950;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
-
-.esg-section {
-  margin-top: 22px;
-}
-
-.esg-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.esg-metric {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 10px;
-  min-height: 82px;
-  padding: 12px 8px;
-  border: 1px solid #e8eef5;
-  border-radius: 7px;
-  background: #ffffff;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
-}
-
-.esg-metric > span {
-  color: #42536a;
-  font-size: 12px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.esg-metric div {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.esg-metric :deep(.v-icon),
-.esg-activity__icon :deep(.v-icon) {
-  color: #4a9ce8;
-}
-
-.esg-metric__combo-icon {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  color: #4a9ce8;
-}
-
-.esg-metric__combo-icon :deep(.v-icon:first-child) {
-  color: #4a9ce8;
-}
-
-.esg-metric__combo-icon :deep(.v-icon:last-child) {
-  position: absolute;
-  right: -3px;
-  bottom: -2px;
-  color: #4a9ce8;
-  filter: drop-shadow(0 0 2px #ffffff);
-}
-
-.esg-metric strong {
-  color: #1c2b40;
-  font-size: 15px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.esg-activities {
-  overflow: hidden;
-  border: 1px solid #e8eef5;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
-}
-
-.esg-activities-empty {
-  display: grid;
-  place-items: center;
-  min-height: 86px;
-  border: 1px solid #e8eef5;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
-}
-
-.esg-tip,
-.esg-criteria-link,
-.esg-criteria__notice,
-.esg-criteria__section,
-.esg-criteria__footnote {
-  border: 1px solid #e3edf8;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
-}
-
-.esg-tip {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 15px 16px;
-  color: #0f766e;
-}
-
-.esg-tip p {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
+.esg-scene-note p {
+  margin: 5px 0 0;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
-.esg-criteria-link {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 38px 1fr 26px;
+.esg-ocean-panel__message {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  bottom: 17px;
+  z-index: 18;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 15px 16px;
+  justify-content: center;
+  gap: 7px;
+  min-height: 30px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(245, 207, 128, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 249, 232, 0.92);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(180, 129, 42, 0.12);
+  backdrop-filter: blur(7px);
+}
+
+.esg-journey {
+  padding: 12px 12px 14px;
+  border: 1px solid #c8f3ef;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.045);
+}
+
+.esg-journey h3 {
+  margin: 0 0 8px;
   color: #102033;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  font-size: 15px;
+  font-weight: 950;
 }
 
-.esg-criteria-link:hover {
-  transform: translateY(-2px);
-  border-color: #bfdbfe;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+.esg-journey__steps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
 }
 
-.esg-criteria-link span {
+.esg-journey__steps article {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: #475569;
+  text-align: center;
+}
+
+.esg-journey__steps article:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -10px;
+  top: 31px;
+  color: #94a3b8;
+  font-weight: 900;
+}
+
+.esg-journey__steps span {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: #fff7ed;
-  color: #f97316;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #d9f8f3;
+  box-shadow: inset 0 0 0 2px #ffffff;
 }
 
-.esg-criteria-link strong {
-  font-size: 15px;
+.esg-journey__steps img {
+  width: 92px;
+  height: 56px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.esg-journey__steps strong {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.esg-journey__steps b {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.esg-journey__steps small {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.esg-journey__steps article.is-active span {
+  box-shadow: 0 0 0 4px #20c7ba, 0 10px 22px rgba(20, 184, 166, 0.22);
+  transform: scale(1.03);
+}
+
+.esg-journey__progress {
+  width: fit-content;
+  margin: 10px auto 0;
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #20c7ba, #38bdf8);
+  color: #ffffff;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .esg-criteria {
-  display: grid;
-  gap: 16px;
-}
-
-.esg-criteria__notice {
-  display: grid;
-  grid-template-columns: 32px 1fr;
-  align-items: start;
-  gap: 12px;
-  padding: 16px;
-  border-color: #fed7aa;
-  background: #fff7ed;
-}
-
-.esg-criteria__notice :deep(.v-icon) {
-  color: #22c55e;
-}
-
-.esg-criteria__notice p {
-  margin: 0;
-  color: #9a3412;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.55;
-}
-
-.esg-criteria__section {
-  padding: 16px;
-}
-
-.esg-criteria__section h3 {
-  margin: 0 0 12px;
-  color: #102033;
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.esg-criteria__section h3 small {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.esg-criteria__activity-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.esg-criteria__stage-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.esg-criteria__activity-grid article,
-.esg-criteria__stage-grid article {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  min-height: 86px;
-  padding: 12px 8px;
-  border-radius: 8px;
-  background: #fffaf5;
-  color: #102033;
-  text-align: center;
-}
-
-.esg-criteria__activity-grid :deep(.v-icon) {
-  color: #f97316;
-}
-
-.esg-criteria__activity-grid strong,
-.esg-criteria__stage-grid strong {
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.esg-criteria__activity-grid span,
-.esg-criteria__stage-grid span {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.esg-criteria__stage-grid span {
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.esg-criteria__stage-grid strong {
-  font-size: 12px;
-}
-
-.esg-criteria__table {
-  overflow: hidden;
-  border: 1px solid #fed7aa;
-  border-radius: 8px;
-}
-
-.esg-criteria__table div {
-  display: grid;
-  grid-template-columns: 70px 1fr 132px;
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 14px;
-  border-bottom: 1px solid #edf2f7;
-  color: #334155;
-  font-size: 13px;
-}
-
-.esg-criteria__table div:last-child {
-  border-bottom: 0;
-}
-
-.esg-criteria__table .is-active {
-  background: #ffedd5;
-  color: #9a3412;
-}
-
-.esg-criteria__table span,
-.esg-criteria__table strong,
-.esg-criteria__table b {
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.esg-criteria__formula {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 68px;
-  border-radius: 8px;
-  background: #fffaf5;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 800;
-  flex-wrap: wrap;
+  min-height: 100vh;
+  padding: 16px 18px 34px;
+  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 36%);
 }
 
-.esg-criteria__formula span {
-  color: #ea580c;
-  font-weight: 900;
-}
-
-.esg-criteria__formula strong {
-  padding: 5px 11px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #102033;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
-}
-
-.esg-criteria__formula small {
-  color: #64748b;
-}
-
-.esg-criteria__conversion {
+.esg-criteria-card {
   display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 356px;
+  padding: 18px 15px 20px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(226, 232, 240, 0.55);
+}
+
+.esg-criteria-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.esg-criteria-card__header h3 {
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.esg-criteria-card__header button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1e3a8a;
+  cursor: pointer;
+}
+
+.esg-criteria-card__description {
+  margin: 0;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.esg-criteria-levels {
+  display: grid;
+  gap: 7px;
+}
+
+.esg-criteria-level {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.esg-criteria-level.is-active {
+  border-color: #3b82f6;
+  background: #f8fbff;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.esg-criteria-level__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.esg-criteria-level__icon--red {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.esg-criteria-level__icon--green {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.esg-criteria-level__icon--teal {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.esg-criteria-level__icon--blue {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.esg-criteria-level__icon--violet {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.esg-criteria-level__icon--sky {
+  background: #dff4ff;
+  color: #0284c7;
+}
+
+.esg-criteria-level__content {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.esg-criteria-level__content div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.esg-criteria__conversion article {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 0 14px;
-  border-radius: 8px;
-  background: #fffaf5;
+.esg-criteria-level__content strong {
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1.2;
 }
 
-.esg-criteria__conversion :deep(.v-icon) {
-  color: #f97316;
+.esg-criteria-level__content b {
+  flex: 0 0 auto;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1.2;
 }
 
-.esg-criteria__conversion strong {
-  color: #102033;
-  font-size: 13px;
-}
-
-.esg-criteria__conversion span {
-  color: #334155;
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.esg-criteria__footnote {
+.esg-criteria-level__content p {
   margin: 0;
-  padding: 16px;
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #9a3412;
-  font-size: 13px;
+  color: #334155;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 1.6;
-}
-
-.esg-activity {
-  display: grid;
-  grid-template-columns: 50px 34px 1fr 60px;
-  align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #eef2f7;
-}
-
-.esg-activity:last-child {
-  border-bottom: 0;
-}
-
-.esg-activity time {
-  color: #7f93aa;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.esg-activity__icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: #edf7ff;
-}
-
-.esg-activity__content {
-  min-width: 0;
-}
-
-.esg-activity strong {
-  display: block;
-  overflow: hidden;
-  color: #1d2d42;
-  font-size: 13px;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.esg-activity small {
-  display: block;
-  margin-top: 3px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.esg-activity b {
-  display: block;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 900;
   line-height: 1.35;
-  text-align: right;
+  word-break: keep-all;
 }
 
-.esg-activity b span {
-  display: block;
-  color: #079669;
-  font-size: 12px;
+.esg-criteria-card__footnote {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 5px;
+  padding-top: 13px;
+  border-top: 1px solid #e2e8f0;
+  color: #1e3a8a;
+}
+
+.esg-criteria-card__footnote p {
+  margin: 0;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .esg-backdrop-enter-active,
 .esg-backdrop-leave-active {
-  transition: opacity 0.25s ease;
+  transition: opacity 0.22s ease;
 }
 
 .esg-backdrop-enter-from,
@@ -1491,7 +1378,7 @@ function formatCount(value) {
 
 .esg-drawer-enter-active,
 .esg-drawer-leave-active {
-  transition: transform 0.28s ease;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .esg-drawer-enter-from,
@@ -1505,73 +1392,65 @@ function formatCount(value) {
   }
 
   to {
-    transform: translateX(16%);
-  }
-}
-
-@keyframes esg-sea-level {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(5px);
-  }
-}
-
-@keyframes esg-foam {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(52px);
-  }
-}
-
-@keyframes esg-cloud {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(18px);
-  }
-}
-
-@keyframes esg-bird {
-  0%,
-  100% {
-    margin-top: 0;
-  }
-
-  50% {
-    margin-top: -4px;
+    transform: translateX(7%);
   }
 }
 
 @keyframes esg-bubble {
   0%,
   100% {
+    opacity: 0.35;
     transform: translateY(0);
-    opacity: 0.26;
   }
 
   50% {
+    opacity: 0.8;
     transform: translateY(-12px);
-    opacity: 0.82;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 720px) {
   .esg-drawer {
     width: 100vw;
   }
 
   .esg-drawer__body {
     padding: 18px 18px 30px;
+  }
+
+  .esg-dashboard__top,
+  .esg-dashboard__headline {
+    display: grid;
+  }
+
+  .esg-summary,
+  .esg-journey__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .esg-scene {
+    height: 300px;
+  }
+
+  .esg-scene-note {
+    display: none;
+  }
+
+  .esg-ocean-panel__message {
+    left: 20px;
+    right: 20px;
+  }
+
+  .esg-criteria {
+    padding: 14px;
+  }
+
+  .esg-criteria-card {
+    max-width: 100%;
+  }
+
+  .esg-criteria-level__content div {
+    align-items: flex-start;
   }
 }
 </style>
