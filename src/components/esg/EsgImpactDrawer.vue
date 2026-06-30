@@ -22,8 +22,11 @@
           >
             <v-icon icon="mdi-chevron-left" size="21" />
           </button>
-          <h2 class="esg-drawer__title">{{ currentView === 'criteria' ? '산정 기준 안내' : 'ESG Impact 상세' }}</h2>
-          <h2>ESG Impact 상세</h2>
+          <div class="esg-drawer__title-group">
+            <h2 class="esg-drawer__title">{{ currentView === 'criteria' ? '산정 기준 안내' : '바다 수위 안정 현황' }}</h2>
+            <p v-if="currentView === 'main'">당신의 친환경 활동이 높아진 바다가 조금씩 낮아지고 있어요.</p>
+          </div>
+          <h2>바다 수위 안정 현황</h2>
           <button type="button" aria-label="닫기" @click="close">
             <v-icon icon="mdi-close" size="18" />
           </button>
@@ -31,9 +34,30 @@
 
         <main v-if="currentView === 'main'" class="esg-drawer__body">
           <section class="esg-hero">
-            <h3>바다 수위 안정 현황</h3>
-            <span>현재 회복률</span>
-            <strong>{{ impact.recoveryRate }}%</strong>
+            <div class="esg-status">
+              <article class="esg-status__rate">
+                <div class="esg-status__content">
+                  <span>현재 안정률</span>
+                  <strong>{{ formatNumber(impact.recoveryRate) }}%</strong>
+                  <b>▼ {{ recentSeaLevelChange }}m 지난 활동 대비</b>
+                </div>
+              </article>
+
+              <div class="esg-status__side">
+                <article class="esg-status__level">
+                  <v-icon icon="mdi-shield-wave-outline" size="22" />
+                  <div class="esg-status__content">
+                    <span>안정 단계</span>
+                    <strong>Lv. {{ impact.level }}</strong>
+                    <small>총 6단계 중 {{ impact.level }}단계 달성</small>
+                  </div>
+                </article>
+
+                <article class="esg-status__message">
+                  당신의 소중한 업무가 차오르는 바다를 진정시키고 있습니다.
+                </article>
+              </div>
+            </div>
 
             <div class="esg-scene" :style="{ '--sea-fill': seaFill }" aria-hidden="true">
               <img class="esg-scene__photo" :src="seaLevelIslandImage" alt="" />
@@ -62,6 +86,21 @@
                 <span class="esg-scene__bubble esg-scene__bubble--two"></span>
                 <span class="esg-scene__bubble esg-scene__bubble--three"></span>
               </div>
+              <div class="esg-scene__level-line esg-scene__level-line--current">
+                <span>
+                  현재 수위
+                  <b>+{{ formatNumber(impact.seaLevelContribution) }}m</b>
+                </span>
+                <i></i>
+              </div>
+              <div class="esg-scene__level-line esg-scene__level-line--target">
+                <span>
+                  목표 수위
+                  <b>±0.00m</b>
+                </span>
+                <i></i>
+              </div>
+              <div class="esg-scene__level-gap">{{ formatNumber(impact.seaLevelContribution) }}m</div>
               <div class="esg-scene__caption">
                 <span>현재 수위</span>
                 <b>+{{ formatNumber(impact.seaLevelContribution) }}m</b>
@@ -88,7 +127,7 @@
           </section>
 
           <section class="esg-section">
-            <h3>오늘의 환경 기여 활동</h3>
+            <h3>이번 달 활동 내역</h3>
             <div v-if="activities.length > 0" class="esg-activities">
               <article
                 v-for="activity in activities"
@@ -104,7 +143,7 @@
                   <small>{{ activity.description }}</small>
                 </div>
                 <b>
-                  수위
+                  수위 안정
                   <span>{{ formatDelta(activity.seaLevelDelta) }}m</span>
                 </b>
               </article>
@@ -227,7 +266,6 @@ const paperCriteria = [
   { icon: 'mdi-file-document-outline', label: '상담일지 작성', value: '1건 = 종이 3장' },
   { icon: 'mdi-text-box-outline', label: 'AI 브리핑 생성', value: '1건 = 종이 5장' },
   { icon: 'mdi-account-switch-outline', label: '인수인계 완료', value: '1건 = 종이 4장' },
-  { icon: 'mdi-draw-pen', label: '전자서명 완료', value: '1건 = 종이 2장' },
 ]
 
 const levelCriteria = [
@@ -253,13 +291,16 @@ watch(
 )
 
 const metrics = computed(() => [
-  { icon: 'mdi-file-document-outline', label: '종이 절감', value: `${formatCount(props.impact.paperSavedCount)} 장` },
+  { icon: 'mdi-file-document-outline', label: '종이 절감', value: `${formatCount(props.impact.paperSavedCount)}장` },
   { icon: 'mdi-weather-cloudy', label: 'CO₂ 절감', value: `${formatNumber(props.impact.co2SavedKg)} kg` },
-  { icon: 'mdi-earth', badgeIcon: 'mdi-thermometer-low', label: '환경 기여 지수', value: `${formatNumber(props.impact.earthTemperatureReduction)} ℃` },
-  { icon: 'mdi-waves', label: '바다 회복 지수', value: `${formatNumber(props.impact.seaLevelContribution)} m` },
+  { icon: 'mdi-waves', label: '해수면 안정 기여', value: `${formatNumber(props.impact.seaLevelContribution)} m` },
 ])
 
 const activities = computed(() => Array.isArray(props.impact.activities) ? props.impact.activities : [])
+const recentSeaLevelChange = computed(() => {
+  const latestDelta = Number(activities.value[0]?.seaLevelDelta)
+  return formatNumber(Math.abs(Number.isFinite(latestDelta) ? latestDelta : 0.02))
+})
 const seaFill = computed(() => {
   const recovery = Math.min(Math.max(Number(props.impact.recoveryRate) || 0, 0), 100)
   return `${62 - recovery * 0.16}%`
@@ -274,7 +315,6 @@ function getActivityIcon(type) {
   const icons = {
     CONSULTATION: 'mdi-file-document-outline',
     AI_BRIEFING: 'mdi-text-box-outline',
-    E_SIGN: 'mdi-draw-pen',
     HANDOVER: 'mdi-account-switch-outline',
   }
 
@@ -319,21 +359,27 @@ function formatCount(value) {
   top: 0;
   right: 0;
   z-index: 2401;
-  width: 460px;
+  width: 560px;
   max-width: 100vw;
   height: 100vh;
   overflow-y: auto;
   background: #ffffff;
   color: #122033;
   box-shadow: -18px 0 38px rgba(15, 23, 42, 0.14);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.esg-drawer::-webkit-scrollbar {
+  display: none;
 }
 
 .esg-drawer__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 50px;
-  padding: 0 24px;
+  height: 58px;
+  padding: 0 30px;
   border-bottom: 1px solid #edf1f6;
 }
 
@@ -341,13 +387,25 @@ function formatCount(value) {
   display: none;
 }
 
-.esg-drawer__header h2 {
+.esg-drawer__title-group {
   flex: 1;
+  min-width: 0;
+}
+
+.esg-drawer__header h2 {
   margin: 0;
   color: #111827;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: 0;
+}
+
+.esg-drawer__title-group p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .esg-drawer__header button {
@@ -368,38 +426,131 @@ function formatCount(value) {
 }
 
 .esg-drawer__body {
-  padding: 18px 24px 30px;
+  padding: 22px 30px 36px;
 }
 
-.esg-hero h3,
 .esg-section h3 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   color: #16263a;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: 0;
 }
 
-.esg-hero > span {
-  display: block;
-  margin-bottom: 2px;
-  color: #65768d;
-  font-size: 10px;
+.esg-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.esg-status__rate,
+.esg-status__level,
+.esg-status__message {
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.055);
+}
+
+.esg-status__rate {
+  position: relative;
+  min-height: 146px;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(125, 211, 252, 0.22), transparent 32%),
+    linear-gradient(135deg, #ffffff, #f0f9ff);
+}
+
+.esg-status__content {
+  position: absolute;
+  left: 28px;
+  top: 26px;
+  display: grid;
+  justify-items: start;
+}
+
+.esg-status__rate span,
+.esg-status__level span {
+  color: #64748b;
+  font-size: 15px;
   font-weight: 800;
 }
 
-.esg-hero > strong {
-  display: block;
-  margin-bottom: 10px;
-  color: #172236;
-  font-size: 28px;
-  font-weight: 900;
+.esg-status__rate strong {
+  margin-top: 8px;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 36px;
+  font-weight: 750;
+  letter-spacing: 0;
   line-height: 1;
+}
+
+.esg-status__rate b {
+  width: fit-content;
+  margin-top: 11px;
+  color: #059669;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.esg-status__side {
+  display: contents;
+}
+
+.esg-status__level {
+  position: relative;
+  min-height: 146px;
+  padding: 28px;
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+}
+
+.esg-status__level :deep(.v-icon) {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: #38bdf8;
+  opacity: 0.72;
+}
+
+.esg-status__level strong {
+  display: block;
+  margin-top: 8px;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 36px;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.esg-status__level small {
+  display: block;
+  margin-top: 11px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.esg-status__message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 1 / -1;
+  min-height: 66px;
+  padding: 15px 18px;
+  background: #f8fbff;
+  color: #0f766e;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .esg-scene {
   position: relative;
-  height: 230px;
+  height: 270px;
   overflow: hidden;
   border-radius: 10px;
   background: #d8eef8;
@@ -808,63 +959,131 @@ function formatCount(value) {
 }
 
 .esg-scene__caption {
+  display: none;
+}
+
+.esg-scene__level-line {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  z-index: 10;
+  height: 0;
+}
+
+.esg-scene__level-line::before {
+  content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  z-index: 9;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 10px;
-  background: rgba(255, 255, 255, 0.62);
-  color: #6a7c91;
-  font-size: 9px;
-  font-weight: 800;
-  backdrop-filter: blur(5px);
+  top: 0;
 }
 
-.esg-scene__caption b {
-  color: #079669;
-  font-size: 12px;
+.esg-scene__level-line span {
+  position: absolute;
+  left: 0;
+  top: -42px;
+  display: grid;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #475569;
+  font-size: 11px;
   font-weight: 900;
+  line-height: 1.15;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.esg-scene__level-line b {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.esg-scene__level-line i {
+  position: absolute;
+  right: -3px;
+  top: -5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.esg-scene__level-line--current {
+  top: 142px;
+}
+
+.esg-scene__level-line--current::before {
+  border-top: 2px solid rgba(37, 99, 235, 0.82);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.28);
+}
+
+.esg-scene__level-line--current i {
+  border: 3px solid #2563eb;
+}
+
+.esg-scene__level-line--target {
+  top: 188px;
+}
+
+.esg-scene__level-line--target::before {
+  border-top: 2px dashed rgba(20, 184, 166, 0.9);
+}
+
+.esg-scene__level-line--target span {
+  top: 8px;
+}
+
+.esg-scene__level-line--target b {
+  color: #059669;
+}
+
+.esg-scene__level-line--target i {
+  border: 3px solid #14b8a6;
+}
+
+.esg-scene__level-gap {
+  position: absolute;
+  right: 35px;
+  top: 154px;
+  z-index: 11;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 
 .esg-section {
-  margin-top: 18px;
+  margin-top: 22px;
 }
 
 .esg-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .esg-metric {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 8px;
-  min-height: 66px;
-  padding: 8px 6px;
+  gap: 10px;
+  min-height: 82px;
+  padding: 12px 8px;
   border: 1px solid #e8eef5;
   border-radius: 7px;
   background: #ffffff;
   box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.esg-metric:hover,
-.esg-activity:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 }
 
 .esg-metric > span {
   color: #42536a;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -872,7 +1091,7 @@ function formatCount(value) {
 .esg-metric div {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .esg-metric :deep(.v-icon),
@@ -884,8 +1103,8 @@ function formatCount(value) {
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 19px;
-  height: 19px;
+  width: 22px;
+  height: 22px;
   color: #4a9ce8;
 }
 
@@ -903,7 +1122,7 @@ function formatCount(value) {
 
 .esg-metric strong {
   color: #1c2b40;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -924,7 +1143,7 @@ function formatCount(value) {
   border-radius: 8px;
   background: #ffffff;
   color: #64748b;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   box-shadow: 0 7px 16px rgba(15, 23, 42, 0.035);
 }
@@ -942,16 +1161,16 @@ function formatCount(value) {
 
 .esg-tip {
   display: flex;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 13px 14px;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 15px 16px;
   color: #0f766e;
 }
 
 .esg-tip p {
   margin: 0;
   color: #475569;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
 }
@@ -959,11 +1178,11 @@ function formatCount(value) {
 .esg-criteria-link {
   width: 100%;
   display: grid;
-  grid-template-columns: 34px 1fr 24px;
+  grid-template-columns: 38px 1fr 26px;
   align-items: center;
   gap: 10px;
   margin-top: 10px;
-  padding: 13px 14px;
+  padding: 15px 16px;
   color: #102033;
   text-align: left;
   cursor: pointer;
@@ -979,29 +1198,29 @@ function formatCount(value) {
 .esg-criteria-link span {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   background: #fff7ed;
   color: #f97316;
 }
 
 .esg-criteria-link strong {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
 }
 
 .esg-criteria {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .esg-criteria__notice {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 32px 1fr;
   align-items: start;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
   border-color: #fed7aa;
   background: #fff7ed;
 }
@@ -1013,33 +1232,38 @@ function formatCount(value) {
 .esg-criteria__notice p {
   margin: 0;
   color: #9a3412;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.55;
 }
 
 .esg-criteria__section {
-  padding: 13px;
+  padding: 16px;
 }
 
 .esg-criteria__section h3 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: #102033;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .esg-criteria__section h3 small {
   color: #64748b;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.esg-criteria__activity-grid,
+.esg-criteria__activity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .esg-criteria__stage-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .esg-criteria__activity-grid article,
@@ -1047,8 +1271,8 @@ function formatCount(value) {
   display: grid;
   justify-items: center;
   gap: 6px;
-  min-height: 72px;
-  padding: 10px 6px;
+  min-height: 86px;
+  padding: 12px 8px;
   border-radius: 8px;
   background: #fffaf5;
   color: #102033;
@@ -1061,24 +1285,24 @@ function formatCount(value) {
 
 .esg-criteria__activity-grid strong,
 .esg-criteria__stage-grid strong {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
 }
 
 .esg-criteria__activity-grid span,
 .esg-criteria__stage-grid span {
   color: #64748b;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .esg-criteria__stage-grid span {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
 }
 
 .esg-criteria__stage-grid strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .esg-criteria__table {
@@ -1089,14 +1313,14 @@ function formatCount(value) {
 
 .esg-criteria__table div {
   display: grid;
-  grid-template-columns: 58px 1fr 110px;
+  grid-template-columns: 70px 1fr 132px;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 42px;
+  padding: 0 14px;
   border-bottom: 1px solid #edf2f7;
   color: #334155;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .esg-criteria__table div:last-child {
@@ -1111,7 +1335,7 @@ function formatCount(value) {
 .esg-criteria__table span,
 .esg-criteria__table strong,
 .esg-criteria__table b {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -1119,12 +1343,12 @@ function formatCount(value) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 58px;
+  gap: 10px;
+  min-height: 68px;
   border-radius: 8px;
   background: #fffaf5;
   color: #334155;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   flex-wrap: wrap;
 }
@@ -1135,7 +1359,7 @@ function formatCount(value) {
 }
 
 .esg-criteria__formula strong {
-  padding: 4px 9px;
+  padding: 5px 11px;
   border-radius: 999px;
   background: #ffffff;
   color: #102033;
@@ -1153,11 +1377,11 @@ function formatCount(value) {
 
 .esg-criteria__conversion article {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 36px 1fr auto;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  padding: 0 12px;
+  min-height: 52px;
+  padding: 0 14px;
   border-radius: 8px;
   background: #fffaf5;
 }
@@ -1168,36 +1392,35 @@ function formatCount(value) {
 
 .esg-criteria__conversion strong {
   color: #102033;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .esg-criteria__conversion span {
   color: #334155;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .esg-criteria__footnote {
   margin: 0;
-  padding: 14px;
+  padding: 16px;
   border-color: #fed7aa;
   background: #fff7ed;
   color: #9a3412;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1.6;
 }
 
 .esg-activity {
   display: grid;
-  grid-template-columns: 40px 28px 1fr 46px;
+  grid-template-columns: 50px 34px 1fr 60px;
   align-items: center;
-  gap: 10px;
-  min-height: 51px;
-  padding: 8px 12px;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
   border-bottom: 1px solid #eef2f7;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .esg-activity:last-child {
@@ -1206,15 +1429,15 @@ function formatCount(value) {
 
 .esg-activity time {
   color: #7f93aa;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .esg-activity__icon {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
   background: #edf7ff;
 }
@@ -1227,7 +1450,7 @@ function formatCount(value) {
   display: block;
   overflow: hidden;
   color: #1d2d42;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1235,16 +1458,16 @@ function formatCount(value) {
 
 .esg-activity small {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   color: #64748b;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .esg-activity b {
   display: block;
   color: #94a3b8;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1.35;
   text-align: right;
@@ -1253,7 +1476,7 @@ function formatCount(value) {
 .esg-activity b span {
   display: block;
   color: #079669;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .esg-backdrop-enter-active,
