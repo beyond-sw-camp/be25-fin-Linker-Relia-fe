@@ -263,7 +263,7 @@ function getCurrentMonth() {
 }
 
 .app-sidebar__brand-image--collapsed {
-  width: 42px;
+  width: 30px;
 }
 
 .app-sidebar__nav {
