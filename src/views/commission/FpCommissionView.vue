@@ -109,8 +109,8 @@
       <section class="panel">
         <div class="panel__header">
           <div>
-            <h3>보험 상품 판매 순위</h3>
-            <p>마감월 기준 판매 건수와 월납 보험료 합계에 따른 상품별 순위를 나타냅니다.</p>
+            <h3>보험 상품 판매 순위 Top10</h3>
+            <p>마감월 기준 판매 건수를 기준으로 상품별 순위를 나타냅니다.</p>
           </div>
         </div>
 
@@ -132,7 +132,7 @@
                   <th>순위</th>
                   <th>상품명</th>
                   <th>보험사</th>
-                  <th>보종</th>
+                  <th>계약 수</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +142,7 @@
                     <strong>{{ item.insuranceProductName }}</strong>
                   </td>
                   <td>{{ item.insuranceCompanyName }}</td>
-                  <td>{{ item.insuranceCategoryName }}</td>
+                  <td>{{ formatCount(item.contractCount) }}건</td>
                 </tr>
               </tbody>
             </table>
@@ -656,6 +656,15 @@ function normalizeProductRankingItems(result) {
     insuranceProductName: getValue(item, ['insuranceProductName', 'productName']) || '-',
     insuranceCompanyName: getValue(item, ['insuranceCompanyName', 'companyName']) || '-',
     insuranceCategoryName: getValue(item, ['insuranceCategoryName', 'categoryName']) || '-',
+    commissionAmount: toNumber(
+      getValue(item, [
+        'commissionAmount',
+        'totalCommissionAmount',
+        'totalPaymentCommissionAmount',
+        'netCommissionAmount',
+        'totalMonthlyPremiumAmount',
+      ]),
+    ),
     contractCount: toNumber(getValue(item, ['contractCount', 'totalContractCount', 'contractCnt'])),
     totalMonthlyPremiumAmount: toNumber(
       getValue(item, ['totalMonthlyPremiumAmount', 'monthlyPremiumAmount', 'totalPremiumAmount']),
@@ -1132,6 +1141,12 @@ function getLatestAvailableClosingMonth() {
 .table-panel--product-ranking th:first-child,
 .table-panel--product-ranking td:first-child {
   width: 64px;
+  white-space: nowrap;
+}
+
+.table-panel--product-ranking th:last-child,
+.table-panel--product-ranking td:last-child {
+  width: 92px;
   white-space: nowrap;
 }
 
