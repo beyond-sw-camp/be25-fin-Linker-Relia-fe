@@ -152,6 +152,8 @@ function goToHome() {
 
 <style scoped>
 .app-sidebar {
+  position: sticky;
+  top: 0;
   width: 232px;
   height: 100vh;
   position: sticky;
@@ -159,6 +161,8 @@ function goToHome() {
   align-self: start;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #1f2937;
   color: #ffffff;
   overflow: hidden;
@@ -197,6 +201,7 @@ function goToHome() {
 
 .app-sidebar__nav {
   flex: 1;
+  min-height: 0;
   padding: 22px 12px;
   min-height: 0;
   overflow-y: auto;
