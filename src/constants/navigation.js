@@ -212,7 +212,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/hq',
     name: 'hq-dashboard',
-    title: '본사 대시보드 ver.1',
+    title: '본사 대시보드 ver.2',
     description: '본사 영업 담당자의 기본 진입 화면입니다.',
     roles: [USER_ROLES.HQ_MANAGER],
   },
