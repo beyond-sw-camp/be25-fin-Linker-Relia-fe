@@ -66,6 +66,7 @@
       <EsgImpactCard
         :impact="esgImpact"
         :collapsed="isCollapsed"
+        :recovering="isEsgRecovering"
         @click="isEsgDrawerOpen = true"
       />
     </div>
@@ -102,7 +103,9 @@ const router = useRouter()
 
 const isCollapsed = ref(false)
 const isEsgDrawerOpen = ref(false)
+const isEsgRecovering = ref(false)
 const openSections = ref([])
+let esgRecoveringTimer = null
 
 const menuSections = computed(() => MENU_BY_ROLE[authStore.userRole] ?? [])
 const esgImpact = computed(() => esgImpactStore.data ?? {
@@ -136,6 +139,22 @@ watch(
     }
   },
   { immediate: true },
+)
+
+watch(
+  () => esgImpact.value.activities?.length ?? 0,
+  (activityCount, previousActivityCount) => {
+    if (!previousActivityCount || activityCount <= previousActivityCount) return
+
+    isEsgRecovering.value = false
+    window.clearTimeout(esgRecoveringTimer)
+    window.requestAnimationFrame(() => {
+      isEsgRecovering.value = true
+      esgRecoveringTimer = window.setTimeout(() => {
+        isEsgRecovering.value = false
+      }, 40000)
+    })
+  },
 )
 
 function isSectionOpen(title) {
