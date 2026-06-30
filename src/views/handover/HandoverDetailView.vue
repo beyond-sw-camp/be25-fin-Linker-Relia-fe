@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <section class="handover-detail" aria-label="인수인계 요청 상세">
     <header class="handover-detail__header">
-      <div class="handover-detail__title-row">
-        <button class="handover-detail__back" type="button" @click="goBack">← 목록</button>
-        <span class="handover-detail__divider">/</span>
+      <div class="handover-detail__breadcrumb">
+        <button class="handover-detail__back" type="button" @click="goBack">인수인계 요청 목록</button>
+        <span class="handover-detail__chevron"></span>
         <h1>요청 상세</h1>
         <span class="handover-detail-status" :class="getStatusClass(detail.requestStatus)">
           {{ getStatusLabel(detail.requestStatus) }}
@@ -22,125 +22,200 @@
 
     <div v-else class="handover-detail__body">
       <div class="handover-detail__left">
-        <section class="handover-card">
-          <h2>고객 정보</h2>
+        <section class="handover-card customer-card">
+          <h2>
+            <v-icon icon="mdi-account-outline" size="25" />
+            고객 요약
+          </h2>
 
-          <div class="customer-info-grid">
-            <div class="detail-field">
-              <span>고객명</span>
-              <strong>{{ detail.customer.customerName }}</strong>
+          <div class="customer-summary">
+            <div class="summary-row summary-row--three">
+              <div class="summary-field">
+                <v-icon icon="mdi-account-outline" size="28" />
+                <div>
+                  <span>고객명</span>
+                  <strong>{{ detail.customer.customerName }}</strong>
+                </div>
+              </div>
+              <div class="summary-field">
+                <v-icon icon="mdi-crown-outline" size="28" />
+                <div>
+                  <span>등급</span>
+                  <strong>
+                    <span class="grade-badge" :class="getGradeClass(detail.customer.customerGrade)">
+                      {{ detail.customer.customerGrade || '-' }}
+                    </span>
+                  </strong>
+                </div>
+              </div>
+              <div class="summary-field">
+                <v-icon icon="mdi-calendar-blank-outline" size="28" />
+                <div>
+                  <span>나이</span>
+                  <strong>{{ formatCustomerAge(detail.customer.customerAge) }}</strong>
+                </div>
+              </div>
             </div>
-            <div class="detail-field">
-              <span>나이</span>
-              <strong>{{ formatCustomerAge(detail.customer.customerAge) }}</strong>
-            </div>
-            <div class="detail-field">
-              <span>등급</span>
-              <strong>
-                <span class="grade-badge" :class="getGradeClass(detail.customer.customerGrade)">
-                  {{ detail.customer.customerGrade || '-' }}
-                </span>
-              </strong>
-            </div>
-            <div class="detail-field">
-              <span>요청 유형</span>
-              <strong>{{ getRequestTypeLabel(detail.requestType) }}</strong>
-            </div>
-            <div class="detail-field">
-              <span>기존 담당</span>
-              <strong :class="{ 'detail-field__muted': !detail.customer.currentFpName }">
-                {{ detail.customer.currentFpName || '없음 (해촉)' }}
-              </strong>
-            </div>
-          </div>
 
-          <div class="detail-list">
-            <div class="detail-list__row">
-              <span>보유 계약</span>
-              <strong>{{ detail.customer.contractSummary || '-' }}</strong>
+            <div class="summary-row summary-row--two">
+              <div class="summary-field">
+                <v-icon icon="mdi-file-document-outline" size="28" />
+                <div>
+                  <span>요청 유형</span>
+                  <strong>{{ getRequestTypeLabel(detail.requestType) }}</strong>
+                </div>
+              </div>
+              <div class="summary-field">
+                <v-icon icon="mdi-account-outline" size="28" />
+                <div>
+                  <span>기존 담당</span>
+                  <strong :class="{ 'text-muted': !detail.customer.currentFpName }">
+                    {{ detail.customer.currentFpName || '없음 (이직)' }}
+                  </strong>
+                </div>
+              </div>
             </div>
-            <div class="detail-list__row">
-              <span>월 보험료</span>
-              <strong>{{ formatCurrency(detail.customer.monthlyPremium) }}</strong>
+
+            <div class="summary-row summary-row--two">
+              <div class="summary-field">
+                <v-icon icon="mdi-shield-check-outline" size="28" />
+                <div>
+                  <span>보유 계약</span>
+                  <strong>{{ detail.customer.contractSummary || '-' }}</strong>
+                </div>
+              </div>
+              <div class="summary-field">
+                <v-icon icon="mdi-currency-krw" size="28" />
+                <div>
+                  <span>월 보험료</span>
+                  <strong>{{ formatCurrency(detail.customer.monthlyPremium) }}</strong>
+                </div>
+              </div>
             </div>
-            <div class="detail-list__row">
-              <span>최근 상담일</span>
-              <strong>{{ formatDate(detail.customer.lastConsultedAt) }}</strong>
-            </div>
-            <div class="detail-list__row">
-              <span>주 상담채널</span>
-              <strong>
-                <span class="channel-badge">{{ getChannelLabel(detail.customer.mainConsultationChannel) }}</span>
-              </strong>
+
+            <div class="summary-row summary-row--two">
+              <div class="summary-field">
+                <v-icon icon="mdi-calendar-blank-outline" size="28" />
+                <div>
+                  <span>최근 상담일</span>
+                  <strong>{{ formatDate(detail.customer.lastConsultedAt) }}</strong>
+                </div>
+              </div>
+              <div class="summary-field">
+                <v-icon icon="mdi-message-processing-outline" size="28" />
+                <div>
+                  <span>주 상담채널</span>
+                  <strong>
+                    <span class="channel-badge">{{ getChannelLabel(detail.customer.mainConsultationChannel) }}</span>
+                  </strong>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section class="handover-card handover-history-card">
-          <h2>인수인계 이력</h2>
+        <section class="handover-card history-card">
+          <h2>
+            <v-icon icon="mdi-history" size="25" />
+            인수인계 이력
+          </h2>
           <div v-if="hasHistory" class="history-row">
             <span>{{ formatDate(detail.handoverHistory.changedAt) }}</span>
             <strong>{{ formatPreviousFpChangeText(detail.handoverHistory.previousFpName) }}</strong>
           </div>
-          <p v-else>이력 없음</p>
+          <div v-else class="empty-history">
+            <v-icon icon="mdi-clipboard-search-outline" size="84" />
+            <span>이력이 없습니다</span>
+          </div>
         </section>
       </div>
 
-      <aside class="handover-card recommendation-card">
-        <h2>추천 설계사</h2>
+      <div class="handover-detail__right">
+        <section class="handover-card recommendation-card">
+          <h2>
+            <v-icon icon="mdi-account-outline" size="25" />
+            추천 설계사
+          </h2>
 
-        <div v-if="detail.recommendation.rejectedFpName" class="reject-banner">
-          반려 이력 · {{ detail.recommendation.rejectedFpName }} → {{ recommendationFlowLabel }}
-        </div>
+          <div v-if="detail.recommendation.rejectedFpName" class="reject-banner">
+            반려 이력 · {{ detail.recommendation.rejectedFpName }} {{ recommendationFlowLabel }}
+          </div>
 
-        <div class="recommended-fp">
-          <div class="recommended-fp__avatar">{{ fpInitial }}</div>
-          <div>
-            <strong>{{ detail.recommendation.recommendedFpName || '-' }}</strong>
-            <span>경력 {{ recommendedCareerText }} · {{ recommendedBranchText }}</span>
-          </div>
-        </div>
+          <div class="recommended-panel">
+            <div class="recommended-fp">
+              <div class="recommended-fp__avatar">{{ fpInitial }}</div>
+              <div>
+                <strong>{{ detail.recommendation.recommendedFpName || '-' }}</strong>
+                <span>경력 {{ recommendedCareerText }} <b></b> {{ recommendedBranchText }}</span>
+              </div>
+            </div>
 
-        <div class="match-list">
-          <div class="match-list__row">
-            <span>주요 보종</span>
-            <strong class="specialty-list">
-              <span
-                v-for="category in specialtyCategories"
-                :key="category"
-                class="specialty-badge"
-              >
-                {{ category }}
-              </span>
-            </strong>
-          </div>
-          <div class="match-list__row">
-            <span>유지율</span>
-            <strong class="match-list__rate">{{ formatPercent(detail.recommendation.retentionRate) }}</strong>
-          </div>
-          <div class="match-list__row">
-            <span>선호 연령대</span>
-            <strong>{{ formatAgeBand(detail.recommendation.preferredCustomerAge) }}</strong>
-          </div>
-          <div class="match-list__row">
-            <span>주 상담채널</span>
-            <strong>
-              <span class="channel-badge">{{ getChannelLabel(detail.recommendation.consultationChannel) }}</span>
-            </strong>
-          </div>
-        </div>
+            <div class="match-grid">
+              <div class="match-card match-card--blue">
+                <v-icon icon="mdi-account-group-outline" size="34" />
+                <span>전문 분야</span>
+                <strong>{{ specialtyCategories.join(', ') }}</strong>
+              </div>
+              <div class="match-card match-card--green">
+                <v-icon icon="mdi-chart-line" size="34" />
+                <span>유지율</span>
+                <strong>{{ formatPercent(detail.recommendation.retentionRate) }}</strong>
+              </div>
+              <div class="match-card match-card--purple">
+                <v-icon icon="mdi-account-multiple-outline" size="34" />
+                <span>선호 연령대</span>
+                <strong>{{ formatAgeBand(detail.recommendation.preferredCustomerAge) }}</strong>
+              </div>
+              <div class="match-card match-card--blue">
+                <v-icon icon="mdi-phone-outline" size="34" />
+                <span>주 상담채널</span>
+                <strong>{{ getChannelLabel(detail.recommendation.consultationChannel) }}</strong>
+              </div>
+            </div>
 
-        <blockquote class="recommendation-comment">
-          "{{ detail.recommendation.recommendationReason || '추천 사유가 없습니다.' }}"
-        </blockquote>
+            <div v-if="hasRecommendationPoints" class="recommendation-points">
+              <strong>
+                <v-icon icon="mdi-star" size="18" />
+                추천 포인트
+              </strong>
+              <ul>
+                <li v-for="point in recommendationPoints" :key="point">{{ point }}</li>
+              </ul>
+            </div>
+          </div>
 
-        <div v-if="showApprovalActions" class="approval-actions">
+          <div class="ai-briefing">
+            <div class="ai-briefing__header">
+              <div>
+                <v-icon icon="mdi-creation" size="28" />
+                <strong>AI 브리핑</strong>
+                <span>AI 생성</span>
+              </div>
+              <p>AI가 고객 정보와 설계사 정보를 바탕으로 브리핑을 생성했습니다</p>
+            </div>
+            <div class="ai-briefing__body">
+              <p>{{ aiBriefingText }}</p>
+              <div class="briefing-evidence">
+                <div v-for="item in evidenceCards" :key="item.title" class="evidence-card">
+                  <v-icon :icon="item.icon" size="28" />
+                  <div>
+                    <strong>{{ item.title }}</strong>
+                    <span>{{ item.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="showApprovalActions" class="action-card">
           <button
             class="approval-actions__approve"
             type="button"
             :disabled="isSubmitting"
             @click="submitApproval('APPROVED')"
           >
+            <v-icon icon="mdi-check-circle-outline" size="23" />
             승인
           </button>
           <button
@@ -149,6 +224,7 @@
             :disabled="isSubmitting"
             @click="openRejectModal"
           >
+            <v-icon icon="mdi-close" size="23" />
             반려
           </button>
           <button
@@ -157,41 +233,48 @@
             :disabled="isSubmitting"
             @click="openAssignModal"
           >
+            <v-icon icon="mdi-account-plus-outline" size="23" />
             직접 지정
           </button>
-        </div>
-      </aside>
+        </section>
+      </div>
     </div>
 
-    <div v-if="isRejectModalOpen" class="reject-modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
-      <div class="reject-modal__backdrop" @click="closeRejectModal"></div>
-      <form class="reject-modal__panel" @submit.prevent="submitReject">
-        <div class="reject-modal__header">
+    <div v-if="isRejectModalOpen" class="modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+      <div class="modal__backdrop" @click="closeRejectModal"></div>
+      <form class="modal__panel modal__panel--small" @submit.prevent="submitReject">
+        <div class="modal__header">
           <h2 id="reject-modal-title">반려 사유 입력</h2>
-          <button type="button" aria-label="닫기" @click="closeRejectModal">×</button>
+          <button type="button" aria-label="닫기" @click="closeRejectModal">
+            <v-icon icon="mdi-close" size="20" />
+          </button>
         </div>
         <textarea
           ref="rejectionReasonInput"
           v-model.trim="rejectionReason"
           rows="4"
-          placeholder="반려 사유를 입력해주세요."
+          placeholder="반려 사유를 입력해 주세요."
           autofocus
           @input="rejectErrorMessage = ''"
         ></textarea>
-        <p v-if="rejectErrorMessage">{{ rejectErrorMessage }}</p>
-        <div class="reject-modal__actions">
-          <button class="reject-modal__cancel" type="button" @click="closeRejectModal">취소</button>
-          <button class="reject-modal__submit" type="submit" :disabled="isSubmitting">반려 처리</button>
+        <p v-if="rejectErrorMessage" class="modal__error">{{ rejectErrorMessage }}</p>
+        <div class="modal__actions">
+          <button class="modal__cancel" type="button" @click="closeRejectModal">취소</button>
+          <button class="modal__submit modal__submit--danger" type="submit" :disabled="isSubmitting">
+            반려 처리
+          </button>
         </div>
       </form>
     </div>
 
-    <div v-if="isAssignModalOpen" class="assign-modal" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
-      <div class="assign-modal__backdrop" @click="closeAssignModal"></div>
-      <section class="assign-modal__panel">
-        <div class="assign-modal__header">
+    <div v-if="isAssignModalOpen" class="modal" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+      <div class="modal__backdrop" @click="closeAssignModal"></div>
+      <section class="modal__panel modal__panel--large">
+        <div class="modal__header">
           <h2 id="assign-modal-title">설계사 직접 지정</h2>
-          <button type="button" aria-label="닫기" @click="closeAssignModal">×</button>
+          <button type="button" aria-label="닫기" @click="closeAssignModal">
+            <v-icon icon="mdi-close" size="20" />
+          </button>
         </div>
 
         <v-alert v-if="assignErrorMessage" type="error" variant="tonal" density="comfortable">
@@ -245,10 +328,10 @@
           />
         </div>
 
-        <div class="assign-modal__actions">
-          <button class="assign-modal__cancel" type="button" @click="closeAssignModal">취소</button>
+        <div class="modal__actions">
+          <button class="modal__cancel" type="button" @click="closeAssignModal">취소</button>
           <button
-            class="assign-modal__submit"
+            class="modal__submit"
             type="button"
             :disabled="isSubmitting || !selectedFpId"
             @click="submitAssign"
@@ -299,7 +382,7 @@ const assignTotalPages = ref(0)
 const hasHistory = computed(() => Boolean(detail.handoverHistory.previousFpName || detail.handoverHistory.changedAt))
 const showApprovalActions = computed(() =>
   authStore.userRole === USER_ROLES.BRANCH_MANAGER &&
-  detail.canApprove &&
+  detail.canApprove !== false &&
   detail.requestStatus === 'MANAGER_PENDING',
 )
 const specialtyCategories = computed(() => {
@@ -311,14 +394,65 @@ const specialtyCategories = computed(() => {
   return normalizedCategories.length > 0 ? normalizedCategories : ['-']
 })
 const fpInitial = computed(() => (detail.recommendation.recommendedFpName || '?').trim().slice(0, 1))
-const recommendedCareerText = computed(() => '6년')
-const recommendedBranchText = computed(() => authStore.user.organizationName || '소속 지점')
+const recommendedCareerText = computed(() => formatCareerYears(detail.recommendation.careerYears ?? 6))
+const recommendedBranchText = computed(() =>
+  detail.recommendation.organizationName || authStore.user?.organizationName || '소속 지점',
+)
 const isDirectAssignedRecommendation = computed(() =>
   String(detail.recommendation.recommendationReason ?? '').includes('직접 지정'),
 )
 const recommendationFlowLabel = computed(() =>
-  isDirectAssignedRecommendation.value ? '직접 지정' : '재추천됨',
+  isDirectAssignedRecommendation.value ? '직접 지정됨' : '후 재추천됨',
 )
+const hasRecommendationPoints = computed(() => recommendationPoints.value.length > 0)
+const recommendationPoints = computed(() => {
+  const points = detail.recommendation.recommendationPoints
+
+  if (Array.isArray(points)) {
+    return points.map((point) => String(point).trim()).filter(Boolean)
+  }
+
+  return splitRecommendationText(points)
+})
+const aiBriefingText = computed(() => {
+  if (detail.recommendation.aiBriefing) {
+    return detail.recommendation.aiBriefing
+  }
+
+  if (detail.recommendation.recommendationReason) {
+    return detail.recommendation.recommendationReason
+  }
+
+  return `${detail.customer.customerName} 고객은 ${detail.customer.customerGrade || '일반'} 등급이며 최근 상담 이력과 보유 계약을 고려했을 때 후속 관리가 중요합니다. ${detail.recommendation.recommendedFpName} FP는 ${specialtyCategories.value.join(', ')} 분야 경험이 있고, 고객 연령대와 상담 선호가 유사하여 유지성과 관리의 연속성과가 높으면 적합합니다.`
+})
+const evidenceCards = computed(() => {
+  if (detail.recommendation.matchingReasons.length > 0) {
+    return detail.recommendation.matchingReasons
+  }
+
+  return [
+    {
+      title: '고객 등급 적합',
+      description: `${detail.customer.customerGrade || '고객'} 등급 고객 관리 경험`,
+      icon: 'mdi-medal-outline',
+    },
+    {
+      title: '연령대·유사 고객 경험',
+      description: `${formatAgeBand(detail.recommendation.preferredCustomerAge)} 고객 다수 관리`,
+      icon: 'mdi-account-multiple-outline',
+    },
+    {
+      title: '가족보장 상품 경험',
+      description: `${specialtyCategories.value[0] || '상품'} 설계 전문`,
+      icon: 'mdi-shield-check-outline',
+    },
+    {
+      title: '채널 선호 일치',
+      description: `${getChannelLabel(detail.recommendation.consultationChannel)} 선호 고객과 일치`,
+      icon: 'mdi-office-building-outline',
+    },
+  ]
+})
 const assignRangeLabel = computed(() => {
   if (assignTotalElements.value === 0) {
     return '총 0명'
@@ -403,7 +537,7 @@ function submitReject() {
   rejectionReason.value = reason
 
   if (!reason) {
-    rejectErrorMessage.value = '반려 사유를 입력해주세요.'
+    rejectErrorMessage.value = '반려 사유를 입력해 주세요.'
     return
   }
 
@@ -470,7 +604,7 @@ function changeAssignPage(page) {
 
 async function submitAssign() {
   if (!selectedFpId.value) {
-    assignErrorMessage.value = '지정할 설계사를 선택해주세요.'
+    assignErrorMessage.value = '지정할 설계사를 선택해 주세요.'
     return
   }
 
@@ -492,8 +626,8 @@ async function submitAssign() {
 
 function normalizeDetail(source = {}) {
   return {
-    handoverRequestId: source.handoverRequestId ?? '',
-    requestType: source.requestType ?? 'RESIGNATION',
+    handoverRequestId: source.handoverRequestId ?? route.params.handoverRequestId ?? '',
+    requestType: source.requestType ?? 'VOLUNTARY',
     requestStatus: source.requestStatus ?? 'MANAGER_PENDING',
     createdAt: source.createdAt ?? null,
     customer: {
@@ -517,6 +651,8 @@ function normalizeDetail(source = {}) {
     recommendation: {
       recommendationId: source.recommendation?.recommendationId ?? '',
       recommendedFpName: source.recommendation?.recommendedFpName ?? '-',
+      careerYears: source.recommendation?.careerYears ?? source.recommendation?.careerYear ?? null,
+      organizationName: source.recommendation?.organizationName ?? source.recommendation?.branchName ?? '',
       specialtyCategories: normalizeSpecialtyCategories(source.recommendation),
       retentionRate: source.recommendation?.retentionRate ?? source.recommendation?.retentionRatePercent ?? null,
       preferredCustomerAge:
@@ -528,11 +664,23 @@ function normalizeDetail(source = {}) {
         source.recommendation?.consultationChannel ??
         source.recommendation?.mainConsultationChannel ??
         '',
+      recommendationPoints:
+        source.recommendation?.recommendationPoints ??
+        source.recommendation?.recommendationPointList ??
+        source.recommendation?.recommendationPoint ??
+        [],
       recommendationReason: source.recommendation?.recommendationReason ?? '',
+      aiBriefing: source.recommendation?.aiBriefing ?? source.recommendation?.briefing ?? '',
+      matchingReasons: normalizeMatchingReasons(
+        source.recommendation?.matchingReasons ??
+          source.recommendation?.matchingReasonList ??
+          source.recommendation?.matchingReason ??
+          source.matchingReasons,
+      ),
       approvalStatus: source.recommendation?.approvalStatus ?? 'PENDING',
       rejectedFpName: source.recommendation?.rejectedFpName ?? '',
     },
-    canApprove: Boolean(source.canApprove),
+    canApprove: source.canApprove ?? true,
   }
 }
 
@@ -543,27 +691,28 @@ function createEmptyDetail() {
 function createSampleDetail() {
   return normalizeDetail({
     handoverRequestId: route.params.handoverRequestId,
-    requestType: 'RESIGNATION',
+    requestType: 'VOLUNTARY',
     requestStatus: 'MANAGER_PENDING',
     customer: {
-      customerName: '홍길동',
-      customerAge: 42,
-      customerGrade: 'GOLD',
-      currentFpName: '',
-      contractSummary: '실손 2건 · 종신 1건',
-      monthlyPremium: 320000,
-      lastConsultedAt: '2026-05-12T10:00:00',
-      mainConsultationChannel: 'PHONE',
+      customerName: '윤주연',
+      customerAge: 44,
+      customerGrade: 'VIP',
+      currentFpName: '이도진',
+      contractSummary: '종신보험 1건',
+      monthlyPremium: 230000,
+      lastConsultedAt: '2026-05-10T10:00:00',
+      mainConsultationChannel: 'MESSAGE',
     },
     handoverHistory: {},
     recommendation: {
-      recommendedFpName: '최설계',
-      specialtyCategories: ['실손', '종신'],
-      retentionRate: 88.7,
-      preferredCustomerAge: 40,
+      recommendedFpName: '조주림',
+      careerYears: 6,
+      organizationName: '세조지점',
+      specialtyCategories: ['가족보장'],
+      retentionRate: 80,
+      preferredCustomerAge: 32,
       consultationChannel: 'PHONE',
-      recommendationReason: '실손 보종 전문, 담당 고객 수 여유 있어 균등 배분에 적합합니다.',
-      rejectedFpName: '박설계',
+      recommendationReason: '가족보장 상품 전문, 해당 고객과 유사 고객 관리 경험이 있어 적합합니다.',
     },
     canApprove: true,
   })
@@ -577,6 +726,53 @@ function normalizeSpecialtyCategories(recommendation = {}) {
   }
 
   return splitCategories(recommendation.specialtyCategory ?? recommendation.specialtyCategories)
+}
+
+function normalizeMatchingReasons(source) {
+  if (!Array.isArray(source)) {
+    return []
+  }
+
+  return source
+    .map((reason) => {
+      const type = String(reason?.type ?? '').trim()
+      const title = String(reason?.title ?? '').trim()
+      const description = String(reason?.description ?? '').trim()
+
+      return {
+        type,
+        title,
+        description,
+        icon: getMatchingReasonIcon(type, title),
+      }
+    })
+    .filter((reason) => reason.title || reason.description)
+}
+
+function getMatchingReasonIcon(type, title = '') {
+  const key = `${type} ${title}`.toUpperCase()
+
+  if (key.includes('GRADE') || key.includes('등급')) {
+    return 'mdi-medal-outline'
+  }
+
+  if (key.includes('AGE') || key.includes('연령') || key.includes('CUSTOMER')) {
+    return 'mdi-account-multiple-outline'
+  }
+
+  if (key.includes('RETENTION') || key.includes('STABILITY') || key.includes('유지') || key.includes('안정')) {
+    return 'mdi-shield-account-outline'
+  }
+
+  if (key.includes('PRODUCT') || key.includes('SPECIALTY') || key.includes('상품') || key.includes('전문')) {
+    return 'mdi-shield-check-outline'
+  }
+
+  if (key.includes('CHANNEL') || key.includes('채널') || key.includes('상담')) {
+    return 'mdi-office-building-outline'
+  }
+
+  return 'mdi-sparkles'
 }
 
 function normalizeAssignableFps(source) {
@@ -610,6 +806,17 @@ function splitCategories(value) {
     .filter(Boolean)
 }
 
+function splitRecommendationText(value) {
+  if (!value) {
+    return []
+  }
+
+  return String(value)
+    .split(/\r?\n|[•·]/)
+    .map((point) => point.trim())
+    .filter(Boolean)
+}
+
 function goBack() {
   router.push({ name: route.query.from || getHandoverListRouteName() })
 }
@@ -623,7 +830,7 @@ function getHandoverListRouteName() {
     return 'handover-received'
   }
 
-  if (authStore.userRole === USER_ROLES.HQ_MANAGER) {
+  if ([USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN].includes(authStore.userRole)) {
     return 'handover-monitoring'
   }
 
@@ -631,27 +838,51 @@ function getHandoverListRouteName() {
 }
 
 function getStatusLabel(status) {
-  return status === 'COMPLETED' ? '완료' : '결재 대기'
+  const labels = {
+    MANAGER_PENDING: '결재 대기',
+    PENDING: '결재 대기',
+    APPROVED: '승인 완료',
+    REJECTED: '반려',
+    COMPLETED: '완료',
+  }
+
+  return labels[status] || '결재 대기'
 }
 
 function getStatusClass(status) {
-  return status === 'COMPLETED' ? 'handover-detail-status--completed' : 'handover-detail-status--pending'
+  if (['APPROVED', 'COMPLETED'].includes(status)) {
+    return 'handover-detail-status--completed'
+  }
+
+  if (status === 'REJECTED') {
+    return 'handover-detail-status--rejected'
+  }
+
+  return 'handover-detail-status--pending'
 }
 
 function getRequestTypeLabel(type) {
-  return type === 'VOLUNTARY' ? '수동' : '해촉 자동'
+  const labels = {
+    VOLUNTARY: '수동',
+    RESIGNATION: '이직 자동',
+    AUTO: '자동',
+  }
+
+  return labels[type] || type || '-'
 }
 
 function getChannelLabel(channel) {
   const labels = {
     PHONE: '전화',
     VISIT: '방문',
+    MESSAGE: '메시지',
     ONLINE: '온라인',
     VIDEO: '화상',
     CHAT: '채팅',
   }
+  const normalizedChannel = String(channel ?? '').toUpperCase()
 
-  return labels[channel] || channel || '-'
+  return labels[normalizedChannel] || channel || '-'
 }
 
 function getGradeClass(grade) {
@@ -727,46 +958,53 @@ function formatAgeBand(value) {
     return '-'
   }
 
-  return `${value}대`
+  const normalizedValue = String(value)
+  return normalizedValue.endsWith('대') ? normalizedValue : `${normalizedValue}대`
 }
 </script>
 
 <style scoped>
 .handover-detail {
   display: grid;
-  gap: 16px;
+  gap: 18px;
+  color: #202124;
 }
 
 .handover-detail__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  min-height: 38px;
 }
 
-.handover-detail__title-row {
+.handover-detail__breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  color: #6b7280;
+}
+
+.handover-detail__chevron {
+  width: 11px;
+  height: 11px;
+  border-top: 1px solid #d6deea;
+  border-right: 1px solid #d6deea;
+  transform: rotate(45deg);
 }
 
 .handover-detail__back {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #9aa0a6;
+  color: #6f7680;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.handover-detail__divider {
-  color: #c5c9cf;
-}
-
 .handover-detail h1 {
   margin: 0;
   color: #202124;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -774,7 +1012,7 @@ function formatAgeBand(value) {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
@@ -782,119 +1020,137 @@ function formatAgeBand(value) {
 
 .handover-detail-status--pending {
   background: #ffe9dc;
-  color: #f97316;
+  color: #f05a0c;
 }
 
 .handover-detail-status--completed {
-  background: #e7f1fb;
-  color: #1d73bd;
+  background: #e8f7ef;
+  color: #04783f;
+}
+
+.handover-detail-status--rejected {
+  background: #fff0f0;
+  color: #ef1111;
 }
 
 .handover-detail__body {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(360px, 5fr);
-  gap: 12px;
+  grid-template-columns: minmax(430px, 0.78fr) minmax(680px, 1.45fr);
+  gap: 18px;
 }
 
-.handover-detail__left {
+.handover-detail__left,
+.handover-detail__right {
   display: grid;
-  gap: 10px;
+  gap: 16px;
+  align-content: start;
+}
+
+.handover-card,
+.action-card {
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
 }
 
 .handover-card {
-  padding: 16px;
-  border: 1px solid #e7e9ee;
-  border-radius: 8px;
-  background: #ffffff;
+  padding: 18px;
 }
 
 .handover-card h2 {
-  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
   color: #202124;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
-.customer-info-grid {
+.handover-card h2 .v-icon {
+  color: #64748b;
+}
+
+.customer-summary {
   display: grid;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.summary-row {
+  display: grid;
+  border-bottom: 1px solid #f1f3f6;
+}
+
+.summary-row:last-child {
+  border-bottom: 0;
+}
+
+.summary-row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-row--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 24px;
 }
 
-.detail-field {
+.summary-field {
+  min-height: 78px;
   display: grid;
-  gap: 4px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-right: 1px solid #f1f3f6;
 }
 
-.detail-field span,
-.detail-list__row span,
-.match-list__row span {
-  color: #9aa0a6;
+.summary-field:last-child {
+  border-right: 0;
+}
+
+.summary-field .v-icon {
+  color: #64748b;
+}
+
+.summary-field span {
+  display: block;
+  margin-bottom: 5px;
+  color: #777d86;
   font-size: 12px;
   font-weight: 700;
 }
 
-.detail-field strong {
+.summary-field strong {
   color: #202124;
   font-size: 13px;
   font-weight: 800;
 }
 
-.detail-field__muted {
-  color: #9aa0a6 !important;
-}
-
-.detail-list {
-  display: grid;
-  gap: 0;
-  margin-top: 18px;
-  padding-top: 8px;
-  border-top: 1px solid #f0f1f4;
-}
-
-.detail-list__row,
-.match-list__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 34px;
-  gap: 18px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.detail-list__row:last-child,
-.match-list__row:last-child {
-  border-bottom: 0;
-}
-
-.detail-list__row strong,
-.match-list__row strong {
-  color: #202124;
-  font-size: 12px;
-  font-weight: 800;
-  text-align: right;
+.text-muted {
+  color: #8a94a7 !important;
 }
 
 .grade-badge,
-.channel-badge,
-.specialty-badge {
+.channel-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 4px 9px;
+  min-height: 23px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
 }
 
 .grade-badge {
-  background: #fff0d8;
-  color: #d98a00;
+  background: #ead7ff;
+  color: #7d35ff;
 }
 
-.grade-badge--vip {
-  background: #f3e8ff;
-  color: #7c3aed;
+.grade-badge--gold {
+  background: #fff0d8;
+  color: #d98a00;
 }
 
 .grade-badge--silver {
@@ -903,62 +1159,79 @@ function formatAgeBand(value) {
 }
 
 .channel-badge {
-  background: #e8f3ff;
-  color: #1d73bd;
+  background: #dcecff;
+  color: #1277e9;
 }
 
-.handover-history-card {
-  min-height: 84px;
+.history-card {
+  min-height: 0;
 }
 
 .history-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #7b818b;
-  font-size: 12px;
+  gap: 16px;
+  color: #686f7a;
+  font-size: 13px;
 }
 
-.handover-history-card p {
-  margin: 0;
-  color: #a2a7af;
-  font-size: 12px;
-  text-align: right;
+.history-row strong {
+  color: #202124;
+  font-weight: 800;
 }
 
-.recommendation-card {
-  align-self: start;
+.empty-history {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  color: #686f7a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-history .v-icon {
+  font-size: 58px !important;
+  color: #93c5fd;
+  filter: none;
 }
 
 .reject-banner {
-  margin-bottom: 12px;
-  padding: 8px 14px;
-  border: 1px solid #ffb8b8;
-  border-radius: 5px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #ffc6c6;
+  border-radius: 6px;
   background: #fff0f0;
   color: #dc2626;
   font-size: 12px;
   font-weight: 700;
 }
 
+.recommended-panel {
+  padding: 18px;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+}
+
 .recommended-fp {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 2px 0 14px;
-  border-bottom: 1px solid #f0f1f4;
+  gap: 16px;
 }
 
 .recommended-fp__avatar {
-  width: 38px;
-  height: 38px;
+  width: 58px;
+  height: 58px;
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #ffe9dc;
-  color: #f97316;
-  font-size: 13px;
-  font-weight: 900;
+  background: linear-gradient(135deg, #ffd9c9, #fff0e7);
+  color: #e65000;
+  font-size: 18px;
+  font-weight: 800;
+  text-decoration: underline;
 }
 
 .recommended-fp strong,
@@ -968,81 +1241,258 @@ function formatAgeBand(value) {
 
 .recommended-fp strong {
   color: #202124;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .recommended-fp span {
-  margin-top: 2px;
-  color: #9aa0a6;
-  font-size: 12px;
+  margin-top: 6px;
+  color: #686f7a;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.match-list {
-  margin-top: 14px;
+.recommended-fp span b::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 18px;
+  vertical-align: -2px;
+  background: #d8e0ec;
 }
 
-.specialty-list {
-  display: inline-flex;
-  justify-content: flex-end;
-  gap: 6px;
+.match-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
 }
 
-.specialty-badge {
-  background: #fff0d8;
-  color: #c47b00;
+.match-card {
+  min-height: 74px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 18px;
+  row-gap: 3px;
+  padding: 12px;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
 }
 
-.match-list__rate {
-  color: #22a06b !important;
+.match-card .v-icon {
+  grid-row: span 2;
+  justify-self: start;
+  padding: 6px;
+  border-radius: 999px;
+  box-sizing: content-box;
+  font-size: 22px !important;
 }
 
-.recommendation-comment {
-  margin: 14px 0 0;
-  padding: 12px 14px;
-  border: 1px solid #fee0bb;
-  border-radius: 6px;
-  background: #fffaf3;
-  color: #9a5c13;
+.match-card span {
+  color: #777d86;
   font-size: 12px;
   font-weight: 700;
 }
 
-.approval-actions {
+.match-card strong {
+  color: #202124;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.match-card--blue .v-icon {
+  background: #eef7ff;
+  color: #1677ff;
+}
+
+.match-card--green .v-icon {
+  background: #eefaf2;
+  color: #079447;
+}
+
+.match-card--green strong {
+  color: #079447;
+}
+
+.match-card--purple .v-icon {
+  background: #f5efff;
+  color: #7442ff;
+}
+
+.recommendation-points {
+  margin-top: 16px;
+}
+
+.recommendation-points strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #202124;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.recommendation-points strong .v-icon {
+  color: #2d7ff9;
+}
+
+.recommendation-points ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 8px 0 0;
+  padding-left: 0;
+  color: #686f7a;
+  font-size: 13px;
+  font-weight: 700;
+  list-style-position: inside;
+}
+
+.ai-briefing {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #ddd6fe;
+  border-radius: 8px;
+  background: #f5f3ff;
+}
+
+.ai-briefing__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ddd6fe;
+}
+
+.ai-briefing__header div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-briefing__header .v-icon {
+  color: #8b5cf6;
+}
+
+.ai-briefing__header strong {
+  color: #202124;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ai-briefing__header span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0e4ff;
+  color: #7a3df0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ai-briefing__header p {
+  margin: 0;
+  color: #8b5cf6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-briefing__body {
+  padding: 12px 0 0;
+}
+
+.ai-briefing__body > p {
+  margin: 0;
+  color: #312e81;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.75;
+}
+
+.briefing-evidence {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   margin-top: 12px;
 }
 
-.approval-actions button {
-  min-height: 34px;
-  border-radius: 6px;
+.evidence-card {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #e9d5ff;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.evidence-card .v-icon {
+  color: #1389ff;
+}
+
+.evidence-card strong,
+.evidence-card span {
+  display: block;
+}
+
+.evidence-card strong {
+  color: #202124;
   font-size: 12px;
   font-weight: 800;
+}
+
+.evidence-card span {
+  margin-top: 4px;
+  color: #777d86;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 18px;
+}
+
+.action-card button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.approval-actions button:disabled {
+.action-card button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
 .approval-actions__approve {
-  border: 1px solid #35b87f;
-  background: #edfdf5;
-  color: #13965f;
+  border: 1px solid #f97316;
+  background: #f97316 !important;
+  color: #ffffff;
+  box-shadow: none;
 }
 
 .approval-actions__reject {
-  border: 1px solid #ff6b6b;
-  background: #ffffff;
+  border: 1px solid #fecaca;
   color: #ef4444;
 }
 
 .approval-actions__assign {
-  border: 1px solid #a5b4fc;
-  background: #f5f7ff;
-  color: #4f46e5;
+  border: 1px solid #d8dce3;
+  color: #6f7680;
 }
 
 .handover-detail-state {
@@ -1050,10 +1500,10 @@ function formatAgeBand(value) {
   display: grid;
   place-items: center;
   gap: 10px;
-  color: #7b818b;
+  color: #526079;
 }
 
-.reject-modal {
+.modal {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -1062,152 +1512,108 @@ function formatAgeBand(value) {
   padding: 20px;
 }
 
-.reject-modal__backdrop {
+.modal__backdrop {
   position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, 0.34);
 }
 
-.reject-modal__panel {
+.modal__panel {
   position: relative;
-  width: min(420px, 100%);
-  padding: 18px;
-  border: 1px solid #f1c6c6;
-  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #dbe1f0;
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
 }
 
-.reject-modal__header {
+.modal__panel--small {
+  width: min(440px, 100%);
+}
+
+.modal__panel--large {
+  width: min(760px, 100%);
+}
+
+.modal__header,
+.modal__actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.reject-modal__header h2 {
+.modal__header h2 {
   margin: 0;
   color: #202124;
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
-.reject-modal__header button {
+.modal__header button {
   width: 28px;
   height: 28px;
   border: 0;
   border-radius: 999px;
   background: #f5f6f8;
-  color: #7b818b;
-  font-size: 18px;
-  line-height: 1;
+  color: #526079;
   cursor: pointer;
 }
 
-.reject-modal textarea {
+.modal textarea {
   width: 100%;
   resize: vertical;
   padding: 12px;
-  border: 1px solid #e2e5ea;
+  border: 1px solid #d8e0ec;
   border-radius: 8px;
   color: #202124;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
-.reject-modal textarea:focus {
+.modal textarea:focus {
   border-color: #ff8a8a;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-.reject-modal p {
-  margin: 8px 0 0;
+.modal__error {
+  margin: 0;
   color: #ef4444;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
-.reject-modal__actions {
-  display: flex;
+.modal__actions {
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
 }
 
-.reject-modal__actions button {
+.modal__actions button {
   min-width: 78px;
   min-height: 34px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.reject-modal__cancel {
+.modal__cancel {
   border: 1px solid #d8dce3;
   background: #ffffff;
-  color: #6f7680;
+  color: #526079;
 }
 
-.reject-modal__submit {
-  border: 1px solid #ef4444;
-  background: #ef4444;
+.modal__submit {
+  border: 1px solid #f97316;
+  background: #f97316;
   color: #ffffff;
 }
 
-.assign-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-}
-
-.assign-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.34);
-}
-
-.assign-modal__panel {
-  position: relative;
-  width: min(720px, 100%);
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid #dbe1f0;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
-}
-
-.assign-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.assign-modal__header h2 {
-  margin: 0;
-  color: #202124;
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.assign-modal__header button {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  background: #f5f6f8;
-  color: #7b818b;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
+.modal__submit--danger {
+  border-color: #ef4444;
+  background: #ef4444;
 }
 
 .assign-list {
@@ -1267,12 +1673,12 @@ function formatAgeBand(value) {
 .assign-fp-row__main strong {
   color: #202124;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .assign-fp-row__main small {
   margin-top: 4px;
-  color: #8b8f98;
+  color: #526079;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1288,7 +1694,7 @@ function formatAgeBand(value) {
 .assign-fp-row__meta strong {
   display: inline-flex;
   align-items: center;
-  min-height: 23px;
+  min-height: 24px;
   padding: 4px 9px;
   border-radius: 999px;
   background: #f3f4f6;
@@ -1307,49 +1713,51 @@ function formatAgeBand(value) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #8b8f98;
+  color: #526079;
   font-size: 12px;
 }
 
-.assign-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.assign-modal__actions button {
-  min-width: 78px;
-  min-height: 34px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.assign-modal__actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.assign-modal__cancel {
-  border: 1px solid #d8dce3;
-  background: #ffffff;
-  color: #6f7680;
-}
-
-.assign-modal__submit {
-  border: 1px solid #f97316;
-  background: #f97316;
-  color: #ffffff;
-}
-
-@media (max-width: 960px) {
+@media (max-width: 1280px) {
   .handover-detail__body {
     grid-template-columns: 1fr;
   }
+}
 
-  .customer-info-grid {
+@media (max-width: 900px) {
+  .summary-row--three,
+  .summary-row--two,
+  .match-grid,
+  .briefing-evidence,
+  .action-card {
     grid-template-columns: 1fr;
+  }
+
+  .summary-field {
+    border-right: 0;
+    border-bottom: 1px solid #e1e7f0;
+  }
+
+  .summary-row:last-child .summary-field:last-child {
+    border-bottom: 0;
+  }
+
+  .recommended-fp {
+    align-items: flex-start;
+  }
+
+  .recommended-fp__avatar {
+    width: 76px;
+    height: 76px;
+    font-size: 24px;
+  }
+
+  .recommended-fp strong {
+    font-size: 24px;
+  }
+
+  .ai-briefing__header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .assign-fp-row,
@@ -1363,3 +1771,4 @@ function formatAgeBand(value) {
   }
 }
 </style>
+
