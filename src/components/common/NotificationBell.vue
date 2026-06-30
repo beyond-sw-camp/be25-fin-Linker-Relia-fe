@@ -650,8 +650,8 @@ function formatTime(date) {
 }
 
 .notification-dropdown {
-  width: 266px;
-  height: 257px;
+  width: 300px;
+  height: 292px;
   overflow: hidden;
   border: 1px solid #d7dce3;
   border-radius: 7px;
@@ -664,7 +664,7 @@ function formatTime(date) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  height: 41px;
+  height: 45px;
   padding: 0 14px;
   border-bottom: 1px solid #dfe3e8;
 }
@@ -682,7 +682,7 @@ function formatTime(date) {
 
 .notification-dropdown__left strong {
   color: #1f2937;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
 }
 
@@ -698,7 +698,7 @@ function formatTime(date) {
 
 .notification-dropdown__header > span {
   color: #4b5563;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -706,7 +706,7 @@ function formatTime(date) {
   display: grid;
   align-content: start;
   grid-auto-rows: min-content;
-  height: 185px;
+  height: 211px;
   overflow-y: auto;
 }
 
@@ -732,8 +732,8 @@ function formatTime(date) {
   grid-template-columns: 12px minmax(0, 1fr);
   gap: 5px;
   width: 100%;
-  min-height: 52px;
-  padding: 9px 14px 8px;
+  min-height: 58px;
+  padding: 10px 16px 9px;
   border: 0;
   border-bottom: 1px solid #dde2e8;
   background: #ffffff;
@@ -767,7 +767,7 @@ function formatTime(date) {
 .notification-dropdown__content strong {
   overflow: hidden;
   color: #9aa2af;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -782,7 +782,7 @@ function formatTime(date) {
 .notification-dropdown__content small,
 .notification-dropdown__state {
   color: #8a8a8a;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .notification-dropdown__state {
@@ -793,16 +793,16 @@ function formatTime(date) {
 .notification-dropdown__more {
   display: block;
   width: 100%;
-  height: 31px;
+  height: 36px;
   border-top: 1px solid #dfe3e8;
   color: #1f2937;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .notification-modal {
-  width: min(500px, calc(100vw - 16px));
-  height: 410px;
+  width: min(560px, calc(100vw - 16px));
+  height: 470px;
   overflow: hidden;
   border-radius: 7px;
   background: #f8f9fb;
@@ -812,8 +812,8 @@ function formatTime(date) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 42px;
-  padding: 0 16px;
+  height: 48px;
+  padding: 0 18px;
   border-bottom: 1px solid #dfe3e8;
   background: #ffffff;
 }
@@ -821,7 +821,7 @@ function formatTime(date) {
 .notification-modal__header h2 {
   margin: 0;
   color: #111827;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -851,12 +851,12 @@ function formatTime(date) {
 .notification-modal__list {
   position: relative;
   display: grid;
-  align-content: end;
+  align-content: start;
   grid-auto-rows: min-content;
-  gap: 12px;
-  height: 368px;
+  gap: 13px;
+  height: 422px;
   overflow-y: auto;
-  padding: 12px 18px 18px;
+  padding: 14px 20px 20px;
   background: #f8f9fb;
 }
 
@@ -900,8 +900,8 @@ function formatTime(date) {
 
 .notification-modal__item {
   display: grid;
-  grid-template-columns: 20px minmax(0, max-content) 38px;
-  gap: 10px;
+  grid-template-columns: 22px minmax(0, max-content) 44px;
+  gap: 11px;
   align-items: center;
   width: max-content;
   max-width: 100%;
@@ -914,8 +914,8 @@ function formatTime(date) {
 .notification-modal__icon {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   background: #ffffff;
   color: #777777;
@@ -934,8 +934,8 @@ function formatTime(date) {
 .notification-modal__bubble {
   display: block;
   min-width: 0;
-  min-height: 29px;
-  padding: 7px 12px;
+  min-height: 34px;
+  padding: 8px 13px;
   border: 1px solid #e1e5eb;
   border-radius: 8px;
   background: #eef2f6;
@@ -960,7 +960,7 @@ function formatTime(date) {
 .notification-modal__bubble strong {
   overflow-wrap: anywhere;
   color: #111827;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
 }
@@ -977,7 +977,7 @@ function formatTime(date) {
   display: grid;
   gap: 2px;
   color: #6b7280;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   line-height: 1.1;
   white-space: nowrap;
