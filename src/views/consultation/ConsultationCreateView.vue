@@ -1,13 +1,10 @@
 <template>
   <section class="journal-page" :class="{ 'journal-page--with-stt': isSttPreviewOpen }">
-    <nav class="journal-breadcrumb" aria-label="breadcrumb">
-      <button type="button" @click="goBack">
-        <v-icon icon="mdi-arrow-left" size="14" />
-        상담 관리로 돌아가기
-      </button>
-      <span>/</span>
-      <strong>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</strong>
-    </nav>
+    <PageBackLink label="상담 목록" @click="goBack" />
+
+    <div class="journal-heading">
+      <h2>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</h2>
+    </div>
 
     <form
       class="journal-workspace"
@@ -993,6 +990,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import ConsultationSttPreviewModal from '../../components/consultation/ConsultationSttPreviewModal.vue'
 import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'

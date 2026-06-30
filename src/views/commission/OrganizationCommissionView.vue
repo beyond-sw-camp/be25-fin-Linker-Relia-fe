@@ -125,46 +125,43 @@
       <section class="panel panel--compact">
         <div class="panel__header">
           <div>
-            <h3>지급 구분 요약</h3>
-            <p>초회 수수료, 유지 수수료, 환수 금액의 구성 비율입니다.</p>
+            <h3>보험 상품 판매 순위 {{ productRankingTitleSuffix }}</h3>
+            <p>마감월 기준 판매 건수를 기준으로 상품별 순위를 나타냅니다.</p>
           </div>
         </div>
 
-        <div v-if="isPaymentTypeLoading" class="panel__state">
+        <div v-if="isProductRankingLoading" class="panel__state">
           <v-progress-circular indeterminate color="#f97316" />
-          <p>지급 구분 데이터를 불러오는 중입니다.</p>
+          <p>보험 상품 판매 순위를 불러오는 중입니다.</p>
         </div>
-        <div v-else-if="paymentTypeErrorMessage" class="panel__state panel__state--error">
-          <p>{{ paymentTypeErrorMessage }}</p>
+        <div v-else-if="productRankingErrorMessage" class="panel__state panel__state--error">
+          <p>{{ productRankingErrorMessage }}</p>
         </div>
-        <div v-else-if="paymentTypeItems.length === 0" class="panel__state">
-          <p>지급 구분 요약 데이터가 없습니다.</p>
+        <div v-else-if="productRankingItems.length === 0" class="panel__state">
+          <p>보험 상품 판매 순위 데이터가 없습니다.</p>
         </div>
-        <div v-else class="payment-type-panel">
-          <div class="payment-type-panel__visual">
-            <div class="payment-type-panel__chart">
-              <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
-            </div>
-            <div class="payment-type-panel__summary">
-              <strong>{{ formatCurrency(summary.totalPaymentCommissionAmount) }}</strong>
-              <span>당월 지급 수수료 구성 비율</span>
-            </div>
-          </div>
-          <div class="payment-type-panel__legend">
-            <article
-              v-for="item in paymentTypeItems"
-              :key="item.label"
-              class="legend-row"
-            >
-              <div class="legend-row__label">
-                <span class="legend-row__dot" :style="{ backgroundColor: item.color }" />
-                <strong>{{ item.label }}</strong>
-              </div>
-              <div class="legend-row__metrics">
-                <span>{{ formatCurrency(item.amount) }}</span>
-                <strong>{{ formatPercent(item.ratio) }}</strong>
-              </div>
-            </article>
+        <div v-else class="product-ranking-panel">
+          <div class="table-panel table-panel--product-ranking">
+            <table>
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>상품명</th>
+                  <th>보험사</th>
+                  <th>계약 수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in productRankingItems" :key="item.insuranceProductId || item.rank">
+                  <td>{{ item.rank }}</td>
+                  <td>
+                    <strong>{{ item.insuranceProductName }}</strong>
+                  </td>
+                  <td>{{ item.insuranceCompanyName }}</td>
+                  <td>{{ formatCount(item.contractCount) }}건</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -319,6 +316,7 @@ import {
   getOwnBranchCommissionStatementPdf,
   getOrganizationCommissionSummary,
 } from '../../api/commissions'
+import { getDashboardInsuranceProductRankings } from '../../api/dashboard'
 import { useBranchFilter } from '../../composables/useBranchFilter'
 import { useAuthStore } from '../../stores/auth'
 import { formatCurrency } from '../../utils/formatters'
@@ -354,11 +352,13 @@ const validationMessage = ref('')
 const summary = ref(createEmptyOrganizationSummary())
 const paymentTypeItems = ref([])
 const insuranceCompanyItems = ref([])
+const productRankingItems = ref([])
 const fpCommissionPage = ref(createEmptyPage())
 const organizationCommissionPage = ref(createEmptyPage())
 const isSummaryLoading = ref(false)
 const isPaymentTypeLoading = ref(false)
 const isInsuranceCompanyLoading = ref(false)
+const isProductRankingLoading = ref(false)
 const isFpListLoading = ref(false)
 const isOrganizationListLoading = ref(false)
 const isPdfLoading = ref(false)
@@ -366,6 +366,7 @@ const isPdfLoading = ref(false)
 const summaryErrorMessage = ref('')
 const paymentTypeErrorMessage = ref('')
 const insuranceCompanyErrorMessage = ref('')
+const productRankingErrorMessage = ref('')
 const fpListErrorMessage = ref('')
 const organizationListErrorMessage = ref('')
 
@@ -388,6 +389,7 @@ const pageDescription = computed(() =>
 )
 const closingMonthLabel = computed(() => formatMonthLabel(filters.closingMonth))
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
+const productRankingTitleSuffix = computed(() => `Top${Math.min(productRankingItems.value.length || 10, 10)}`)
 const effectiveScope = computed(() => {
   if (props.scope === 'branch') {
     return 'branch'
@@ -658,7 +660,7 @@ async function loadDashboard() {
 
   await Promise.all([
     loadSummary(),
-    loadPaymentTypes(),
+    loadProductRankings(),
     loadInsuranceCompanies(),
     loadFpCommissionList(),
     ...(props.scope === 'hq' ? [loadOrganizationCommissionList()] : []),
@@ -753,6 +755,28 @@ async function loadPaymentTypes() {
       '지급 구분 요약을 불러오지 못했습니다.'
   } finally {
     isPaymentTypeLoading.value = false
+  }
+}
+
+async function loadProductRankings() {
+  productRankingErrorMessage.value = ''
+  isProductRankingLoading.value = true
+
+  try {
+    const response = await getDashboardInsuranceProductRankings({
+      ...buildScopeParams(filters.closingMonth),
+      limit: 10,
+    })
+
+    productRankingItems.value = normalizeProductRankingItems(response?.result)
+  } catch (error) {
+    productRankingItems.value = []
+    productRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '보험 상품 판매 순위를 불러오지 못했습니다.'
+  } finally {
+    isProductRankingLoading.value = false
   }
 }
 
@@ -1050,6 +1074,38 @@ function normalizeInsuranceCompanyItems(result) {
       ratio: totalAmount > 0 ? (item.totalCommissionAmount / totalAmount) * 100 : 0,
     }))
     .sort((left, right) => right.totalCommissionAmount - left.totalCommissionAmount)
+}
+
+function normalizeProductRankingItems(result) {
+  const items = Array.isArray(result?.rankings)
+    ? result.rankings
+    : Array.isArray(result?.items)
+      ? result.items
+      : Array.isArray(result)
+        ? result
+        : []
+
+  return items.map((item, index) => ({
+    rank: toNumber(getValue(item, ['rank', 'ranking'])) || index + 1,
+    insuranceProductId: getValue(item, ['insuranceProductId', 'productId']) ?? '',
+    insuranceProductCode: getValue(item, ['insuranceProductCode', 'productCode']) || '-',
+    insuranceProductName: getValue(item, ['insuranceProductName', 'productName']) || '-',
+    insuranceCompanyName: getValue(item, ['insuranceCompanyName', 'companyName']) || '-',
+    insuranceCategoryName: getValue(item, ['insuranceCategoryName', 'categoryName']) || '-',
+    commissionAmount: toNumber(
+      getValue(item, [
+        'commissionAmount',
+        'totalCommissionAmount',
+        'totalPaymentCommissionAmount',
+        'netCommissionAmount',
+        'totalMonthlyPremiumAmount',
+      ]),
+    ),
+    contractCount: toNumber(getValue(item, ['contractCount', 'totalContractCount', 'contractCnt'])),
+    totalMonthlyPremiumAmount: toNumber(
+      getValue(item, ['totalMonthlyPremiumAmount', 'monthlyPremiumAmount', 'totalPremiumAmount']),
+    ),
+  }))
 }
 
 function collapsePaymentTypeArray(items) {
@@ -1568,6 +1624,11 @@ function getLatestAvailableClosingMonth() {
   width: 100%;
 }
 
+.product-ranking-panel {
+  display: grid;
+  gap: 14px;
+}
+
 .list-panel {
   display: grid;
   gap: 14px;
@@ -1604,6 +1665,56 @@ function getLatestAvailableClosingMonth() {
 
 .table-panel tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.table-panel--product-ranking {
+  overflow-x: visible;
+}
+
+.table-panel--product-ranking table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.table-panel--product-ranking th:first-child,
+.table-panel--product-ranking td:first-child {
+  width: 64px;
+  white-space: nowrap;
+}
+
+.table-panel--product-ranking th:last-child,
+.table-panel--product-ranking td:last-child {
+  width: 92px;
+  white-space: nowrap;
+}
+
+.table-panel--product-ranking th,
+.table-panel--product-ranking td {
+  white-space: normal;
+}
+
+.table-panel--product-ranking td {
+  word-break: keep-all;
+}
+
+.table-panel--product-ranking td strong {
+  overflow-wrap: anywhere;
+}
+
+.table-panel td strong,
+.table-panel td span {
+  display: block;
+}
+
+.table-panel td strong {
+  color: #111827;
+  font-weight: 800;
+}
+
+.table-panel td span {
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .list-panel__footer {
