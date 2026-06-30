@@ -1,21 +1,12 @@
 <template>
   <section class="contract-detail-page">
-    <nav class="contract-detail-page__breadcrumb" aria-label="breadcrumb">
-      <span>계약 관리</span>
-      <v-icon icon="mdi-chevron-right" size="16" />
-      <span>보유 계약 조회</span>
-      <v-icon icon="mdi-chevron-right" size="16" />
-      <strong>계약 상세</strong>
-    </nav>
+    <PageBackLink label="보유 계약 목록" @click="goToContractList" />
 
     <div class="contract-detail-page__header">
       <div>
         <h2>계약 상세</h2>
         <p>등록된 고객 정보와 보험 계약 정보를 확인할 수 있습니다.</p>
       </div>
-      <v-btn variant="outlined" class="contract-detail-page__back-button" @click="goToContractList">
-        ← 보유 계약 목록으로 돌아가기
-      </v-btn>
     </div>
 
     <div v-if="isContractDetailLoading" class="contract-detail-state">
@@ -89,6 +80,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getContractDetail } from '../../api/contracts'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -335,18 +327,6 @@ function formatCurrency(value) {
   color: #111827;
 }
 
-.contract-detail-page__breadcrumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.contract-detail-page__breadcrumb strong {
-  color: #111827;
-}
-
 .contract-detail-page__header {
   display: flex;
   align-items: flex-start;
@@ -364,14 +344,6 @@ function formatCurrency(value) {
   margin: 8px 0 0;
   color: #64748b;
   font-size: 13px;
-}
-
-.contract-detail-page__back-button {
-  min-width: 220px;
-  color: #334155;
-  border-color: #d1d5db;
-  font-weight: 700;
-  box-shadow: none;
 }
 
 .contract-detail-card {
@@ -512,10 +484,6 @@ function formatCurrency(value) {
 
   .contract-detail-page__header {
     display: grid;
-  }
-
-  .contract-detail-page__back-button {
-    width: 100%;
   }
 
   .contract-summary-grid {

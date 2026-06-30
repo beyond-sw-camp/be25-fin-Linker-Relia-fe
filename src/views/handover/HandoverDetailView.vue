@@ -1,9 +1,8 @@
 ﻿<template>
   <section class="handover-detail" aria-label="인수인계 요청 상세">
     <header class="handover-detail__header">
-      <div class="handover-detail__breadcrumb">
-        <button class="handover-detail__back" type="button" @click="goBack">인수인계 요청 목록</button>
-        <span class="handover-detail__chevron"></span>
+      <PageBackLink label="인수인계 요청 목록" @click="goBack" />
+      <div class="handover-detail__title-row">
         <h1>요청 상세</h1>
         <span class="handover-detail-status" :class="getStatusClass(detail.requestStatus)">
           {{ getStatusLabel(detail.requestStatus) }}
@@ -354,6 +353,7 @@ import {
   getHandoverDetail,
   processHandoverApproval,
 } from '../../api/handovers'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -971,34 +971,14 @@ function formatAgeBand(value) {
 }
 
 .handover-detail__header {
-  display: flex;
-  align-items: center;
-  min-height: 38px;
+  display: grid;
+  gap: 14px;
 }
 
-.handover-detail__breadcrumb {
+.handover-detail__title-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #6b7280;
-}
-
-.handover-detail__chevron {
-  width: 11px;
-  height: 11px;
-  border-top: 1px solid #d6deea;
-  border-right: 1px solid #d6deea;
-  transform: rotate(45deg);
-}
-
-.handover-detail__back {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #6f7680;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .handover-detail h1 {
