@@ -10,7 +10,7 @@
     </div>
 
     <form class="contract-create-page__form" @submit.prevent="submitContract">
-      <section ref="selectedCustomerInfoSection" class="contract-create-card">
+      <section class="contract-create-card">
         <header class="contract-create-card__header">
           <h3>1. 고객 정보 불러오기</h3>
         </header>
@@ -112,7 +112,7 @@
         </div>
       </section>
 
-      <section class="contract-create-card">
+      <section ref="selectedCustomerInfoSection" class="contract-create-card">
         <header class="contract-create-card__header">
           <h3>2. 불러온 고객 기본 정보</h3>
         </header>
