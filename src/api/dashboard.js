@@ -25,6 +25,11 @@ export async function getOrganizationDashboardBranchRankings(params) {
   return response.data
 }
 
+export async function getDashboardInsuranceProductRankings(params) {
+  const response = await authApi.get('/dashboard/insurance-products/rankings', { params })
+  return response.data
+}
+
 export async function getFpDashboardSummary(params) {
   const response = await authApi.get('/dashboard/fp/summary', { params })
   return response.data
