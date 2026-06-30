@@ -32,7 +32,7 @@
           class="commission-page__month-field"
         />
         <v-btn variant="outlined" class="commission-page__reset-button" @click="resetFilters">
-          초기화
+          최근 정산월
         </v-btn>
         <v-btn
           color="#f97316"
