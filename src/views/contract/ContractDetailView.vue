@@ -323,7 +323,7 @@ function formatCurrency(value) {
 <style scoped>
 .contract-detail-page {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   color: #111827;
 }
 
@@ -336,8 +336,9 @@ function formatCurrency(value) {
 
 .contract-detail-page__header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 .contract-detail-page__header p {
@@ -348,15 +349,15 @@ function formatCurrency(value) {
 
 .contract-detail-card {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .contract-detail-card__header {
-  padding: 17px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 18px;
+  border-bottom: 1px solid #eef2f7;
   background: #ffffff;
 }
 
@@ -367,7 +368,7 @@ function formatCurrency(value) {
 }
 
 .contract-detail-card__body {
-  padding: 22px 24px;
+  padding: 18px;
 }
 
 .contract-detail-state {
@@ -375,9 +376,10 @@ function formatCurrency(value) {
   min-height: 220px;
   place-items: center;
   gap: 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
   color: #64748b;
 }
 
@@ -389,13 +391,16 @@ function formatCurrency(value) {
 .contract-summary-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
 }
 
 .contract-summary-item,
 .detail-info-row {
   display: grid;
   gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .contract-summary-item span:first-child,
@@ -415,13 +420,11 @@ function formatCurrency(value) {
 .detail-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 56px;
+  gap: 12px;
 }
 
 .detail-info-row {
   min-height: 44px;
-  padding: 10px 0;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .contract-detail-badge {
@@ -429,10 +432,10 @@ function formatCurrency(value) {
   width: fit-content;
   align-items: center;
   min-height: 24px;
-  padding: 3px 9px;
-  border-radius: 5px;
+  padding: 0 10px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .contract-detail-badge--success {
@@ -463,10 +466,11 @@ function formatCurrency(value) {
 .coverage-summary-box {
   min-height: 54px;
   padding: 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 10px;
+  background: #f8fafc;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 

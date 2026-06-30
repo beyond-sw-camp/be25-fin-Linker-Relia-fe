@@ -92,10 +92,6 @@
 
     <section class="handover-panel">
       <div class="handover-panel__header">
-        <div class="handover-panel__title">
-          <h1>인수인계 목록</h1>
-        </div>
-
         <form
           class="handover-filters"
           :class="{ 'handover-filters--with-branch': showBranchFilter }"
@@ -108,7 +104,7 @@
             item-title="title"
             item-value="value"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             :loading="isLoadingBranches"
             class="handover-filters__branch"
@@ -120,7 +116,7 @@
             item-title="title"
             item-value="value"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             class="handover-filters__select"
             aria-label="진행 상태"
@@ -131,7 +127,7 @@
             item-title="title"
             item-value="value"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             class="handover-filters__select"
             aria-label="요청 유형"
@@ -140,7 +136,7 @@
             v-model.trim="filters.customerName"
             placeholder="고객명"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             class="handover-filters__search"
             @keyup.enter="searchHandovers"
@@ -858,6 +854,7 @@ function getTrendY(value) {
   display: grid;
   gap: 18px;
   width: 100%;
+  min-width: 0;
 }
 
 .handover-scope-line {
@@ -894,7 +891,7 @@ function getTrendY(value) {
 .handover-page__summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .handover-summary-card {
@@ -933,6 +930,10 @@ function getTrendY(value) {
   color: #6b7280;
 }
 
+.handover-summary-card__value span {
+  font-size: 13px;
+}
+
 .handover-summary-card p {
   font-size: 13px;
 }
@@ -940,15 +941,16 @@ function getTrendY(value) {
 .handover-analytics {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px;
+  gap: 18px;
 }
 
 .handover-analytics-card {
   min-width: 0;
   padding: 16px 18px;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .handover-analytics-card__header {
@@ -1046,8 +1048,8 @@ function getTrendY(value) {
 .handover-branch-table {
   max-height: 230px;
   overflow: auto;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #f0f3f8;
+  border-radius: 16px;
 }
 
 .handover-branch-table table {
@@ -1102,13 +1104,18 @@ function getTrendY(value) {
 
 .handover-panel {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .handover-panel__header {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
 }
 
@@ -1128,16 +1135,16 @@ function getTrendY(value) {
 
 .handover-filters {
   display: grid;
-  grid-template-columns: 136px 136px 180px 56px;
+  grid-template-columns: 160px 160px 240px auto;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
   width: max-content;
 }
 
 .handover-filters--with-branch {
-  grid-template-columns: 180px 136px 136px 180px 56px;
+  grid-template-columns: 180px 160px 160px 240px auto;
 }
 
 .handover-filters__branch,
@@ -1152,21 +1159,32 @@ function getTrendY(value) {
 }
 
 .handover-filters__button {
-  height: 34px;
-  width: 56px;
-  min-width: 56px;
-  border-radius: 6px;
+  height: 40px;
+  min-width: 64px;
+  border-radius: 10px;
   background: #f97316;
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+  padding: 0 18px;
+}
+
+.handover-filters :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.handover-filters :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .handover-table {
   overflow-x: auto;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #f0f3f8;
+  border-radius: 16px;
   background: #ffffff;
 }
 
@@ -1178,12 +1196,11 @@ function getTrendY(value) {
 
 .handover-table th,
 .handover-table td {
-  height: 52px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f6;
-  color: #686f7a;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -1192,11 +1209,10 @@ function getTrendY(value) {
 }
 
 .handover-table th {
-  height: 40px;
-  background: #fbfbfc;
-  color: #777d86;
+  background: #f8fafc;
+  color: #64748b;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .handover-table th:last-child,
@@ -1210,7 +1226,7 @@ function getTrendY(value) {
   background: transparent;
   color: #f97316;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -1234,20 +1250,26 @@ function getTrendY(value) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #8b8f98;
-  font-size: 13px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.handover-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
 }
 
 .handover-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  min-height: 24px;
-  padding: 4px 10px;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .handover-badge--termination {
@@ -1264,7 +1286,7 @@ function getTrendY(value) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .handover-status__dot {
@@ -1279,19 +1301,19 @@ function getTrendY(value) {
 }
 
 .handover-status--completed {
-  color: #1d73bd;
+  color: #16a34a;
 }
 
 .handover-action {
-  min-width: 76px;
+  min-width: 0;
   min-height: 28px;
-  padding: 5px 12px;
+  padding: 5px 10px;
   border: 1px solid #d8dce3;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #ffffff;
   color: #6f7680;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -1329,6 +1351,14 @@ function getTrendY(value) {
   .handover-filters__select,
   .handover-filters__search {
     width: 100%;
+  }
+}
+
+@media (max-width: 1280px) {
+  .handover-table th,
+  .handover-table td {
+    padding: 12px 10px;
+    font-size: 12px;
   }
 }
 </style>

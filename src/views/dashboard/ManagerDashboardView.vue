@@ -1,25 +1,38 @@
 <template>
   <section class="manager-dashboard" aria-label="관리자 대시보드">
     <div class="dashboard-filter">
-      <label v-if="isHqManager" class="dashboard-filter__field">
-        <span>지점 선택</span>
-        <select v-model="selectedBranch" :disabled="isLoadingBranches">
-          <option v-for="branch in branchOptions" :key="branch.value" :value="branch.value">
-            {{ branch.label }}
-          </option>
-        </select>
+      <div v-if="isHqManager" class="dashboard-filter__field">
+        <v-select
+          v-model="selectedBranch"
+          :items="branchOptions"
+          item-title="label"
+          item-value="value"
+          label="지점 선택"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :loading="isLoadingBranches"
+          :disabled="isLoadingBranches"
+          class="dashboard-filter__organization-filter"
+        />
         <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
-      </label>
+      </div>
 
-      <label class="dashboard-filter__field">
-        <span>기간 선택</span>
-        <select v-model="selectedMonth" :disabled="isLoadingMonths">
-          <option v-for="month in monthOptions" :key="month.value" :value="month.value">
-            {{ month.label }}
-          </option>
-        </select>
+      <div class="dashboard-filter__field">
+        <v-text-field
+          v-model="selectedMonth"
+          type="month"
+          label="기간 선택"
+          variant="outlined"
+          density="comfortable"
+          hide-details
+          :loading="isLoadingMonths"
+          :disabled="isLoadingMonths"
+          :max="latestAvailableClosingMonth"
+          class="dashboard-filter__month-field"
+        />
         <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
-      </label>
+      </div>
     </div>
 
     <section class="report-panel">
@@ -305,6 +318,7 @@ const fallbackMonthOptions = [
 ]
 
 const monthOptions = ref(fallbackMonthOptions)
+const latestAvailableClosingMonth = computed(() => monthOptions.value[0]?.value ?? '')
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
@@ -468,13 +482,22 @@ watch(
     loadOrganizationAdvisorRankings()
     loadTopAdvisorRanking()
 
-    if (isHqManager.value) {
+    if (isBranchRankingView.value) {
       branchRankingPage.value = 1
       loadOrganizationBranchRankings()
     }
   },
   { immediate: true },
 )
+
+watch(rankingTab, () => {
+  if (!isBranchRankingView.value || !selectedMonth.value) {
+    return
+  }
+
+  branchRankingPage.value = 1
+  loadOrganizationBranchRankings()
+})
 
 watch(isAllBranchSelected, (isAllBranches) => {
   if (!isAllBranches && rankingTab.value === 'branch') {
@@ -633,7 +656,7 @@ async function loadTopAdvisorRanking() {
 }
 
 async function loadOrganizationBranchRankings() {
-  if (!isHqManager.value) {
+  if (!isBranchRankingView.value || !isAllBranchSelected.value || !selectedMonth.value) {
     return
   }
 
@@ -1343,13 +1366,14 @@ function getAdvisorCellValue(advisor, key) {
 <style scoped>
 .manager-dashboard {
   display: grid;
-  gap: 20px;
+  gap: 18px;
   color: #1f2937;
 }
 
 .dashboard-filter {
   display: flex;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 12px;
 }
 
@@ -1358,10 +1382,23 @@ function getAdvisorCellValue(advisor, key) {
   gap: 8px;
 }
 
-.dashboard-filter__field span {
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 800;
+.dashboard-filter__organization-filter {
+  width: 180px;
+}
+
+.dashboard-filter__month-field {
+  width: 180px;
+}
+
+.dashboard-filter :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.dashboard-filter :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .dashboard-filter__error {
@@ -1369,19 +1406,18 @@ function getAdvisorCellValue(advisor, key) {
   font-size: 12px;
 }
 
-.dashboard-filter__field select,
 .ranking-panel__sort {
   min-width: 176px;
   height: 40px;
   padding: 0 34px 0 14px;
   border: 1px solid #d1d5db;
-  border-radius: 12px;
+  border-radius: 10px;
   background:
     linear-gradient(45deg, transparent 50%, #6b7280 50%) calc(100% - 18px) 50% / 7px 7px no-repeat,
     linear-gradient(135deg, #6b7280 50%, transparent 50%) calc(100% - 13px) 50% / 7px 7px no-repeat,
-    #f8fafc;
+    #ffffff;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
   appearance: none;
 }
 
@@ -1389,23 +1425,24 @@ function getAdvisorCellValue(advisor, key) {
 .chart-panel,
 .ranking-panel {
   border: 1px solid #edf1f7;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .report-panel {
-  padding: 24px;
+  padding: 12px;
 }
 
 .report-panel__heading {
-  margin: 0 0 20px;
+  margin: 0 0 12px;
+  padding: 0 4px;
 }
 
 .report-panel__heading h2,
 .ranking-panel__heading h2 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -1424,16 +1461,16 @@ function getAdvisorCellValue(advisor, key) {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .metric-card {
-  min-height: 124px;
-  padding: 20px;
-  border: 1px solid #ebeef4;
-  border-radius: 18px;
+  min-height: 116px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .metric-card span {
@@ -1446,10 +1483,10 @@ function getAdvisorCellValue(advisor, key) {
 
 .metric-card strong {
   display: block;
-  margin-bottom: 10px;
-  color: #161c24;
+  margin-bottom: 8px;
+  color: #111827;
   font-size: 30px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -1467,23 +1504,21 @@ function getAdvisorCellValue(advisor, key) {
 
 .metric-card p {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
 }
 
 .metric-card__secondary {
   margin: 0 0 9px;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
 }
 
 .is-up {
-  color: #dc2626;
+  color: #16a34a;
 }
 
 .is-down {
-  color: #2563eb;
+  color: #dc2626;
 }
 
 .is-goal {
@@ -1502,17 +1537,17 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .top-performer-card {
-  min-height: 108px;
-  padding: 24px;
-  border: 1px solid #f97316;
-  border-radius: 18px;
-  background: #fff7ed;
-  box-shadow: 0 12px 28px rgba(249, 115, 22, 0.08);
+  min-height: 96px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .top-performer-card span {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1524,14 +1559,13 @@ function getAdvisorCellValue(advisor, key) {
 .top-performer-card p {
   margin: 10px 0 0;
   color: #6b7280;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 13px;
 }
 
 .top-performer-card p strong {
   color: #f97316;
-  font-size: 28px;
-  font-weight: 900;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .chart-grid {
@@ -1544,7 +1578,7 @@ function getAdvisorCellValue(advisor, key) {
   min-height: 230px;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 12px;
 }
 
 .chart-panel__header {
@@ -1552,7 +1586,8 @@ function getAdvisorCellValue(advisor, key) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
 .chart-panel__total {
@@ -1560,7 +1595,7 @@ function getAdvisorCellValue(advisor, key) {
   align-items: center;
   color: #64748b;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1579,7 +1614,7 @@ function getAdvisorCellValue(advisor, key) {
 
 .chart-panel h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   color: #111827;
 }
@@ -1758,7 +1793,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #f1f5f9;
   color: #64748b;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: left;
   white-space: nowrap;
 }
@@ -1768,7 +1803,6 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 22px;
   border-top: 1px solid #e5e7eb;
   color: #374151;
-  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -1884,12 +1918,11 @@ function getAdvisorCellValue(advisor, key) {
   margin-top: 2px;
   color: #6b7280;
   font-size: 12px;
-  font-weight: 600;
 }
 
 .ranking-number {
   color: #1f2937;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .ranking-number.is-first {
@@ -1904,7 +1937,7 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .status-pill.is-normal {
@@ -1935,7 +1968,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #ffffff;
   color: #4b5563;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ranking-panel__footer {
@@ -1949,6 +1982,11 @@ function getAdvisorCellValue(advisor, key) {
   background: #f1f5f9;
   color: #6b7280;
   font-size: 12px;
+}
+
+.ranking-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
 }
 
 .ranking-pagination {
@@ -1988,7 +2026,6 @@ function getAdvisorCellValue(advisor, key) {
     flex-direction: column;
   }
 
-  .dashboard-filter__field select,
   .dashboard-filter__field select {
     width: 100%;
   }
@@ -2001,7 +2038,7 @@ function getAdvisorCellValue(advisor, key) {
 @media (max-width: 640px) {
   .report-panel,
   .chart-panel {
-    padding: 24px 16px;
+    padding: 12px;
   }
 
   .metric-grid {
@@ -2015,7 +2052,7 @@ function getAdvisorCellValue(advisor, key) {
   }
 
   .top-performer-card {
-    padding: 22px;
+    padding: 16px 18px;
   }
 
   .ranking-panel__heading,

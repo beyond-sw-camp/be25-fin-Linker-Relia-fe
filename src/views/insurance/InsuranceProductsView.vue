@@ -1,13 +1,7 @@
 <template>
   <section class="insurance-products-page">
-    <div class="insurance-products-page__header">
-      <div>
-        <h2>{{ title }}</h2>
-        <p>{{ description }}</p>
-      </div>
-
+    <div v-if="canManage" class="insurance-products-page__header">
       <v-btn
-        v-if="canManage"
         class="insurance-products-page__create-button"
         @click="handleRegisterClick"
       >
@@ -31,71 +25,72 @@
       </article>
     </div>
 
-    <section class="insurance-products-panel">
-      <div class="insurance-products-page__toolbar">
-        <div class="insurance-products-page__search-label">보험 상품 검색</div>
-        <div class="insurance-products-page__filter-row">
-          <div class="insurance-products-page__search-group">
-            <v-text-field
-              v-model="filters.keyword"
-              placeholder="상품명을 입력하세요"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              class="insurance-products-page__name-filter"
-              @keyup.enter="searchProducts"
-            />
+    <div class="insurance-products-page__toolbar">
+      <div class="insurance-products-page__filter-row">
+        <div class="insurance-products-page__search-group">
+          <v-select
+            v-model="filters.companyId"
+            :items="companyOptions"
+            item-title="label"
+            item-value="value"
+            label="보험사"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="insurance-products-page__select-filter"
+          />
 
-            <v-select
-              v-model="filters.companyId"
-              :items="companyOptions"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              class="insurance-products-page__select-filter"
-            />
+          <v-select
+            v-model="filters.categoryId"
+            :items="categoryOptions"
+            item-title="label"
+            item-value="value"
+            label="보험종"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="insurance-products-page__select-filter"
+          />
 
-            <v-select
-              v-model="filters.categoryId"
-              :items="categoryOptions"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              class="insurance-products-page__select-filter"
-            />
+          <v-select
+            v-model="filters.saleStatus"
+            :items="saleStatusOptions"
+            item-title="label"
+            item-value="value"
+            label="상태"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="insurance-products-page__status-filter"
+          />
 
-            <v-select
-              v-model="filters.saleStatus"
-              :items="saleStatusOptions"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              class="insurance-products-page__status-filter"
-            />
+          <v-text-field
+            v-model="filters.keyword"
+            label="상품명"
+            placeholder="상품명을 입력하세요"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="insurance-products-page__name-filter"
+            @keyup.enter="searchProducts"
+          />
 
-            <v-btn class="insurance-products-page__search-button" @click="searchProducts">
-              <v-icon icon="mdi-magnify" size="16" start />
-              검색
-            </v-btn>
+          <v-btn class="insurance-products-page__search-button" @click="searchProducts">
+            검색
+          </v-btn>
 
-            <v-btn
-              variant="outlined"
-              class="insurance-products-page__reset-button"
-              @click="resetFilters"
-            >
-              <v-icon icon="mdi-restore" size="16" start />
-              초기화
-            </v-btn>
-          </div>
+          <v-btn
+            variant="outlined"
+            class="insurance-products-page__reset-button"
+            @click="resetFilters"
+          >
+            초기화
+          </v-btn>
         </div>
       </div>
+    </div>
 
+    <section class="insurance-products-panel">
       <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
         {{ errorMessage }}
       </v-alert>
@@ -502,37 +497,21 @@ function getApiErrorMessage(error, fallbackMessage) {
   min-width: 0;
 }
 
-.insurance-products-page__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.insurance-products-page__breadcrumb strong {
-  color: #374151;
-  font-weight: 700;
-}
-
-.insurance-products-page__breadcrumb-separator {
-  color: #d1d5db;
-}
-
 .insurance-products-page__header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
 }
 
 .insurance-products-page__create-button {
   min-width: 132px;
-  height: 36px;
+  height: 40px;
   background: #f97316;
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
   border-radius: 10px;
 }
@@ -540,7 +519,7 @@ function getApiErrorMessage(error, fallbackMessage) {
 .insurance-products-page__summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .summary-card {
@@ -548,19 +527,19 @@ function getApiErrorMessage(error, fallbackMessage) {
   align-items: center;
   gap: 16px;
   min-height: 96px;
-  padding: 20px 22px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .summary-card__icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 10px;
   flex: 0 0 auto;
 }
 
@@ -581,16 +560,14 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .summary-card__value strong {
-  font-size: 20px;
+  font-size: 34px;
   line-height: 1;
-  color: #111827;
-  font-weight: 800;
+  color: #1f2937;
 }
 
 .summary-card__value span {
-  color: #111827;
-  font-size: 14px;
-  font-weight: 700;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .summary-card__content p {
@@ -601,31 +578,23 @@ function getApiErrorMessage(error, fallbackMessage) {
 
 .insurance-products-panel {
   padding: 0;
-  border-radius: 14px;
+  border-radius: 18px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: 1px solid #edf1f7;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
   min-width: 0;
   overflow: hidden;
 }
 
 .insurance-products-page__toolbar {
   display: grid;
-  gap: 10px;
+  gap: 16px;
   min-width: 0;
-  padding: 18px 20px 16px;
-  border-bottom: 1px solid #eef2f7;
-}
-
-.insurance-products-page__search-label {
-  color: #4b5563;
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .insurance-products-page__filter-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
@@ -636,44 +605,52 @@ function getApiErrorMessage(error, fallbackMessage) {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1 1 auto;
+  margin-left: auto;
+  flex: 0 1 auto;
   flex-wrap: wrap;
+  justify-content: flex-end;
   min-width: 0;
 }
 
 .insurance-products-page__name-filter {
-  width: 188px;
+  width: 240px;
   max-width: 100%;
-  flex: 0 1 188px;
+  flex: 1 1 240px;
 }
 
 .insurance-products-page__select-filter {
-  width: 148px;
+  width: 180px;
   max-width: 100%;
-  flex: 0 0 148px;
+  flex: 0 0 auto;
 }
 
 .insurance-products-page__status-filter {
-  width: 128px;
+  width: 180px;
   max-width: 100%;
-  flex: 0 0 128px;
+  flex: 0 0 auto;
 }
 
 .insurance-products-page__search-button {
-  height: 36px;
+  height: 40px;
   border-radius: 10px;
   background: #f97316;
   color: #ffffff;
-  padding: 0 16px;
+  padding: 0 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
 }
 
 .insurance-products-page__reset-button {
-  height: 36px;
+  height: 40px;
   border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;
   padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
 }
 
@@ -688,7 +665,10 @@ function getApiErrorMessage(error, fallbackMessage) {
 
 .insurance-products-table {
   overflow-x: auto;
+  border: 1px solid #f0f3f8;
+  border-radius: 16px;
   min-width: 0;
+  margin: 12px;
 }
 
 .insurance-products-table table {
@@ -699,10 +679,10 @@ function getApiErrorMessage(error, fallbackMessage) {
 
 .insurance-products-table th,
 .insurance-products-table td {
-  padding: 14px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   color: #475569;
 }
 
@@ -721,7 +701,11 @@ function getApiErrorMessage(error, fallbackMessage) {
   cursor: pointer;
   font: inherit;
   font-weight: 700;
-  text-align: left;
+  text-align: center;
+}
+
+.insurance-products-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .insurance-products-table__name-button:hover {
@@ -765,8 +749,36 @@ function getApiErrorMessage(error, fallbackMessage) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 20px 16px;
+  padding: 14px 18px 16px;
   color: #64748b;
+  font-size: 12px;
+}
+
+.insurance-products-page__name-filter :deep(.v-field),
+.insurance-products-page__select-filter :deep(.v-field),
+.insurance-products-page__status-filter :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.insurance-products-page__name-filter :deep(.v-field__input),
+.insurance-products-page__select-filter :deep(.v-field__input),
+.insurance-products-page__status-filter :deep(.v-field__input) {
+  font-size: 13px;
+}
+
+.insurance-products-page__pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
+}
+
+@media (max-width: 1280px) {
+  .insurance-products-table th,
+  .insurance-products-table td {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -779,6 +791,11 @@ function getApiErrorMessage(error, fallbackMessage) {
   .insurance-products-page__filter-row {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .insurance-products-page__search-group {
+    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 
