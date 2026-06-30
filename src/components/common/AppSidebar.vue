@@ -200,6 +200,13 @@ function goToHome() {
   padding: 22px 12px;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-sidebar__nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .app-sidebar__section + .app-sidebar__section {
