@@ -128,10 +128,14 @@ function toggleSection(title) {
 
 <style scoped>
 .app-sidebar {
+  position: sticky;
+  top: 0;
   width: 232px;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #1f2937;
   color: #ffffff;
 }
@@ -202,6 +206,7 @@ function toggleSection(title) {
 
 .app-sidebar__nav {
   flex: 1;
+  min-height: 0;
   padding: 22px 12px;
 }
 
