@@ -1,7 +1,7 @@
 <template>
   <section class="manager-dashboard" aria-label="관리자 대시보드">
     <div class="dashboard-filter">
-      <div v-if="isHqManager" class="dashboard-filter__field">
+      <label v-if="isHqManager" class="dashboard-filter__field dashboard-filter__field--branch">
         <v-select
           v-model="selectedBranch"
           :items="branchOptions"
@@ -13,26 +13,26 @@
           hide-details
           :loading="isLoadingBranches"
           :disabled="isLoadingBranches"
-          class="dashboard-filter__organization-filter"
+          class="dashboard-filter__branch-field"
         />
         <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
-      </div>
+      </label>
 
-      <div class="dashboard-filter__field">
+      <label class="dashboard-filter__field dashboard-filter__field--month">
         <v-text-field
           v-model="selectedMonth"
           type="month"
-          label="기간 선택"
+          label="정산 월"
           variant="outlined"
           density="comfortable"
           hide-details
           :loading="isLoadingMonths"
           :disabled="isLoadingMonths"
-          :max="latestAvailableClosingMonth"
+          :max="latestAvailableMonth"
           class="dashboard-filter__month-field"
         />
         <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
-      </div>
+      </label>
     </div>
 
     <section class="report-panel">
@@ -322,6 +322,7 @@ const latestAvailableClosingMonth = computed(() => monthOptions.value[0]?.value 
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const latestAvailableMonth = computed(() => monthOptions.value[0]?.value ?? fallbackMonthOptions[0]?.value ?? '')
 const selectedBranchOption = computed(() =>
   branchOptions.value.find((branch) => branch.value === selectedBranch.value) ?? null,
 )
@@ -1382,8 +1383,13 @@ function getAdvisorCellValue(advisor, key) {
   gap: 8px;
 }
 
-.dashboard-filter__organization-filter {
-  width: 180px;
+.dashboard-filter__field--branch,
+.dashboard-filter__field--month {
+  gap: 0;
+}
+
+.dashboard-filter__branch-field {
+  width: 220px;
 }
 
 .dashboard-filter__month-field {
@@ -2026,7 +2032,8 @@ function getAdvisorCellValue(advisor, key) {
     flex-direction: column;
   }
 
-  .dashboard-filter__field select {
+  .dashboard-filter__branch-field,
+  .dashboard-filter__month-field {
     width: 100%;
   }
 

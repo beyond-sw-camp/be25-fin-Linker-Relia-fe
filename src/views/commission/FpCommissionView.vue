@@ -13,7 +13,7 @@
           class="commission-page__month-field"
         />
         <v-btn variant="outlined" class="commission-page__reset-button" @click="resetFilters">
-          초기화
+          최근 정산월
         </v-btn>
         <v-btn
           color="#f97316"
@@ -69,9 +69,6 @@
             <div class="company-panel__chart">
               <Bar :data="companyChartData" :options="companyChartOptions" />
             </div>
-            <div class="insurance-overview__chart-caption">
-              <strong>보험사별 총 수수료 기여도를 상위 5개 기준으로 비교합니다.</strong>
-            </div>
           </div>
 
           <div class="insurance-overview__list">
@@ -83,7 +80,7 @@
               <div class="insurance-company-row__main">
                 <div class="insurance-company-row__title">
                   <span class="insurance-company-row__dot" :style="{ backgroundColor: item.color }" />
-                  <strong>{{ item.name }}</strong>
+                  <strong :title="item.name">{{ formatCompanyDisplayName(item.name) }}</strong>
                 </div>
                 <div class="insurance-company-row__details">
                   <span>계약 건수 {{ formatCount(item.contractCount) }}건</span>
@@ -254,7 +251,7 @@ const summaryCards = computed(() => [
 const topInsuranceCompanyItems = computed(() => insuranceCompanyItems.value.slice(0, 5))
 
 const companyChartData = computed(() => ({
-  labels: topInsuranceCompanyItems.value.map((item) => item.name),
+  labels: topInsuranceCompanyItems.value.map((item) => formatCompanyChartLabel(item.name)),
   datasets: [
     {
       data: topInsuranceCompanyItems.value.map((item) => item.totalCommissionAmount),
@@ -296,8 +293,8 @@ const companyChartOptions = computed(() => ({
   maintainAspectRatio: false,
   layout: {
     padding: {
-      left: 8,
-      right: 8,
+      left: 0,
+      right: 18,
       top: 8,
       bottom: 0,
     },
@@ -631,6 +628,15 @@ function normalizeInsuranceCompanyItems(result) {
       ratio: totalAmount > 0 ? (item.totalCommissionAmount / totalAmount) * 100 : 0,
     }))
     .sort((left, right) => right.totalCommissionAmount - left.totalCommissionAmount)
+}
+
+function formatCompanyDisplayName(value) {
+  const companyName = String(value || '-')
+  return companyName.length >= 7 ? companyName.slice(0, 6) : companyName
+}
+
+function formatCompanyChartLabel(value) {
+  return String(value || '-').slice(0, 2)
 }
 
 function normalizeProductRankingItems(result) {
@@ -995,16 +1001,18 @@ function getLatestAvailableClosingMonth() {
 
 .insurance-overview {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(220px, 260px) minmax(240px, 1fr);
+  gap: 14px;
   align-items: center;
 }
 
 .insurance-overview__chart-card {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   align-self: center;
-  padding: 18px;
+  justify-items: start;
+  overflow: hidden;
+  padding: 16px;
   border: 1px solid #edf2f7;
   border-radius: 18px;
   background:
@@ -1012,22 +1020,9 @@ function getLatestAvailableClosingMonth() {
     linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
-.insurance-overview__chart-caption {
-  padding-top: 4px;
-  border-top: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-.insurance-overview__chart-caption strong {
-  display: block;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #64748b;
-  text-align: center;
-}
-
 .insurance-overview__list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -1058,7 +1053,11 @@ function getLatestAvailableClosingMonth() {
 }
 
 .insurance-overview .company-panel__chart {
-  height: 248px;
+  width: 220px;
+  max-width: 100%;
+  height: 260px;
+  justify-self: start;
+  margin-left: -6px;
 }
 
 .payment-type-panel__summary {
@@ -1178,14 +1177,15 @@ function getLatestAvailableClosingMonth() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 14px 16px;
+  gap: 14px;
+  padding: 12px 14px;
   border: 1px solid #edf1f7;
   border-radius: 12px;
   background: #ffffff;
 }
 
 .insurance-company-row__main {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1193,7 +1193,14 @@ function getLatestAvailableClosingMonth() {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   color: #1e293b;
+}
+
+.insurance-company-row__title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insurance-company-row__dot,
