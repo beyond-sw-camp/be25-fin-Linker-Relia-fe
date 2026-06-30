@@ -125,7 +125,7 @@
       <section class="panel panel--compact">
         <div class="panel__header">
           <div>
-            <h3>보험 상품 판매 순위 Top10</h3>
+            <h3>보험 상품 판매 순위 {{ productRankingTitleSuffix }}</h3>
             <p>마감월 기준 판매 건수를 기준으로 상품별 순위를 나타냅니다.</p>
           </div>
         </div>
@@ -389,6 +389,7 @@ const pageDescription = computed(() =>
 )
 const closingMonthLabel = computed(() => formatMonthLabel(filters.closingMonth))
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
+const productRankingTitleSuffix = computed(() => `Top${Math.min(productRankingItems.value.length || 10, 10)}`)
 const effectiveScope = computed(() => {
   if (props.scope === 'branch') {
     return 'branch'

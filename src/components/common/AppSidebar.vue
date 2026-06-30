@@ -26,7 +26,7 @@
             'is-active-parent': !focusedSectionTitle && hasActiveChild(section),
             'is-focused': focusedSectionTitle === section.title,
           }"
-          @click="toggleSection(section.title)"
+          @click="handleSectionClick(section.title)"
         >
           <span class="app-sidebar__section-left">
             <v-icon :icon="section.icon" size="18" />
@@ -40,7 +40,7 @@
           class="app-sidebar__section-button app-sidebar__section-link"
           :class="{ 'is-route-muted': Boolean(focusedSectionTitle) }"
           :to="section.to"
-          @click="focusedSectionTitle = ''"
+          @click="handleSectionLinkClick"
         >
           <span class="app-sidebar__section-left">
             <v-icon :icon="section.icon" size="18" />
@@ -194,6 +194,17 @@ function getFallbackActiveRouteName() {
   return ''
 }
 
+function handleSectionClick(title) {
+  if (isCollapsed.value) {
+    isCollapsed.value = false
+    focusedSectionTitle.value = title
+    openSections.value = [title]
+    return
+  }
+
+  toggleSection(title)
+}
+
 function toggleSection(title) {
   if (isSectionOpen(title)) {
     openSections.value = []
@@ -203,6 +214,11 @@ function toggleSection(title) {
 
   focusedSectionTitle.value = title
   openSections.value = [title]
+}
+
+function handleSectionLinkClick() {
+  isCollapsed.value = false
+  focusedSectionTitle.value = ''
 }
 
 function goToHome() {
