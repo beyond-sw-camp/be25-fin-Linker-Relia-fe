@@ -1,27 +1,12 @@
 <template>
   <section class="insurance-product-create-page">
-    <div class="insurance-product-create-page__breadcrumb">
-      <span>보험 상품 관리</span>
-      <span class="insurance-product-create-page__breadcrumb-separator">/</span>
-      <button type="button" @click="goToList">보험 상품 목록</button>
-      <span class="insurance-product-create-page__breadcrumb-separator">/</span>
-      <strong>보험 상품 등록</strong>
-    </div>
+    <PageBackLink label="보험 상품 목록" @click="goToList" />
 
     <header class="insurance-product-create-page__header">
       <div>
         <h2>보험 상품 등록</h2>
         <p>보험 상품 정보를 입력하고 보종을 함께 관리할 수 있습니다.</p>
       </div>
-
-      <v-btn
-        variant="outlined"
-        class="insurance-product-create-page__back-button"
-        @click="goToList"
-      >
-        <v-icon icon="mdi-arrow-left" size="16" start />
-        목록으로 돌아가기
-      </v-btn>
     </header>
 
     <v-alert v-if="submitErrorMessage" type="error" variant="tonal">
@@ -338,6 +323,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import {
   createInsuranceManagementProduct,
   getInsuranceCategories,
@@ -759,34 +745,9 @@ function getTodayDate() {
 <style scoped>
 .insurance-product-create-page {
   display: grid;
-  gap: 22px;
+  gap: 16px;
   min-width: 0;
-}
-
-.insurance-product-create-page__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.insurance-product-create-page__breadcrumb button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #4b5563;
-  cursor: pointer;
-  font: inherit;
-}
-
-.insurance-product-create-page__breadcrumb strong {
   color: #111827;
-  font-weight: 700;
-}
-
-.insurance-product-create-page__breadcrumb-separator {
-  color: #d1d5db;
 }
 
 .insurance-product-create-page__header {
@@ -799,79 +760,79 @@ function getTodayDate() {
 .insurance-product-create-page__header h2 {
   margin: 0;
   font-size: 18px;
-  line-height: 1.25;
+  line-height: 1.35;
   color: #111827;
   font-weight: 800;
 }
 
 .insurance-product-create-page__header p {
-  margin: 8px 0 0;
-  color: #6b7280;
+  margin: 6px 0 0;
+  color: #64748b;
   font-size: 13px;
 }
 
-.insurance-product-create-page__back-button,
 .insurance-product-create-page__cancel-button,
 .insurance-product-create-page__submit-button {
   height: 40px;
   border-radius: 10px;
   padding: 0 18px;
   box-shadow: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
-.insurance-product-create-page__back-button,
 .insurance-product-create-page__cancel-button {
-  border-color: #d1d5db;
-  color: #475569;
+  border-color: #d8dce3;
+  color: #64748b;
 }
 
 .insurance-product-create-page__submit-button {
   background: #f97316;
   color: #ffffff;
-  font-weight: 700;
 }
 
 .insurance-product-create-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 
 .insurance-product-create-layout__main {
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 
 .insurance-product-create-section,
 .insurance-product-create-side__panel {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .insurance-product-create-section__title {
-  padding: 16px 24px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
-  color: #1f2937;
+  background: #ffffff;
+  color: #111827;
   font-size: 15px;
   font-weight: 800;
 }
 
 .insurance-product-create-section__body {
-  padding: 30px 32px;
+  padding: 18px;
 }
 
 .insurance-product-create-section__body--description {
-  padding-top: 26px;
+  padding-top: 18px;
 }
 
 .insurance-product-create-grid {
   display: grid;
-  gap: 24px 24px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -885,7 +846,7 @@ function getTodayDate() {
 
 .insurance-product-create-grid--product-meta {
   grid-template-columns: repeat(2, minmax(0, 320px));
-  margin-top: 28px;
+  margin-top: 16px;
 }
 
 .insurance-product-create-grid--coverage-main {
@@ -894,11 +855,11 @@ function getTodayDate() {
 
 .insurance-product-create-grid--coverage-sub {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 28px;
+  margin-top: 16px;
 }
 
 .insurance-product-create-grid--spaced {
-  margin-top: 28px;
+  margin-top: 16px;
 }
 
 .insurance-product-create-field {
@@ -907,7 +868,7 @@ function getTodayDate() {
 }
 
 .insurance-product-create-field span {
-  color: #374151;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
@@ -918,22 +879,24 @@ function getTodayDate() {
 }
 
 .insurance-product-create-field small {
-  color: #9ca3af;
+  color: #64748b;
   font-size: 12px;
 }
 
 .insurance-product-create-input,
 .insurance-product-create-textarea {
   width: 100%;
-  border: 1px solid #dbe2ea;
+  border: 1px solid #d8dce3;
   border-radius: 10px;
   background: #ffffff;
   color: #111827;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
 }
 
 .insurance-product-create-input {
-  height: 44px;
+  height: 40px;
   padding: 0 14px;
 }
 
@@ -949,6 +912,12 @@ function getTodayDate() {
   resize: vertical;
 }
 
+.insurance-product-create-input:focus,
+.insurance-product-create-textarea:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
 .insurance-product-create-inline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -957,9 +926,8 @@ function getTodayDate() {
 }
 
 .insurance-product-create-inline span {
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
-  font-weight: 700;
 }
 
 .insurance-product-create-toggle,
@@ -972,12 +940,14 @@ function getTodayDate() {
 .insurance-product-create-toggle button,
 .insurance-product-create-segment button {
   min-width: 58px;
-  height: 44px;
-  border: 1px solid #d1d5db;
+  height: 40px;
+  border: 1px solid #d8dce3;
   background: #ffffff;
-  color: #4b5563;
-  font: inherit;
-  font-weight: 700;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
   padding: 0 16px;
 }
@@ -1011,9 +981,9 @@ function getTodayDate() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .insurance-product-create-side__header h3 {
@@ -1025,7 +995,7 @@ function getTodayDate() {
 
 .insurance-product-create-side__header p {
   margin: 6px 0 0;
-  color: #9ca3af;
+  color: #64748b;
   font-size: 12px;
   line-height: 1.4;
 }
@@ -1046,7 +1016,7 @@ function getTodayDate() {
 .insurance-product-create-side__editor {
   display: grid;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
 }
 
@@ -1060,10 +1030,11 @@ function getTodayDate() {
 .insurance-product-create-side__secondary,
 .insurance-product-create-side__danger,
 .insurance-product-create-side__success {
-  height: 34px;
+  height: 40px;
   border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
 }
 
@@ -1073,8 +1044,8 @@ function getTodayDate() {
 }
 
 .insurance-product-create-side__secondary {
-  border-color: #d1d5db;
-  color: #475569;
+  border-color: #d8dce3;
+  color: #64748b;
 }
 
 .insurance-product-create-side__danger {
@@ -1094,9 +1065,9 @@ function getTodayDate() {
   background: transparent;
   color: #f97316;
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .insurance-product-create-side__list {
@@ -1104,15 +1075,15 @@ function getTodayDate() {
   display: grid;
   gap: 10px;
   margin: 0;
-  padding: 14px 16px 16px;
+  padding: 16px 18px 18px;
   max-height: 520px;
   overflow-y: auto;
 }
 
 .insurance-product-create-side__list li {
   padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 10px;
   color: #374151;
   cursor: pointer;
 }
@@ -1120,7 +1091,8 @@ function getTodayDate() {
 .insurance-product-create-side__list li strong {
   display: block;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .insurance-product-create-side__item {
@@ -1160,7 +1132,7 @@ function getTodayDate() {
 
 .insurance-product-create-side__list li p {
   margin: 4px 0 0;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
   line-height: 1.4;
 }
@@ -1178,6 +1150,7 @@ function getTodayDate() {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  padding-bottom: 12px;
 }
 
 @media (max-width: 1180px) {

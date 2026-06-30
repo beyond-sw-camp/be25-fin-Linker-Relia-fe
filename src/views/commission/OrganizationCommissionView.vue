@@ -1,12 +1,6 @@
 <template>
   <section class="commission-page">
     <div class="commission-page__hero">
-      <div>
-        <p class="commission-page__eyebrow">{{ heroEyebrow }}</p>
-        <h2>{{ pageHeading }}</h2>
-        <p class="commission-page__description">{{ pageDescription }}</p>
-      </div>
-
       <div class="commission-page__toolbar">
         <v-select
           v-if="props.scope === 'hq'"
@@ -221,8 +215,8 @@
             <v-pagination
               v-model="fpListPagination.page"
               :length="Math.max(fpCommissionPage.totalPages, 1)"
-              :total-visible="5"
-              density="comfortable"
+              total-visible="7"
+              rounded="circle"
               @update:model-value="handleFpPageChange"
             />
           </div>
@@ -287,8 +281,8 @@
             <v-pagination
               v-model="organizationListPagination.page"
               :length="Math.max(organizationCommissionPage.totalPages, 1)"
-              :total-visible="5"
-              density="comfortable"
+              total-visible="7"
+              rounded="circle"
               @update:model-value="handleOrganizationPageChange"
             />
           </div>
@@ -369,12 +363,12 @@ const organizationListErrorMessage = ref('')
 
 const fpListPagination = reactive({
   page: 1,
-  size: 5,
+  size: 10,
 })
 
 const organizationListPagination = reactive({
   page: 1,
-  size: 5,
+  size: 10,
 })
 
 const heroEyebrow = computed(() => (props.scope === 'branch' ? 'Branch Commission' : 'Headquarter Commission'))
@@ -1139,7 +1133,7 @@ function normalizePageResponse(result, rowNormalizer = (row) => row) {
   return {
     content: Array.isArray(result?.content) ? result.content.map(rowNormalizer) : [],
     page: Number(result?.page ?? 1),
-    size: Number(result?.size ?? 5),
+    size: Number(result?.size ?? 10),
     totalElements: Number(result?.totalElements ?? 0),
     totalPages: Number(result?.totalPages ?? 0),
     numberOfElements: Number(result?.numberOfElements ?? 0),
@@ -1155,7 +1149,7 @@ function createEmptyPage() {
   return {
     content: [],
     page: 1,
-    size: 5,
+    size: 10,
     totalElements: 0,
     totalPages: 0,
     numberOfElements: 0,
@@ -1334,13 +1328,13 @@ function getLatestAvailableClosingMonth() {
 <style scoped>
 .commission-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .commission-page__hero {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
 }
 
@@ -1391,17 +1385,34 @@ function getLatestAvailableClosingMonth() {
 
 .commission-page__reset-button {
   height: 40px;
-  padding: 0 16px;
-  border-radius: 12px;
+  padding: 0 18px;
+  border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
 }
 
 .commission-page__pdf-button {
   height: 40px;
-  padding: 0 16px;
-  border-radius: 12px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+}
+
+.commission-page__toolbar :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.commission-page__toolbar :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .commission-summary {
@@ -1411,26 +1422,26 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card {
-  padding: 20px;
-  border: 1px solid #ebeef4;
+  padding: 16px 18px;
+  border: 1px solid #edf1f7;
   border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .summary-card__icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  margin-bottom: 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
 }
 
 .summary-card__label,
 .summary-card__caption {
   margin: 0;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .summary-card__label {
@@ -1456,12 +1467,12 @@ function getLatestAvailableClosingMonth() {
 
 .summary-card__caption {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .commission-layout {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .commission-layout--top {
@@ -1470,15 +1481,15 @@ function getLatestAvailableClosingMonth() {
 
 .commission-layout--bottom {
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 16px;
 }
 
 .panel {
-  padding: 22px 24px;
+  padding: 12px;
   border: 1px solid #edf1f7;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .panel--tall {
@@ -1499,14 +1510,14 @@ function getLatestAvailableClosingMonth() {
 
 .panel__header h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   color: #111827;
 }
 
 .panel__header p {
   margin: 6px 0 0;
-  color: #94a3b8;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .panel__chip {
@@ -1614,7 +1625,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .payment-type-panel__summary span {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -1636,8 +1647,8 @@ function getLatestAvailableClosingMonth() {
 
 .table-panel {
   overflow-x: auto;
-  border: 1px solid #edf2f7;
-  border-radius: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
 }
 
 .table-panel table {
@@ -1651,7 +1662,7 @@ function getLatestAvailableClosingMonth() {
   padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   color: #475569;
   white-space: nowrap;
 }
@@ -1708,12 +1719,12 @@ function getLatestAvailableClosingMonth() {
 
 .table-panel td strong {
   color: #111827;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .table-panel td span {
   margin-top: 3px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 11px;
 }
 
@@ -1730,6 +1741,11 @@ function getLatestAvailableClosingMonth() {
   font-size: 12px;
 }
 
+.list-panel__footer :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
+}
+
 .insurance-company-row,
 .legend-row {
   display: flex;
@@ -1737,8 +1753,8 @@ function getLatestAvailableClosingMonth() {
   justify-content: space-between;
   gap: 14px;
   padding: 12px 14px;
-  border: 1px solid #edf2f7;
-  border-radius: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
   background: #ffffff;
 }
 
@@ -1772,7 +1788,7 @@ function getLatestAvailableClosingMonth() {
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
   line-height: 1.5;
 }

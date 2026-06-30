@@ -4,6 +4,17 @@
       상담일지가 등록되었습니다.
     </v-snackbar>
 
+    <section class="metric-row">
+      <article v-for="metric in metrics" :key="metric.label">
+        <v-icon :icon="metric.icon" size="18" />
+        <div class="metric-row__value">
+          <strong>{{ metric.value }}</strong>
+          <span>건</span>
+        </div>
+        <span>{{ metric.label }}</span>
+      </article>
+    </section>
+
     <section class="filter-panel">
       <h3>검색 및 필터</h3>
       <div class="filter-grid">
@@ -15,7 +26,7 @@
           item-value="value"
           label="지점 선택"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
           :loading="isLoadingBranches"
           :disabled="isLoadingBranches"
@@ -25,7 +36,7 @@
           label="고객명"
           placeholder="고객명 입력"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
           @keyup.enter="searchConsultations"
         />
@@ -36,7 +47,7 @@
           item-value="value"
           label="상담 유형"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
         />
         <v-select
@@ -46,7 +57,7 @@
           item-value="value"
           label="상담 방식"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
         />
         <v-text-field
@@ -54,7 +65,7 @@
           label="시작일"
           type="date"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
         />
         <v-text-field
@@ -62,7 +73,7 @@
           label="종료일"
           type="date"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
         />
         <v-select
@@ -72,20 +83,18 @@
           item-value="value"
           label="정렬"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
         />
       </div>
-      <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="compact">
+      <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="comfortable">
         {{ branchErrorMessage || branchFpErrorMessage }}
       </v-alert>
       <div class="filter-actions">
         <v-btn class="search-button" @click="searchConsultations">
-          <v-icon icon="mdi-magnify" size="16" />
           검색
         </v-btn>
         <v-btn variant="outlined" class="reset-button" @click="resetFilters">
-          <v-icon icon="mdi-refresh" size="16" />
           초기화
         </v-btn>
         <v-btn v-if="canCreateConsultation" class="create-button" @click="goToCreate">
@@ -95,17 +104,8 @@
       </div>
     </section>
 
-    <section class="metric-row">
-      <article v-for="metric in metrics" :key="metric.label">
-        <v-icon :icon="metric.icon" size="18" />
-        <strong>{{ metric.value }}</strong>
-        <span>{{ metric.label }}</span>
-      </article>
-    </section>
-
     <section class="consultation-panel">
       <header>
-        <h3>상담일지 목록</h3>
         <span>{{ rangeLabel }}</span>
       </header>
 
@@ -632,17 +632,17 @@ function mergeConsultationRows(serverRows, localRows) {
 <style scoped>
 .consultation-page {
   display: grid;
-  gap: 14px;
+  gap: 18px;
+  min-width: 0;
   color: #111827;
 }
 
 .metric-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 18px;
 }
 
-.metric-row article,
 .filter-panel,
 .consultation-panel {
   border: 1px solid #e5e7eb;
@@ -652,28 +652,51 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .metric-row article {
   display: grid;
-  gap: 4px;
-  padding: 12px;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .metric-row article :deep(.v-icon) {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: #fff7ed;
   color: #f97316;
 }
 
+.metric-row__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .metric-row strong {
-  font-size: 22px;
+  font-size: 34px;
   line-height: 1;
+  color: #1f2937;
 }
 
 .metric-row span {
-  color: #64748b;
-  font-size: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.metric-row__value span {
+  font-size: 13px;
 }
 
 .filter-panel {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 16px 18px;
 }
 
 .filter-panel h3,
@@ -686,25 +709,39 @@ function mergeConsultationRows(serverRows, localRows) {
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .filter-panel :deep(.v-field) {
-  border-radius: 6px;
+  min-height: 40px;
+  border-radius: 10px;
   box-shadow: none;
+}
+
+.filter-panel :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .filter-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
 }
 
 .filter-actions :deep(.v-btn) {
-  height: 34px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 800;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+}
+
+.search-button {
+  padding: 0 18px;
+}
+
+.reset-button {
+  padding: 0 16px;
 }
 
 .search-button,
@@ -722,11 +759,14 @@ function mergeConsultationRows(serverRows, localRows) {
   display: grid;
   gap: 12px;
   padding: 12px;
+  border-radius: 18px;
+  border-color: #edf1f7;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .consultation-panel header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   align-items: center;
 }
@@ -739,7 +779,7 @@ function mergeConsultationRows(serverRows, localRows) {
 .consultation-table {
   overflow-x: auto;
   border: 1px solid #f0f3f8;
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 .consultation-table table {
@@ -750,18 +790,19 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .consultation-table th,
 .consultation-table td {
-  padding: 11px 13px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
   color: #475569;
-  font-size: 12px;
-  text-align: left;
+  font-size: 13px;
+  text-align: center;
   white-space: nowrap;
 }
 
 .consultation-table th {
   background: #f8fafc;
   color: #64748b;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .consultation-table tr:last-child td {
@@ -777,8 +818,8 @@ function mergeConsultationRows(serverRows, localRows) {
 }
 
 .consultation-table__strong {
-  color: #111827;
-  font-weight: 800;
+  color: #f97316;
+  font-weight: 700;
 }
 
 .consultation-table__state,
@@ -850,6 +891,14 @@ function mergeConsultationRows(serverRows, localRows) {
   .metric-row,
   .filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1280px) {
+  .consultation-table th,
+  .consultation-table td {
+    padding: 12px 10px;
+    font-size: 12px;
   }
 }
 

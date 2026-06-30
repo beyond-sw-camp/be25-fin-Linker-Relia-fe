@@ -1,27 +1,12 @@
 <template>
   <section class="insurance-product-detail-page">
-    <div class="insurance-product-detail-page__breadcrumb">
-      <span>보험 상품 관리</span>
-      <span class="insurance-product-detail-page__breadcrumb-separator">/</span>
-      <button type="button" @click="goToList">보험 상품 목록</button>
-      <span class="insurance-product-detail-page__breadcrumb-separator">/</span>
-      <strong>보험 상품 상세</strong>
-    </div>
+    <PageBackLink label="보험 상품 목록" @click="goToList" />
 
     <header class="insurance-product-detail-page__header">
       <div>
         <h2>보험 상품 상세</h2>
         <p>보험 상품의 상세 정보를 확인할 수 있습니다.</p>
       </div>
-
-      <v-btn
-        variant="outlined"
-        class="insurance-product-detail-page__back-button"
-        @click="goToList"
-      >
-        <v-icon icon="mdi-arrow-left" size="16" start />
-        목록으로 돌아가기
-      </v-btn>
     </header>
 
     <v-alert v-if="errorMessage" type="error" variant="tonal">
@@ -188,6 +173,7 @@ import {
   getInsuranceManagementProductDetail,
   updateInsuranceManagementProduct,
 } from '../../api/insurance'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -431,34 +417,8 @@ function getCurrentDate() {
 <style scoped>
 .insurance-product-detail-page {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
-}
-
-.insurance-product-detail-page__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.insurance-product-detail-page__breadcrumb button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #4b5563;
-  cursor: pointer;
-  font: inherit;
-}
-
-.insurance-product-detail-page__breadcrumb strong {
-  color: #111827;
-  font-weight: 700;
-}
-
-.insurance-product-detail-page__breadcrumb-separator {
-  color: #d1d5db;
 }
 
 .insurance-product-detail-page__header {
@@ -482,16 +442,17 @@ function getCurrentDate() {
   font-size: 13px;
 }
 
-.insurance-product-detail-page__back-button,
 .insurance-product-detail-page__cancel-button,
 .insurance-product-detail-page__submit-button {
-  height: 36px;
+  height: 40px;
   border-radius: 10px;
   padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
 }
 
-.insurance-product-detail-page__back-button,
 .insurance-product-detail-page__cancel-button {
   border-color: #d1d5db;
   color: #475569;
@@ -514,29 +475,29 @@ function getCurrentDate() {
 
 .insurance-product-detail-section {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .insurance-product-detail-section__title {
-  padding: 16px 24px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
+  background: #ffffff;
   color: #1f2937;
   font-size: 15px;
   font-weight: 800;
 }
 
 .insurance-product-detail-section__body {
-  padding: 24px;
+  padding: 18px;
 }
 
 .insurance-product-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 44px;
+  gap: 12px;
 }
 
 .insurance-product-detail-column {
@@ -549,7 +510,10 @@ function getCurrentDate() {
   grid-template-columns: 160px minmax(0, 1fr);
   align-items: center;
   gap: 16px;
-  border-bottom: 1px solid #eef2f7;
+  padding: 12px;
+  border-bottom: 0;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .insurance-product-detail-column .insurance-product-detail-row:last-child {
@@ -557,8 +521,9 @@ function getCurrentDate() {
 }
 
 .insurance-product-detail-row__label {
-  color: #6b7280;
-  font-size: 13px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .insurance-product-detail-row__value {
@@ -566,22 +531,26 @@ function getCurrentDate() {
   align-items: center;
   min-height: 32px;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .insurance-product-detail-input,
 .insurance-product-detail-textarea {
   width: 100%;
-  border: 1px solid #dbe2ea;
+  border: 1px solid #d9e0ea;
   border-radius: 10px;
   background: #ffffff;
   color: #111827;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  box-shadow: none;
 }
 
 .insurance-product-detail-input {
-  height: 38px;
+  height: 40px;
   padding: 0 12px;
 }
 
@@ -600,8 +569,8 @@ function getCurrentDate() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
-  padding: 2px 10px;
+  min-height: 24px;
+  padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;

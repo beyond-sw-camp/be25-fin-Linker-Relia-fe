@@ -18,14 +18,12 @@
 
     <section class="received-panel">
       <div class="received-panel__header">
-        <h1>인수받은 고객 목록</h1>
-
         <form class="received-search" @submit.prevent="searchReceivedRows">
           <v-text-field
             v-model.trim="filters.customerName"
             placeholder="고객명 검색"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             class="received-search__input"
             @keyup.enter="searchReceivedRows"
@@ -321,44 +319,45 @@ function formatDate(value) {
 <style scoped>
 .received-page {
   display: grid;
-  gap: 24px;
+  gap: 18px;
   width: 100%;
+  min-width: 0;
 }
 
 .received-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .received-summary-card {
-  min-height: 120px;
-  padding: 16px 20px;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .received-summary-card__dot {
-  display: block;
-  width: 12px;
-  height: 12px;
-  margin-bottom: 10px;
-  border-radius: 999px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 12px;
+  border-radius: 10px;
   background: var(--dot);
 }
 
 .received-summary-card__value {
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .received-summary-card__value strong {
-  color: #202124;
-  font-size: 30px;
-  font-weight: 900;
-  line-height: 1.05;
+  color: #1f2937;
+  font-size: 34px;
+  line-height: 1;
 }
 
 .received-summary-card__value span,
@@ -366,21 +365,30 @@ function formatDate(value) {
   color: #8b8f98;
 }
 
+.received-summary-card__value span {
+  font-size: 13px;
+}
+
 .received-summary-card p {
   display: block;
-  margin: 2px 0 0;
-  font-size: 12px;
+  margin: 0;
+  font-size: 13px;
 }
 
 .received-panel {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .received-panel__header {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
 }
 
@@ -393,9 +401,9 @@ function formatDate(value) {
 
 .received-search {
   display: grid;
-  grid-template-columns: 140px 56px;
+  grid-template-columns: 240px auto;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .received-search__input {
@@ -404,21 +412,32 @@ function formatDate(value) {
 }
 
 .received-search__button {
-  width: 56px;
-  min-width: 56px;
-  height: 34px;
-  border-radius: 6px;
+  min-width: 64px;
+  height: 40px;
+  border-radius: 10px;
   background: #f97316;
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+  padding: 0 18px;
+}
+
+.received-search :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.received-search :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .received-table {
   overflow-x: auto;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #f0f3f8;
+  border-radius: 16px;
   background: #ffffff;
 }
 
@@ -430,12 +449,11 @@ function formatDate(value) {
 
 .received-table th,
 .received-table td {
-  height: 46px;
-  padding: 11px 16px;
-  border-bottom: 1px solid #f1f3f6;
-  color: #686f7a;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -444,11 +462,10 @@ function formatDate(value) {
 }
 
 .received-table th {
-  height: 40px;
-  background: #fbfbfc;
-  color: #777d86;
+  background: #f8fafc;
+  color: #64748b;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .received-table th:last-child,
@@ -461,20 +478,20 @@ function formatDate(value) {
   border: 0;
   background: transparent;
   color: #f97316;
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .received-table__action {
-  min-width: 76px;
+  min-width: 0;
   min-height: 28px;
-  padding: 5px 12px;
+  padding: 5px 10px;
   border: 1px solid #ffb17d;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #ffffff;
   color: #f97316;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -498,20 +515,27 @@ function formatDate(value) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #8b8f98;
-  font-size: 13px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.received-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
 }
 
 .received-grade {
   display: inline-flex;
   align-items: center;
-  min-height: 23px;
-  padding: 4px 10px;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: #fff0d8;
   color: #c47b00;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .received-grade--silver {
@@ -551,6 +575,14 @@ function formatDate(value) {
 
   .received-search__button {
     width: 100%;
+  }
+}
+
+@media (max-width: 1280px) {
+  .received-table th,
+  .received-table td {
+    padding: 12px 10px;
+    font-size: 12px;
   }
 }
 </style>

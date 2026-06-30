@@ -264,7 +264,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'organizations/branches',
     name: 'organization-branches',
-    title: '지점 목록 조회',
+    title: '지점 목록',
     description: '지점 목록과 지점별 현황을 관리합니다.',
     roles: ORGANIZATION_ROLES,
     props: {

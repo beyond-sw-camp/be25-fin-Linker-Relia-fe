@@ -26,6 +26,7 @@
           variant="outlined"
           density="comfortable"
           hide-details
+          :loading="isLoadingMonths"
           :disabled="isLoadingMonths"
           :max="latestAvailableMonth"
           class="dashboard-filter__month-field"
@@ -317,6 +318,7 @@ const fallbackMonthOptions = [
 ]
 
 const monthOptions = ref(fallbackMonthOptions)
+const latestAvailableClosingMonth = computed(() => monthOptions.value[0]?.value ?? '')
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
 const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
@@ -481,13 +483,22 @@ watch(
     loadOrganizationAdvisorRankings()
     loadTopAdvisorRanking()
 
-    if (isHqManager.value) {
+    if (isBranchRankingView.value) {
       branchRankingPage.value = 1
       loadOrganizationBranchRankings()
     }
   },
   { immediate: true },
 )
+
+watch(rankingTab, () => {
+  if (!isBranchRankingView.value || !selectedMonth.value) {
+    return
+  }
+
+  branchRankingPage.value = 1
+  loadOrganizationBranchRankings()
+})
 
 watch(isAllBranchSelected, (isAllBranches) => {
   if (!isAllBranches && rankingTab.value === 'branch') {
@@ -646,7 +657,7 @@ async function loadTopAdvisorRanking() {
 }
 
 async function loadOrganizationBranchRankings() {
-  if (!isHqManager.value) {
+  if (!isBranchRankingView.value || !isAllBranchSelected.value || !selectedMonth.value) {
     return
   }
 
@@ -1364,7 +1375,7 @@ function getAdvisorCellValue(advisor, key) {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 12px;
 }
 
 .dashboard-filter__field {
@@ -1377,10 +1388,23 @@ function getAdvisorCellValue(advisor, key) {
   gap: 0;
 }
 
-.dashboard-filter__field span {
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 800;
+.dashboard-filter__branch-field {
+  width: 220px;
+}
+
+.dashboard-filter__month-field {
+  width: 180px;
+}
+
+.dashboard-filter :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.dashboard-filter :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .dashboard-filter__error {
@@ -1388,51 +1412,43 @@ function getAdvisorCellValue(advisor, key) {
   font-size: 12px;
 }
 
-.dashboard-filter__month-field {
-  width: 180px;
-}
-
-.dashboard-filter__branch-field {
-  width: 220px;
-}
-
-.dashboard-filter__field select,
 .ranking-panel__sort {
   min-width: 176px;
   height: 40px;
   padding: 0 34px 0 14px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(45deg, transparent 50%, #6b7280 50%) calc(100% - 18px) 50% / 7px 7px no-repeat,
     linear-gradient(135deg, #6b7280 50%, transparent 50%) calc(100% - 13px) 50% / 7px 7px no-repeat,
-    #f8fafc;
+    #ffffff;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
   appearance: none;
 }
 
 .report-panel,
 .chart-panel,
 .ranking-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .report-panel {
-  padding: 28px 16px 26px;
+  padding: 12px;
 }
 
 .report-panel__heading {
-  margin: 0 10px 24px;
+  margin: 0 0 12px;
+  padding: 0 4px;
 }
 
 .report-panel__heading h2,
 .ranking-panel__heading h2 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -1440,7 +1456,7 @@ function getAdvisorCellValue(advisor, key) {
 .report-panel__heading p,
 .ranking-panel__hint {
   margin: 0;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -1455,27 +1471,29 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .metric-card {
-  min-height: 104px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  min-height: 116px;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .metric-card span {
   display: block;
-  margin-bottom: 9px;
+  margin-bottom: 10px;
   color: #6b7280;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .metric-card strong {
   display: block;
-  margin-bottom: 9px;
-  color: #161c24;
-  font-size: 27px;
-  font-weight: 900;
-  line-height: 1;
+  margin-bottom: 8px;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -1492,23 +1510,21 @@ function getAdvisorCellValue(advisor, key) {
 
 .metric-card p {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
 }
 
 .metric-card__secondary {
   margin: 0 0 9px;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
 }
 
 .is-up {
-  color: #dc2626;
+  color: #16a34a;
 }
 
 .is-down {
-  color: #2563eb;
+  color: #dc2626;
 }
 
 .is-goal {
@@ -1523,20 +1539,21 @@ function getAdvisorCellValue(advisor, key) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .top-performer-card {
   min-height: 96px;
-  padding: 24px;
-  border: 1px solid #f97316;
-  border-radius: 8px;
-  background: #fff7ed;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .top-performer-card span {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1548,27 +1565,26 @@ function getAdvisorCellValue(advisor, key) {
 .top-performer-card p {
   margin: 10px 0 0;
   color: #6b7280;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 13px;
 }
 
 .top-performer-card p strong {
   color: #f97316;
-  font-size: 28px;
-  font-weight: 900;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 18px;
 }
 
 .chart-panel {
   min-height: 230px;
   display: flex;
   flex-direction: column;
-  padding: 30px 26px 24px;
+  padding: 12px;
 }
 
 .chart-panel__header {
@@ -1576,7 +1592,8 @@ function getAdvisorCellValue(advisor, key) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
 .chart-panel__total {
@@ -1584,7 +1601,7 @@ function getAdvisorCellValue(advisor, key) {
   align-items: center;
   color: #64748b;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1603,8 +1620,9 @@ function getAdvisorCellValue(advisor, key) {
 
 .chart-panel h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
+  color: #111827;
 }
 
 .donut-summary {
@@ -1682,7 +1700,7 @@ function getAdvisorCellValue(advisor, key) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 28px 20px;
+  padding: 24px 24px 20px;
 }
 
 .ranking-panel__tabs {
@@ -1697,7 +1715,7 @@ function getAdvisorCellValue(advisor, key) {
   height: 34px;
   padding: 0 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 999px;
   background: #f8fafc;
   color: #64748b;
   font-size: 13px;
@@ -1727,6 +1745,7 @@ function getAdvisorCellValue(advisor, key) {
 
 .ranking-table-wrap {
   overflow-x: auto;
+  border-top: 1px solid #f1f5f9;
 }
 
 .ranking-table-state {
@@ -1780,7 +1799,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #f1f5f9;
   color: #64748b;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: left;
   white-space: nowrap;
 }
@@ -1790,7 +1809,6 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 22px;
   border-top: 1px solid #e5e7eb;
   color: #374151;
-  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -1906,12 +1924,11 @@ function getAdvisorCellValue(advisor, key) {
   margin-top: 2px;
   color: #6b7280;
   font-size: 12px;
-  font-weight: 600;
 }
 
 .ranking-number {
   color: #1f2937;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .ranking-number.is-first {
@@ -1926,7 +1943,7 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .status-pill.is-normal {
@@ -1957,7 +1974,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #ffffff;
   color: #4b5563;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ranking-panel__footer {
@@ -1971,6 +1988,11 @@ function getAdvisorCellValue(advisor, key) {
   background: #f1f5f9;
   color: #6b7280;
   font-size: 12px;
+}
+
+.ranking-pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
 }
 
 .ranking-pagination {
@@ -2010,7 +2032,6 @@ function getAdvisorCellValue(advisor, key) {
     flex-direction: column;
   }
 
-  .dashboard-filter__field select,
   .dashboard-filter__branch-field,
   .dashboard-filter__month-field {
     width: 100%;
@@ -2024,7 +2045,7 @@ function getAdvisorCellValue(advisor, key) {
 @media (max-width: 640px) {
   .report-panel,
   .chart-panel {
-    padding: 24px 16px;
+    padding: 12px;
   }
 
   .metric-grid {
@@ -2038,7 +2059,7 @@ function getAdvisorCellValue(advisor, key) {
   }
 
   .top-performer-card {
-    padding: 22px;
+    padding: 16px 18px;
   }
 
   .ranking-panel__heading,

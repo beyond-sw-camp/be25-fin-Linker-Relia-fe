@@ -1,13 +1,5 @@
 <template>
   <section class="organizations-page">
-    <header class="page-header" :class="{ 'page-header--compact': mode === 'branches' || mode === 'fps' }">
-      <div>
-        <h2>{{ pageTitle }}</h2>
-        <p>{{ pageDescription }}</p>
-      </div>
-
-    </header>
-
     <template v-if="mode === 'chart'">
       <div class="organization-workspace">
         <section class="organization-tree-panel panel" aria-label="조직 구조">
@@ -91,58 +83,58 @@
             :class="{ 'organization-member-filters--restricted': !canAccessAllOrganizations }"
             @submit.prevent="searchOrganizationMembers"
           >
-            <label class="field">
-              <span>이름</span>
-              <input
-                v-model.trim="organizationMemberFilters.keyword"
-                type="search"
-                placeholder="이름 검색"
-                @keyup.enter="searchOrganizationMembers"
-              />
-            </label>
-            <label v-if="canAccessAllOrganizations" class="field">
-              <span>지점명</span>
-              <input
-                v-model.trim="organizationMemberFilters.branchKeyword"
-                type="search"
-                placeholder="지점명 검색"
-                @keyup.enter="searchOrganizationMembers"
-              />
-            </label>
-            <label v-if="canAccessAllOrganizations" class="field">
-              <span>지점</span>
-              <select
-                v-model="organizationMemberFilters.organizationId"
-                @change="changeOrganizationMemberBranchFilter"
-              >
-                <option value="">전체 지점</option>
-                <option
-                  v-for="branch in organizationBranchRows"
-                  :key="branch.id"
-                  :value="branch.id"
-                >
-                  {{ branch.organizationName }}
-                </option>
-              </select>
-            </label>
-            <label class="field">
-              <span>정렬</span>
-              <select v-model="organizationMemberFilters.sort" @change="searchOrganizationMembers">
-                <option
-                  v-for="option in organizationMemberSortOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
+            <v-text-field
+              v-model.trim="organizationMemberFilters.keyword"
+              label="이름"
+              placeholder="이름 검색"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="organization-member-search-field"
+              @keyup.enter="searchOrganizationMembers"
+            />
+            <v-text-field
+              v-if="canAccessAllOrganizations"
+              v-model.trim="organizationMemberFilters.branchKeyword"
+              label="지점명"
+              placeholder="지점명 검색"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="organization-member-search-field"
+              @keyup.enter="searchOrganizationMembers"
+            />
+            <v-select
+              v-if="canAccessAllOrganizations"
+              v-model="organizationMemberFilters.organizationId"
+              :items="organizationMemberBranchFilterOptions"
+              item-title="label"
+              item-value="value"
+              label="지점"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="organization-member-search-field"
+              @update:model-value="changeOrganizationMemberBranchFilter"
+            />
+            <v-select
+              v-model="organizationMemberFilters.sort"
+              :items="organizationMemberSortOptions"
+              item-title="label"
+              item-value="value"
+              label="정렬"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="organization-member-search-field"
+              @update:model-value="searchOrganizationMembers"
+            />
             <div class="organization-member-filter-actions">
+              <button class="button button--primary" type="submit">
+                검색
+              </button>
               <button class="button button--secondary" type="button" @click="resetOrganizationMemberFilters">
                 초기화
-              </button>
-              <button class="button button--primary" type="submit">
-                조회
               </button>
             </div>
           </form>
@@ -225,13 +217,6 @@
 
     <template v-else-if="mode === 'branches'">
       <section class="panel organization-list-panel">
-        <div class="panel__header">
-          <div>
-            <h3>지점 목록</h3>
-            <p>FP 검색 필터에서 사용하는 지점 목록입니다.</p>
-          </div>
-        </div>
-
         <LoadingState v-if="isBranchesLoading" message="지점 목록을 불러오고 있습니다." />
         <ErrorState v-else-if="branchesError" :message="branchesError" />
         <EmptyState v-else-if="branches.length === 0" message="조회된 지점이 없습니다." />
@@ -261,68 +246,64 @@
             </tbody>
           </table>
         </div>
+        <div v-if="branches.length > 0" class="organization-pagination organization-pagination--static">
+          <span>총 {{ formatCount(branches.length) }}건</span>
+        </div>
       </section>
     </template>
 
     <template v-else-if="mode === 'fps'">
-      <section class="panel organization-filter-panel">
+      <section class="organization-filter-panel">
         <div
           class="filter-grid"
           :class="{ 'filter-grid--restricted-fp': !canAccessAllOrganizations }"
         >
-          <label class="field">
-            <span>검색어</span>
-            <input
-              v-model.trim="fpFilters.keyword"
-              type="search"
-              placeholder="이름 검색"
-              @keyup.enter="searchFps"
-            />
-          </label>
-          <label v-if="canAccessAllOrganizations" class="field">
-            <span>지점</span>
-            <select v-model="fpFilters.organizationId">
-              <option value="">전체 지점</option>
-              <option
-                v-for="branch in branches"
-                :key="branch.organizationId"
-                :value="branch.organizationId"
-              >
-                {{ branch.organizationName }} ({{ branch.organizationCode }})
-              </option>
-            </select>
-          </label>
-          <label class="field">
-            <span>정렬</span>
-            <select v-model="fpFilters.sort" @change="searchFps">
-              <option
-                v-for="option in fpSortOptions"
-                :key="option.value"
-                :value="option.value"
-              >
-                {{ option.label }}
-              </option>
-            </select>
-          </label>
+          <v-text-field
+            v-model.trim="fpFilters.keyword"
+            label="이름"
+            placeholder="이름 검색"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="organization-search-field"
+            @keyup.enter="searchFps"
+          />
+          <v-select
+            v-if="canAccessAllOrganizations"
+            v-model="fpFilters.organizationId"
+            :items="fpBranchFilterOptions"
+            item-title="label"
+            item-value="value"
+            label="지점"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="organization-search-field"
+          />
+          <v-select
+            v-model="fpFilters.sort"
+            :items="fpSortOptions"
+            item-title="label"
+            item-value="value"
+            label="정렬"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="organization-search-field"
+            @update:model-value="searchFps"
+          />
           <div class="organization-filter-actions">
+            <button class="button button--primary" type="button" @click="loadFps">
+              검색
+            </button>
             <button class="button button--secondary" type="button" @click="resetFpFilters">
               초기화
-            </button>
-            <button class="button button--primary" type="button" @click="loadFps">
-              조회
             </button>
           </div>
         </div>
       </section>
 
       <section class="panel organization-list-panel">
-        <div class="panel__header">
-          <div>
-            <h3>FP 목록</h3>
-            <p>총 {{ formatCount(fpPage.totalElements) }}명의 FP가 조회되었습니다.</p>
-          </div>
-        </div>
-
         <LoadingState v-if="isFpsLoading" message="FP 목록을 불러오고 있습니다." />
         <ErrorState v-else-if="fpsError" :message="fpsError" />
         <EmptyState v-else-if="fpPage.content.length === 0" message="조회된 FP가 없습니다." />
@@ -814,6 +795,13 @@ const organizationMemberTotalPages = computed(() => (
 const organizationMemberTotalElements = computed(() => (
   Number(organizationMembersPage.value.totalElements ?? organizationMemberRows.value.length)
 ))
+const organizationMemberBranchFilterOptions = computed(() => [
+  { label: '전체 지점', value: '' },
+  ...organizationBranchRows.value.map((branch) => ({
+    label: branch.organizationName,
+    value: branch.id,
+  })),
+])
 const selectedBranchOrganization = computed(() => (
   organizationBranchRows.value.find((organization) => String(organization.id) === String(selectedOrganizationId.value)) ?? null
 ))
@@ -871,6 +859,14 @@ const selectedFpBranchName = computed(() => {
   const branch = branches.value.find((item) => String(item.organizationId) === String(fpFilters.organizationId))
   return branch?.organizationName ?? normalizeQueryValue(route.query.organizationName)
 })
+
+const fpBranchFilterOptions = computed(() => [
+  { label: '전체 지점', value: '' },
+  ...branches.value.map((branch) => ({
+    label: `${branch.organizationName} (${branch.organizationCode})`,
+    value: branch.organizationId,
+  })),
+])
 
 watch(
   () => props.mode,
@@ -1912,8 +1908,8 @@ const StatusBadge = defineComponent({
   setup(componentProps) {
     return () => {
       const statusMap = {
-        ACTIVE: ['ACTIVE', 'success'],
-        INACTIVE: ['INACTIVE', 'muted'],
+        ACTIVE: ['활성', 'success'],
+        INACTIVE: ['비활성', 'muted'],
         RESIGNED: ['퇴사', 'danger'],
         NORMAL: ['정상', 'success'],
         LAPSED: ['실효', 'danger'],
@@ -1978,11 +1974,10 @@ const EmptyState = defineComponent({
 <style scoped>
 .organizations-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   color: #111827;
 }
 
-.page-header,
 .panel__header,
 .detail-toolbar,
 .organization-pagination {
@@ -1992,62 +1987,55 @@ const EmptyState = defineComponent({
   gap: 16px;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.25;
-}
-
-.page-header--compact h2 {
-  font-size: 18px;
-}
-
-.page-header p,
 .panel__header p {
   margin: 6px 0 0;
-  color: #3f2a22;
-}
-
-.page-header--compact p {
-  margin-top: 4px;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .panel {
   position: relative;
   padding: 22px;
-  border: 1px solid #e8b9a8;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
-}
-
-.organization-filter-panel,
-.organization-list-panel,
-.organization-detail-panel {
-  padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.organization-filter-panel,
+.organization-list-panel,
+.organization-detail-panel {
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+}
+
+.organization-filter-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .organization-list-panel .panel__header {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
 .organization-list-panel .panel__header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   color: #111827;
 }
 
 .organization-list-panel .panel__header p {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .organization-detail-panel .detail-toolbar {
@@ -2083,13 +2071,13 @@ const EmptyState = defineComponent({
 }
 
 .organization-detail-panel .summary-card {
-  min-height: 108px;
+  min-height: 104px;
   padding: 16px;
   box-shadow: none;
 }
 
 .organization-detail-panel .summary-card__value {
-  font-size: 26px;
+  font-size: 24px;
 }
 
 .panel__header {
@@ -2098,7 +2086,8 @@ const EmptyState = defineComponent({
 
 .panel__header h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .button {
@@ -2106,22 +2095,26 @@ const EmptyState = defineComponent({
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: 2px;
-  font-weight: 800;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
   cursor: pointer;
 }
 
 .button--primary {
-  background: #b33a00;
+  background: #f97316;
   color: #ffffff;
 }
 
 .button--secondary {
-  border-color: #e2b8a8;
-  background: #eef4fb;
-  color: #1f2937;
+  border-color: #d1d5db;
+  background: #ffffff;
+  color: #475569;
 }
 
 .button--danger {
@@ -2145,10 +2138,10 @@ const EmptyState = defineComponent({
   min-height: 640px;
   overflow: hidden;
   padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .organization-tree-panel__header {
@@ -2172,7 +2165,7 @@ const EmptyState = defineComponent({
 }
 
 .tree-title .mdi {
-  color: #f05a1a;
+  color: #f97316;
   font-size: 18px;
 }
 
@@ -2183,7 +2176,7 @@ const EmptyState = defineComponent({
   place-items: center;
   border: 0;
   background: transparent;
-  color: #3f2a22;
+  color: #64748b;
   cursor: pointer;
   font-size: 15px;
   line-height: 1;
@@ -2236,7 +2229,7 @@ const EmptyState = defineComponent({
 }
 
 .tree-root-button .mdi {
-  color: #f05a1a;
+  color: #f97316;
   font-size: 17px;
 }
 
@@ -2251,10 +2244,10 @@ const EmptyState = defineComponent({
 .tree-children::before {
   position: absolute;
   top: 0;
-  bottom: 4px;
+  bottom: 15px;
   left: 0;
   width: 1px;
-  background: #f0c7b8;
+  background: #fed7aa;
   content: "";
 }
 
@@ -2262,7 +2255,7 @@ const EmptyState = defineComponent({
   position: relative;
   min-height: 30px;
   padding: 0 10px;
-  border-radius: 3px;
+  border-radius: 6px;
   font-size: 13px;
 }
 
@@ -2272,13 +2265,13 @@ const EmptyState = defineComponent({
   left: -16px;
   width: 16px;
   height: 1px;
-  background: #f0c7b8;
+  background: #fed7aa;
   content: "";
 }
 
 .tree-child-button.active {
-  background: #fff0e9;
-  color: #f05a1a;
+  background: #fff7ed;
+  color: #f97316;
   font-weight: 800;
 }
 
@@ -2292,30 +2285,45 @@ const EmptyState = defineComponent({
 }
 
 .tree-child-button.limited.active {
-  color: #f05a1a;
+  color: #f97316;
   opacity: 1;
 }
 
 .organization-member-filters {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1fr) minmax(150px, 0.8fr) auto;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: repeat(4, 220px) auto;
   gap: 12px;
   align-items: end;
-  margin-bottom: 14px;
-  padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
+  margin: 0 0 14px auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .organization-member-filters--restricted {
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.7fr) auto;
+  grid-template-columns: 220px 220px auto;
 }
 
 .organization-member-filter-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
+}
+
+.organization-member-search-field :deep(.v-field),
+.organization-search-field :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.organization-member-search-field :deep(.v-field__input),
+.organization-search-field :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .branch-summary-strip {
@@ -2326,7 +2334,7 @@ const EmptyState = defineComponent({
   margin-bottom: 14px;
   padding: 13px 16px;
   border: 1px solid #fed7aa;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fffbf7;
   color: #475569;
   font-size: 12px;
@@ -2375,15 +2383,15 @@ const EmptyState = defineComponent({
 
 .organization-member-table {
   border: 1px solid #f0f3f8;
-  border-radius: 8px;
+  border-radius: 18px;
 }
 
 .organization-member-table th,
 .organization-member-table td {
-  padding: 11px 10px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
   overflow: hidden;
   text-align: center;
   text-overflow: ellipsis;
@@ -2393,7 +2401,8 @@ const EmptyState = defineComponent({
 .organization-member-table th {
   background: #f8fafc;
   color: #64748b;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .member-col--name {
@@ -2444,14 +2453,15 @@ const EmptyState = defineComponent({
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 1px solid #e8b9a8;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: #ffffff;
 }
 
 .canvas-toolbar__divider {
   width: 1px;
   height: 22px;
-  background: #e8b9a8;
+  background: #e5e7eb;
 }
 
 .icon-button {
@@ -2462,13 +2472,13 @@ const EmptyState = defineComponent({
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #130a06;
+  color: #475569;
   cursor: pointer;
   font-size: 22px;
 }
 
 .icon-button--ghost {
-  color: #4d2b1c;
+  color: #64748b;
 }
 
 .org-chart {
@@ -2494,12 +2504,12 @@ const EmptyState = defineComponent({
   align-content: center;
   justify-items: center;
   gap: 6px;
-  border-radius: 2px;
+  border-radius: 8px;
   text-align: center;
 }
 
 .org-node span {
-  color: #4b332a;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -2512,9 +2522,9 @@ const EmptyState = defineComponent({
   position: relative;
   width: 280px;
   min-height: 120px;
-  background: #b33a00;
+  background: #f97316;
   color: #ffffff;
-  box-shadow: 0 10px 18px rgba(63, 26, 7, 0.18);
+  box-shadow: 0 10px 18px rgba(249, 115, 22, 0.16);
 }
 
 .org-node--hq::after {
@@ -2523,7 +2533,7 @@ const EmptyState = defineComponent({
   left: 50%;
   width: 2px;
   height: 78px;
-  background: #b33a00;
+  background: #fed7aa;
   content: "";
 }
 
@@ -2539,7 +2549,7 @@ const EmptyState = defineComponent({
 .org-node--hq small {
   width: 84%;
   padding: 7px 10px;
-  border-radius: 2px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   font-size: 12px;
@@ -2560,13 +2570,13 @@ const EmptyState = defineComponent({
   left: 90px;
   right: 90px;
   height: 2px;
-  background: #b33a00;
+  background: #fed7aa;
   content: "";
 }
 
 .org-node--branch {
   position: relative;
-  border: 2px solid #e2b8a8;
+  border: 1px solid #e5e7eb;
   background: #ffffff;
 }
 
@@ -2576,17 +2586,17 @@ const EmptyState = defineComponent({
   left: 50%;
   width: 2px;
   height: 60px;
-  background: #b33a00;
+  background: #fed7aa;
   content: "";
 }
 
 .organization-list {
   overflow: hidden;
-  padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .organization-list__header {
@@ -2637,10 +2647,10 @@ const EmptyState = defineComponent({
 .status-tabs button {
   min-height: 32px;
   padding: 0 16px;
-  border: 1px solid #e8b9a8;
+  border: 1px solid #e5e7eb;
   border-right: 0;
   background: #ffffff;
-  color: #4b332a;
+  color: #475569;
   cursor: pointer;
 }
 
@@ -2649,13 +2659,13 @@ const EmptyState = defineComponent({
 }
 
 .status-tabs button:last-child {
-  border-right: 1px solid #e8b9a8;
+  border-right: 1px solid #e5e7eb;
   border-radius: 0 4px 4px 0;
 }
 
 .status-tabs button.active {
-  background: #f8eee8;
-  color: #b33a00;
+  background: #fff7ed;
+  color: #f97316;
   font-weight: 800;
 }
 
@@ -2666,12 +2676,17 @@ const EmptyState = defineComponent({
 }
 
 .organization-filter-panel .filter-grid {
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 220px auto;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: 240px 240px 240px auto;
   align-items: end;
+  gap: 12px;
+  justify-content: end;
+  margin-left: auto;
 }
 
 .organization-filter-panel .filter-grid--restricted-fp {
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 0.8fr) auto;
+  grid-template-columns: 240px 240px auto;
 }
 
 .organization-filter-actions {
@@ -2682,24 +2697,30 @@ const EmptyState = defineComponent({
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .field span {
   color: #475569;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .field input,
 .field select {
   width: 100%;
-  min-height: 42px;
+  min-height: 40px;
   padding: 0 12px;
   border: 1px solid #d9e0ea;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
   color: #111827;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  box-shadow: none;
 }
 
 .organization-month-field {
@@ -2713,7 +2734,8 @@ const EmptyState = defineComponent({
 }
 
 .organization-month-field :deep(.v-field) {
-  border-radius: 8px;
+  min-height: 40px;
+  border-radius: 10px;
   box-shadow: none;
 }
 
@@ -2723,8 +2745,8 @@ const EmptyState = defineComponent({
 
 .table-scroll {
   overflow-x: auto;
-  border: 1px solid #e8eef5;
-  border-radius: 8px;
+  border: 1px solid #f0f3f8;
+  border-radius: 18px;
 }
 
 .table-scroll--flush {
@@ -2740,22 +2762,24 @@ table {
 
 th,
 td {
-  padding: 17px 30px;
-  border-bottom: 1px solid #e8b9a8;
-  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  text-align: center;
   white-space: nowrap;
 }
 
 th {
-  background: #f7fbff;
-  color: #3f2a22;
-  font-size: 14px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .organization-table-scroll {
   border: 1px solid #f0f3f8;
-  border-radius: 8px;
+  border-radius: 18px;
 }
 
 .organization-table-scroll table {
@@ -2764,17 +2788,18 @@ th {
 
 .organization-table-scroll th,
 .organization-table-scroll td {
-  padding: 11px 13px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
   color: #475569;
-  font-size: 12px;
-  text-align: left;
+  font-size: 13px;
+  text-align: center;
 }
 
 .organization-table-scroll th {
   background: #f8fafc;
   color: #64748b;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 tbody tr:last-child td {
@@ -2787,15 +2812,15 @@ tbody tr:last-child td {
 }
 
 .table-action-button {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid #e2b8a8;
-  border-radius: 4px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   background: #ffffff;
-  color: #4b332a;
+  color: #475569;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .table-action-button--danger {
@@ -2828,18 +2853,18 @@ tbody tr:last-child td {
 
 .status-badge {
   display: inline-flex;
-  min-height: 22px;
+  min-height: 24px;
   align-items: center;
   padding: 0 10px;
-  border-radius: 3px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .status-badge--success {
-  background: #ffd9cb;
-  color: #111827;
+  background: #ecfdf5;
+  color: #15803d;
 }
 
 .status-badge--danger {
@@ -2853,13 +2878,19 @@ tbody tr:last-child td {
 }
 
 .organization-pagination {
-  margin-top: 14px;
+  margin-top: 0;
+  padding: 14px 18px 4px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .organization-list .organization-pagination {
   padding: 0 30px 18px;
+}
+
+.organization-pagination--static {
+  justify-content: flex-start;
+  padding: 14px 18px 4px;
 }
 
 .organization-pagination :deep(.v-pagination__item--is-active .v-btn) {
@@ -2890,14 +2921,15 @@ tbody tr:last-child td {
   place-items: center;
   border-radius: 999px;
   background: #fff7ed;
-  color: #b33a00;
-  font-size: 26px;
+  color: #f97316;
+  font-size: 24px;
   font-weight: 900;
 }
 
 .fp-profile h3 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .fp-profile p {
@@ -2931,15 +2963,15 @@ tbody tr:last-child td {
 }
 
 .summary-card {
-  min-height: 124px;
+  min-height: 112px;
   display: grid;
   align-content: center;
   gap: 10px;
-  padding: 18px 20px;
+  padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .summary-card__label {
@@ -2953,7 +2985,7 @@ tbody tr:last-child td {
   align-items: baseline;
   gap: 4px;
   color: #111827;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 900;
   line-height: 1;
 }
@@ -3022,11 +3054,11 @@ tbody tr:last-child td {
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   display: grid;
-  gap: 18px;
-  padding: 24px;
+  gap: 16px;
+  padding: 22px;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
 }
 
 .termination-modal__header,
@@ -3039,7 +3071,8 @@ tbody tr:last-child td {
 
 .termination-modal__header h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .termination-modal__header p {
@@ -3054,7 +3087,7 @@ tbody tr:last-child td {
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: 8px;
   background: #f8fafc;
   color: #334155;
   cursor: pointer;
@@ -3074,8 +3107,8 @@ tbody tr:last-child td {
   align-content: center;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid #e8eef5;
-  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: #f8fafc;
 }
 
@@ -3095,7 +3128,7 @@ tbody tr:last-child td {
 .termination-notice {
   margin: 0;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff7ed;
   color: #9a3412;
   font-size: 13px;
@@ -3132,7 +3165,7 @@ tbody tr:last-child td {
   width: 28px;
   height: 28px;
   border: 3px solid #fed7aa;
-  border-top-color: #b33a00;
+  border-top-color: #f97316;
   border-radius: 999px;
   animation: spin 0.8s linear infinite;
 }
@@ -3159,7 +3192,18 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .organization-member-filters,
+  .organization-member-filters--restricted {
+    width: 100%;
+    grid-template-columns: 1fr;
+    margin-left: 0;
+  }
+
   .organization-filter-actions {
+    justify-content: flex-start;
+  }
+
+  .organization-member-filter-actions {
     justify-content: flex-start;
   }
 
@@ -3175,7 +3219,6 @@ tbody tr:last-child td {
     min-height: auto;
   }
 
-  .page-header,
   .panel__header,
   .detail-toolbar,
   .organization-pagination,
