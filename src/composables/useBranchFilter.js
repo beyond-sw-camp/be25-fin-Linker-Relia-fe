@@ -13,8 +13,10 @@ export function useBranchFilter(authStore) {
   const isLoadingBranches = ref(false)
   const branchErrorMessage = ref('')
 
-  const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
-  const showBranchFilter = computed(() => isHqManager.value)
+  const canViewAllBranches = computed(() =>
+    [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN].includes(authStore.userRole),
+  )
+  const showBranchFilter = computed(() => canViewAllBranches.value)
 
   async function initializeBranchFilter() {
     if (!showBranchFilter.value) {

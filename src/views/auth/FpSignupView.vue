@@ -1,10 +1,9 @@
 <template>
   <section class="signup-page">
     <div class="signup-page__brand">
-      <div class="signup-page__logo">
-        <v-icon icon="mdi-shield" size="14" color="white" />
-      </div>
-      <strong>Relia</strong>
+      <button class="signup-page__brand-button" type="button" @click="goToHome">
+        <img class="signup-page__brand-image" :src="loginLogo" alt="Relia" />
+      </button>
     </div>
 
     <v-alert v-if="errorMessage" type="error" variant="tonal" class="signup-page__alert">
@@ -112,6 +111,8 @@ import { useRouter } from 'vue-router'
 
 import { signupFp } from '../../api/auth'
 import { getBranchOrganizations } from '../../api/organizations'
+import loginLogo from '../../assets/images/logo/logo-login.png'
+import { getDefaultRouteByRole } from '../../constants/auth'
 
 const router = useRouter()
 
@@ -179,6 +180,10 @@ async function submitSignup() {
 function goToLogin() {
   router.push('/login')
 }
+
+function goToHome() {
+  router.push(getDefaultRouteByRole(null))
+}
 </script>
 
 <style scoped>
@@ -190,25 +195,36 @@ function goToLogin() {
 }
 
 .signup-page__brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
+  justify-content: center;
+  width: min(320px, 100%);
+  min-height: 92px;
+  margin: 0 auto 18px;
 }
 
-.signup-page__logo {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: #f97316;
+.signup-page__brand-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.signup-page__brand-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .signup-page__brand strong {
-  font-size: 19px;
-  font-weight: 700;
-  color: #111827;
+  display: none;
+}
+
+.signup-page__logo {
+  display: none;
 }
 
 .signup-page__alert {

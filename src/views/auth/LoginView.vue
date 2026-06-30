@@ -2,10 +2,9 @@
   <section class="login-page">
     <div class="login-page__inner">
       <div class="login-page__brand">
-        <div class="login-page__logo">
-          <v-icon icon="mdi-shield" size="14" color="white" />
-        </div>
-        <h1>Relia</h1>
+        <button class="login-page__brand-button" type="button" @click="goToHome">
+          <img class="login-page__brand-image" :src="loginLogo" alt="Relia" />
+        </button>
       </div>
 
       <v-card class="login-card" elevation="0">
@@ -69,6 +68,7 @@
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import loginLogo from '../../assets/images/logo/logo-login.png'
 import { getDefaultRouteByRole } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -102,6 +102,10 @@ async function submitLogin() {
 function goToSignup() {
   router.push('/signup/fp')
 }
+
+function goToHome() {
+  router.push(getDefaultRouteByRole(authStore.userRole))
+}
 </script>
 
 <style scoped>
@@ -118,26 +122,28 @@ function goToSignup() {
 }
 
 .login-page__brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  justify-content: center;
+  width: min(320px, 100%);
+  min-height: 92px;
+  margin: 0 auto 18px;
 }
 
-.login-page__logo {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: #f97316;
+.login-page__brand-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
-.login-page h1 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 700;
-  color: #111827;
+.login-page__brand-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .login-card {

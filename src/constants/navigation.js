@@ -7,6 +7,12 @@ const ORGANIZATION_ROLES = [
   USER_ROLES.SYSTEM_ADMIN,
 ]
 
+const ORGANIZATION_ADVISOR_ROLES = [
+  USER_ROLES.BRANCH_MANAGER,
+  USER_ROLES.HQ_MANAGER,
+  USER_ROLES.SYSTEM_ADMIN,
+]
+
 const INSURANCE_PARTNER_ROLES = [
   USER_ROLES.FP,
   USER_ROLES.BRANCH_MANAGER,
@@ -58,6 +64,14 @@ const ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES = {
   ],
 }
 
+const FP_ORGANIZATION_MENU_SECTION = {
+  title: '조직 및 인사 관리',
+  icon: 'mdi-domain',
+  children: [
+    { title: '조직도', to: { name: 'organization-chart' } },
+  ],
+}
+
 export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/fp',
@@ -65,6 +79,16 @@ export const APP_PAGE_SPECS = [
     title: '내 대시보드',
     description: 'FP 사용자의 기본 진입 화면입니다.',
     roles: [USER_ROLES.FP],
+  },
+  {
+    path: 'my-page/fp',
+    name: 'fp-my-page',
+    title: '마이 페이지',
+    description: '설계사 본인의 기본 정보와 성과 정보를 조회합니다.',
+    roles: [USER_ROLES.FP],
+    props: {
+      mode: 'fp-my-page',
+    },
   },
   {
     path: 'customers/fp',
@@ -188,7 +212,7 @@ export const APP_PAGE_SPECS = [
   {
     path: 'dashboard/hq',
     name: 'hq-dashboard',
-    title: '본사 대시보드',
+    title: '본사 대시보드 ver.1',
     description: '본사 영업 담당자의 기본 진입 화면입니다.',
     roles: [USER_ROLES.HQ_MANAGER],
   },
@@ -225,7 +249,7 @@ export const APP_PAGE_SPECS = [
     name: 'handover-monitoring',
     title: '전체 인수인계 현황',
     description: '전사 인수인계 현황 모니터링 화면입니다.',
-    roles: [USER_ROLES.HQ_MANAGER],
+    roles: [USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN],
   },
   {
     path: 'organizations/chart',
@@ -252,7 +276,7 @@ export const APP_PAGE_SPECS = [
     name: 'hq-advisors',
     title: '전체 설계사 목록',
     description: '전사 설계사 목록을 조회하는 화면입니다.',
-    roles: ORGANIZATION_ROLES,
+    roles: ORGANIZATION_ADVISOR_ROLES,
     props: {
       mode: 'fps',
     },
@@ -262,7 +286,7 @@ export const APP_PAGE_SPECS = [
     name: 'organization-branch-advisors',
     title: '지점 설계사 목록 조회',
     description: '선택한 지점에 소속된 설계사 목록을 조회합니다.',
-    roles: ORGANIZATION_ROLES,
+    roles: ORGANIZATION_ADVISOR_ROLES,
     props: {
       mode: 'fps',
     },
@@ -322,6 +346,13 @@ export const MENU_BY_ROLE = {
       to: { name: 'fp-dashboard' },
     },
     {
+      title: '마이 페이지',
+      icon: 'mdi-account-circle-outline',
+      children: [
+        { title: '내 정보 조회', to: { name: 'fp-my-page' } },
+      ],
+    },
+    {
       title: '고객 관리',
       icon: 'mdi-account-group-outline',
       children: [
@@ -352,7 +383,7 @@ export const MENU_BY_ROLE = {
         { title: '인수받은 고객 목록', to: { name: 'handover-received' } },
       ],
     },
-    ORGANIZATION_MENU_SECTION_WITHOUT_BRANCHES,
+    FP_ORGANIZATION_MENU_SECTION,
     INSURANCE_PARTNER_MENU_SECTION,
     {
       title: '수수료 관리',
@@ -460,6 +491,13 @@ export const MENU_BY_ROLE = {
         { title: '사용자 관리', to: { name: 'admin-users' } },
         { title: '조직 관리', to: { name: 'admin-organizations' } },
         { title: '권한 관리', to: { name: 'admin-roles' } },
+      ],
+    },
+    {
+      title: '인수인계 관리',
+      icon: 'mdi-monitor-eye',
+      children: [
+        { title: '전체 인수인계 현황', to: { name: 'handover-monitoring' } },
       ],
     },
     HQ_INSURANCE_MENU_SECTION,

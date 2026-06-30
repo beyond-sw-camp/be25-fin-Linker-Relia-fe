@@ -5,6 +5,16 @@ export async function getHandoverSummary(params = {}) {
   return response.data
 }
 
+export async function getHandoverTrend(params = {}) {
+  const response = await authApi.get('/handovers/trend', { params })
+  return response.data
+}
+
+export async function getHandoverBranchSummary() {
+  const response = await authApi.get('/handovers/branch-summary')
+  return response.data
+}
+
 export async function getHandovers(params = {}) {
   const response = await authApi.get('/handovers', { params })
   return response.data

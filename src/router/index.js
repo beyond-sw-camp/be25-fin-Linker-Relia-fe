@@ -108,6 +108,7 @@ function resolveProtectedComponent(page) {
     'hq-advisors',
     'organization-branch-advisors',
     'admin-organizations',
+    'fp-my-page',
   ].includes(page.name)) {
     return OrganizationsView
   }

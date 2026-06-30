@@ -54,6 +54,16 @@ export async function getOrganizationFpDetail(fpId, params = {}) {
   return unwrapResult(response) ?? null
 }
 
+export async function getMyOrganizationFpDetail(params = {}) {
+  const response = await authApi.get('/organizations/fps/me', { params })
+  return unwrapResult(response) ?? null
+}
+
+export async function getMyOrganizationFpContracts(params = {}) {
+  const response = await authApi.get('/organizations/fps/me/contracts', { params })
+  return unwrapResult(response) ?? createEmptyPage(params)
+}
+
 export async function getOrganizationFpContracts(fpId, params = {}) {
   const response = await authApi.get(`/organizations/fps/${fpId}/contracts`, { params })
   return unwrapResult(response) ?? createEmptyPage(params)

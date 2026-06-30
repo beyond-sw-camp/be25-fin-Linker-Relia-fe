@@ -1,11 +1,19 @@
 <template>
   <aside class="app-sidebar" :class="{ 'app-sidebar--collapsed': isCollapsed }">
-    <div class="app-sidebar__brand">
-      <div class="app-sidebar__mark" aria-hidden="true">
-        <span></span>
-      </div>
-      <strong v-if="!isCollapsed">Relia</strong>
-    </div>
+    <button class="app-sidebar__brand" type="button" @click="goToHome">
+      <img
+        v-if="!isCollapsed"
+        class="app-sidebar__brand-image app-sidebar__brand-image--expanded"
+        :src="sidebarLogo"
+        alt="Relia"
+      />
+      <img
+        v-else
+        class="app-sidebar__brand-image app-sidebar__brand-image--collapsed"
+        :src="faviconLogo"
+        alt="Relia"
+      />
+    </button>
 
     <nav class="app-sidebar__nav" aria-label="sidebar">
       <section v-for="section in menuSections" :key="section.title" class="app-sidebar__section">
@@ -13,7 +21,10 @@
           v-if="section.children"
           type="button"
           class="app-sidebar__section-button"
-          :class="{ 'is-open': isSectionOpen(section.title) }"
+          :class="{
+            'is-open': isSectionOpen(section.title),
+            'is-active-parent': hasActiveChild(section),
+          }"
           @click="toggleSection(section.title)"
         >
           <span class="app-sidebar__section-left">
@@ -75,9 +86,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import faviconLogo from '../../assets/images/logo/logo-favicon.png'
+import sidebarLogo from '../../assets/images/logo/logo-sidebar.png'
+import { USER_ROLES, getDefaultRouteByRole } from '../../constants/auth'
 import EsgImpactCard from '../esg/EsgImpactCard.vue'
 import EsgImpactDrawer from '../esg/EsgImpactDrawer.vue'
-import { USER_ROLES } from '../../constants/auth'
 import { MENU_BY_ROLE } from '../../constants/navigation'
 import { useAuthStore } from '../../stores/auth'
 import { useEsgImpactStore } from '../../stores/esgImpactStore'
@@ -85,6 +98,7 @@ import { useEsgImpactStore } from '../../stores/esgImpactStore'
 const authStore = useAuthStore()
 const esgImpactStore = useEsgImpactStore()
 const route = useRoute()
+const router = useRouter()
 
 const isCollapsed = ref(false)
 const isEsgDrawerOpen = ref(false)
@@ -117,7 +131,9 @@ watch(
       .filter((section) => section.children?.some((child) => isChildActive(child)))
       .map((section) => section.title)
 
-    openSections.value = Array.from(new Set([...openSections.value, ...activeSectionTitles]))
+    if (activeSectionTitles.length > 0) {
+      openSections.value = [activeSectionTitles[0]]
+    }
   },
   { immediate: true },
 )
@@ -132,6 +148,10 @@ function isChildActive(child) {
     getFallbackActiveRouteName() === child.to.name
 }
 
+function hasActiveChild(section) {
+  return Boolean(section.children?.some((child) => isChildActive(child)))
+}
+
 function getFallbackActiveRouteName() {
   if (route.name !== 'handover-detail' || route.query.from) {
     return ''
@@ -141,7 +161,7 @@ function getFallbackActiveRouteName() {
     return 'handover-received'
   }
 
-  if (authStore.userRole === USER_ROLES.HQ_MANAGER) {
+  if ([USER_ROLES.HQ_MANAGER, USER_ROLES.SYSTEM_ADMIN].includes(authStore.userRole)) {
     return 'handover-monitoring'
   }
 
@@ -154,11 +174,15 @@ function getFallbackActiveRouteName() {
 
 function toggleSection(title) {
   if (isSectionOpen(title)) {
-    openSections.value = openSections.value.filter((item) => item !== title)
+    openSections.value = []
     return
   }
 
-  openSections.value = [...openSections.value, title]
+  openSections.value = [title]
+}
+
+function goToHome() {
+  router.push(getDefaultRouteByRole(authStore.userRole))
 }
 
 function getCurrentMonth() {
@@ -170,12 +194,20 @@ function getCurrentMonth() {
 
 <style scoped>
 .app-sidebar {
+  position: sticky;
+  top: 0;
   width: 232px;
-  min-height: 100vh;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: start;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #1f2937;
   color: #ffffff;
+  overflow: hidden;
 }
 
 .app-sidebar--collapsed {
@@ -186,65 +218,42 @@ function getCurrentMonth() {
   height: 111px;
   display: flex;
   align-items: center;
-  gap: 18px;
   padding: 0 26px;
+  border: 0;
   border-bottom: 1px solid rgba(17, 24, 39, 0.9);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.app-sidebar__brand strong {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
+.app-sidebar__brand-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
-.app-sidebar__mark {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  transform: rotate(45deg);
-  border: 3px solid #f97316;
-  border-radius: 3px;
+.app-sidebar__brand-image--expanded {
+  width: 160px;
 }
 
-.app-sidebar__mark::before,
-.app-sidebar__mark::after,
-.app-sidebar__mark span::before,
-.app-sidebar__mark span::after {
-  content: '';
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #f97316;
-}
-
-.app-sidebar__mark::before {
-  top: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.app-sidebar__mark::after {
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.app-sidebar__mark span::before {
-  left: -5px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.app-sidebar__mark span::after {
-  right: -5px;
-  top: 50%;
-  transform: translateY(-50%);
+.app-sidebar__brand-image--collapsed {
+  width: 36px;
 }
 
 .app-sidebar__nav {
   flex: 1;
+  min-height: 0;
   padding: 22px 12px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-sidebar__nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .app-sidebar__esg {
@@ -276,6 +285,11 @@ function getCurrentMonth() {
 .app-sidebar__section-button.is-open,
 .app-sidebar__section-link.router-link-active {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.app-sidebar__section-button.is-active-parent,
+.app-sidebar__section-link.router-link-active {
+  color: #f97316;
 }
 
 .app-sidebar__section-left {
@@ -322,6 +336,7 @@ function getCurrentMonth() {
   background: transparent;
   color: #e5e7eb;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .app-sidebar__toggle .rotated {
