@@ -8,10 +8,12 @@ import {
   getCustomerDetail,
   getCustomerFpHistories,
 } from '../api/customers'
+import { useEsgImpactStore } from '../stores/esgImpactStore'
 
 const DEFAULT_PAGE_SIZE = 10
 
 export function useCustomerDetail(customerId) {
+  const esgImpactStore = useEsgImpactStore()
   const customer = ref(null)
   const isLoadingCustomer = ref(false)
   const customerErrorMessage = ref('')
@@ -177,14 +179,31 @@ export function useCustomerDetail(customerId) {
       const response = await createCustomerAiBriefing(customerId.value)
       briefing.item = response?.result ?? null
       briefing.loaded = true
+      esgImpactStore.recordActivity(
+        'AI_BRIEFING',
+        response?.result?.createdAt ?? response?.result?.updatedAt,
+      )
     } catch (error) {
-      briefing.errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        'AI 상담 브리핑을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+      briefing.errorMessage = getAiBriefingCreateErrorMessage(error)
     } finally {
       briefing.isGenerating = false
     }
+  }
+
+  function getAiBriefingCreateErrorMessage(error) {
+    if (error.response) {
+      return (
+        error.response.data?.message ||
+        error.response.data?.result?.message ||
+        'AI 상담 브리핑을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+      )
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return 'AI 브리핑 생성 요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'
+    }
+
+    return '네트워크 연결 상태를 확인한 뒤 다시 시도해 주세요.'
   }
 
   async function loadFpHistories(force = false) {

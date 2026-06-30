@@ -31,7 +31,9 @@ export async function getCustomerAiBriefing(customerId) {
 }
 
 export async function createCustomerAiBriefing(customerId) {
-  const response = await authApi.post(`/customers/${customerId}/ai-briefing`)
+  const response = await authApi.post(`/customers/${customerId}/ai-briefing`, null, {
+    timeout: 35000,
+  })
   return response.data
 }
 

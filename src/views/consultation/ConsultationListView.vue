@@ -242,6 +242,7 @@ const branchFpFilter = ref(null)
 const branchFpErrorMessage = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
+const contractCount = ref(0)
 const isLoading = ref(false)
 const isResettingFilters = ref(false)
 const isRestoringListState = ref(false)
@@ -271,9 +272,7 @@ const totalElements = computed(() => filteredRows.value.length)
 const totalPages = computed(() => Math.ceil(totalElements.value / pageSize.value))
 const metrics = computed(() => [
   { icon: 'mdi-file-document-outline', value: totalElements.value.toLocaleString('ko-KR'), label: '전체 상담일지' },
-  { icon: 'mdi-calendar-check-outline', value: visibleRows.value.length.toLocaleString('ko-KR'), label: '현재 표시' },
-  { icon: 'mdi-trending-up', value: visibleRows.value.filter((row) => row.consultationType === 'RENEWAL').length, label: '갱신 상담' },
-  { icon: 'mdi-check-circle-outline', value: visibleRows.value.filter((row) => row.consultationType === 'CLAIM').length, label: '청구 상담' },
+  { icon: 'mdi-swap-horizontal-bold', value: contractCount.value.toLocaleString('ko-KR'), label: '계약 전환 건수' },
 ])
 const rangeLabel = computed(() => {
   if (totalElements.value === 0) return '총 0건'
@@ -460,8 +459,10 @@ async function loadConsultations() {
 
     consultationRows.value = rows.map(normalizeConsultation)
     localCompletedRows.value = getSavedConsultations().map(normalizeConsultation)
+    contractCount.value = Number(result.contractCount ?? 0)
   } catch (error) {
     consultationRows.value = []
+    contractCount.value = 0
     errorMessage.value =
       error.response?.data?.message ||
       error.message ||
@@ -637,7 +638,7 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
   gap: 12px;
 }
 
