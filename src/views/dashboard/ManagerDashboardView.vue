@@ -1343,14 +1343,14 @@ function getAdvisorCellValue(advisor, key) {
 <style scoped>
 .manager-dashboard {
   display: grid;
-  gap: 18px;
+  gap: 20px;
   color: #1f2937;
 }
 
 .dashboard-filter {
   display: flex;
   align-items: flex-end;
-  gap: 14px;
+  gap: 12px;
 }
 
 .dashboard-filter__field {
@@ -1375,7 +1375,7 @@ function getAdvisorCellValue(advisor, key) {
   height: 40px;
   padding: 0 34px 0 14px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 12px;
   background:
     linear-gradient(45deg, transparent 50%, #6b7280 50%) calc(100% - 18px) 50% / 7px 7px no-repeat,
     linear-gradient(135deg, #6b7280 50%, transparent 50%) calc(100% - 13px) 50% / 7px 7px no-repeat,
@@ -1388,18 +1388,18 @@ function getAdvisorCellValue(advisor, key) {
 .report-panel,
 .chart-panel,
 .ranking-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .report-panel {
-  padding: 28px 16px 26px;
+  padding: 24px;
 }
 
 .report-panel__heading {
-  margin: 0 10px 24px;
+  margin: 0 0 20px;
 }
 
 .report-panel__heading h2,
@@ -1413,7 +1413,7 @@ function getAdvisorCellValue(advisor, key) {
 .report-panel__heading p,
 .ranking-panel__hint {
   margin: 0;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -1424,31 +1424,33 @@ function getAdvisorCellValue(advisor, key) {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .metric-card {
-  min-height: 104px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  min-height: 124px;
+  padding: 20px;
+  border: 1px solid #ebeef4;
+  border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
 }
 
 .metric-card span {
   display: block;
-  margin-bottom: 9px;
+  margin-bottom: 10px;
   color: #6b7280;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .metric-card strong {
   display: block;
-  margin-bottom: 9px;
+  margin-bottom: 10px;
   color: #161c24;
-  font-size: 27px;
+  font-size: 30px;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -1496,15 +1498,16 @@ function getAdvisorCellValue(advisor, key) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .top-performer-card {
-  min-height: 96px;
+  min-height: 108px;
   padding: 24px;
   border: 1px solid #f97316;
-  border-radius: 8px;
+  border-radius: 18px;
   background: #fff7ed;
+  box-shadow: 0 12px 28px rgba(249, 115, 22, 0.08);
 }
 
 .top-performer-card span {
@@ -1534,14 +1537,14 @@ function getAdvisorCellValue(advisor, key) {
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 18px;
 }
 
 .chart-panel {
   min-height: 230px;
   display: flex;
   flex-direction: column;
-  padding: 30px 26px 24px;
+  padding: 24px;
 }
 
 .chart-panel__header {
@@ -1549,7 +1552,7 @@ function getAdvisorCellValue(advisor, key) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .chart-panel__total {
@@ -1578,6 +1581,7 @@ function getAdvisorCellValue(advisor, key) {
   margin: 0;
   font-size: 17px;
   font-weight: 800;
+  color: #111827;
 }
 
 .donut-summary {
@@ -1655,7 +1659,7 @@ function getAdvisorCellValue(advisor, key) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 28px 20px;
+  padding: 24px 24px 20px;
 }
 
 .ranking-panel__tabs {
@@ -1670,7 +1674,7 @@ function getAdvisorCellValue(advisor, key) {
   height: 34px;
   padding: 0 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 999px;
   background: #f8fafc;
   color: #64748b;
   font-size: 13px;
@@ -1700,6 +1704,7 @@ function getAdvisorCellValue(advisor, key) {
 
 .ranking-table-wrap {
   overflow-x: auto;
+  border-top: 1px solid #f1f5f9;
 }
 
 .ranking-table-state {

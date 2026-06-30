@@ -1597,7 +1597,7 @@ function toDateInputValue(date) {
 .fp-dashboard__main {
   min-width: 0;
   display: grid;
-  gap: 14px;
+  gap: 20px;
 }
 
 .fp-dashboard__heading {
@@ -1635,7 +1635,7 @@ function toDateInputValue(date) {
   gap: 14px;
   padding: 0 16px;
   border: 1px solid #fb923c;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fff7ed;
   color: #c2410c;
   font-size: 12px;
@@ -1655,7 +1655,7 @@ function toDateInputValue(date) {
 .fp-dashboard__error {
   padding: 10px 14px;
   border: 1px solid #fecaca;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fef2f2;
   color: #dc2626;
   font-size: 12px;
@@ -1665,30 +1665,30 @@ function toDateInputValue(date) {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 16px;
 }
 
 .metric-card,
 .panel,
 .side-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border: 1px solid #edf1f7;
+  border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .metric-card {
-  min-height: 112px;
-  padding: 14px 16px;
+  min-height: 124px;
+  padding: 20px;
 }
 
 .metric-card__icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  margin-bottom: 8px;
+  border-radius: 12px;
+  margin-bottom: 12px;
 }
 
 .metric-card__value {
@@ -1698,8 +1698,8 @@ function toDateInputValue(date) {
 }
 
 .metric-card__value strong {
-  font-size: 24px;
-  line-height: 1;
+  font-size: 30px;
+  line-height: 1.08;
 }
 
 .metric-card__value span,
@@ -1708,8 +1708,8 @@ function toDateInputValue(date) {
 }
 
 .metric-card p {
-  margin: 7px 0 0;
-  font-size: 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
 }
 
 .metric-card small {
@@ -1723,13 +1723,13 @@ function toDateInputValue(date) {
 }
 
 .panel {
-  padding: 16px;
+  padding: 24px;
 }
 
 .panel h3,
 .side-panel h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
 }
 
@@ -1738,7 +1738,7 @@ function toDateInputValue(date) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .panel__link {
@@ -1755,16 +1755,16 @@ function toDateInputValue(date) {
 .contract-overview__cards {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  gap: 16px;
 }
 
 .contract-overview__state {
-  min-height: 98px;
+  min-height: 120px;
   display: grid;
   place-items: center;
   gap: 8px;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #f8fafc;
   color: #64748b;
   font-size: 12px;
@@ -1778,10 +1778,10 @@ function toDateInputValue(date) {
 }
 
 .status-card {
-  min-height: 98px;
-  padding: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid #ebeef4;
+  border-radius: 18px;
 }
 
 .status-card span {
@@ -1802,9 +1802,9 @@ function toDateInputValue(date) {
 
 .status-card strong {
   display: block;
-  margin-top: 6px;
-  font-size: 24px;
-  line-height: 1;
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1.08;
 }
 
 .status-card small {
@@ -1868,20 +1868,20 @@ function toDateInputValue(date) {
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 18px;
 }
 
 .chart-panel {
-  min-height: 205px;
+  min-height: 230px;
 }
 
 .chart-state {
-  min-height: 160px;
+  min-height: 166px;
   display: grid;
   place-items: center;
   gap: 8px;
   margin-top: 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #f8fafc;
   color: #64748b;
   font-size: 12px;
@@ -1896,7 +1896,7 @@ function toDateInputValue(date) {
 }
 
 .bar-chart {
-  height: 160px;
+  height: 176px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   align-items: end;
