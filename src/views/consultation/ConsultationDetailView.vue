@@ -517,9 +517,10 @@ function retentionLabel(value) {
 <style scoped>
 .detail-page {
   display: grid;
-  gap: 16px;
-  max-width: 980px;
-  margin: 0 auto;
+  gap: 14px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   color: #111827;
 }
 
@@ -565,8 +566,8 @@ function retentionLabel(value) {
 
 .detail-card {
   display: grid;
-  gap: 18px;
-  padding: 18px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
@@ -638,7 +639,7 @@ function retentionLabel(value) {
 .detail-section {
   display: grid;
   gap: 10px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
 }

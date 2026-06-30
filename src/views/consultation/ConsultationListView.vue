@@ -653,7 +653,7 @@ function mergeConsultationRows(serverRows, localRows) {
 .metric-row article {
   display: grid;
   gap: 4px;
-  padding: 16px;
+  padding: 12px;
 }
 
 .metric-row article :deep(.v-icon) {
@@ -673,7 +673,7 @@ function mergeConsultationRows(serverRows, localRows) {
 .filter-panel {
   display: grid;
   gap: 12px;
-  padding: 16px;
+  padding: 12px;
 }
 
 .filter-panel h3,
@@ -720,8 +720,8 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .consultation-panel {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .consultation-panel header {
