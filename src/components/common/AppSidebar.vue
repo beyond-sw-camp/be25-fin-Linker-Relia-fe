@@ -84,7 +84,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import faviconLogo from '../../assets/images/logo/logo-favicon.png'
 import sidebarLogo from '../../assets/images/logo/logo-sidebar.png'
