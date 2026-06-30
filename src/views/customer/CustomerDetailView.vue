@@ -1,10 +1,5 @@
 <template>
   <section class="customer-detail">
-    <button class="customer-detail__back" type="button" @click="goBack">
-      <v-icon icon="mdi-arrow-left" size="16" />
-      {{ backButtonLabel }}
-    </button>
-
     <div v-if="customerErrorMessage" class="detail-state">
       <v-alert type="error" variant="tonal">{{ customerErrorMessage }}</v-alert>
     </div>
@@ -15,6 +10,8 @@
     </div>
 
     <template v-else-if="customer">
+      <PageBackLink :label="backLinkLabel" @click="goBack" />
+
       <div class="customer-detail__heading">
         <h2>고객 상세</h2>
       </div>
@@ -376,19 +373,20 @@ import {
   formatNullableText,
   formatPhone,
 } from '../../utils/formatters'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 
 const route = useRoute()
 const router = useRouter()
 const customerId = computed(() => route.params.customerId)
 const activeTab = ref('contracts')
-const backButtonLabel = computed(() => {
+const backLinkLabel = computed(() => {
   const from = typeof route.query.from === 'string' ? route.query.from : ''
 
   if (['fp-contracts', 'branch-contracts', 'hq-contracts'].includes(from)) {
-    return '계약 목록으로 돌아가기'
+    return '계약 목록'
   }
 
-  return '고객 목록으로 돌아가기'
+  return '고객 목록'
 })
 
 const {
@@ -711,18 +709,6 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 .customer-detail {
   display: grid;
   gap: 18px;
-}
-
-.customer-detail__back {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
 }
 
 .customer-detail__heading h2 {

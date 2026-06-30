@@ -1,19 +1,12 @@
 <template>
   <section class="contract-create-page">
-    <nav class="contract-create-page__breadcrumb" aria-label="breadcrumb">
-      <span>계약 관리</span>
-      <v-icon icon="mdi-chevron-right" size="16" />
-      <strong>계약 등록</strong>
-    </nav>
+    <PageBackLink label="계약 목록" @click="goToContractList" />
 
     <div class="contract-create-page__header">
       <div>
         <h2>계약 관리 - 계약 등록</h2>
         <p>등록된 고객 정보를 불러와 보험 계약 정보를 등록할 수 있습니다.</p>
       </div>
-      <v-btn variant="outlined" class="contract-create-page__back-button" @click="goToContractList">
-        목록
-      </v-btn>
     </div>
 
     <form class="contract-create-page__form" @submit.prevent="submitContract">
@@ -301,6 +294,7 @@ import { useRouter } from 'vue-router'
 
 import { createContract } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import {
   getInsuranceCategories,
   getInsuranceCompanies,
@@ -702,18 +696,6 @@ function goToContractList() {
   color: #111827;
 }
 
-.contract-create-page__breadcrumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.contract-create-page__breadcrumb strong {
-  color: #111827;
-}
-
 .contract-create-page__header {
   display: flex;
   justify-content: space-between;
@@ -733,14 +715,6 @@ function goToContractList() {
   margin: 8px 0 0;
   color: #64748b;
   font-size: 13px;
-}
-
-.contract-create-page__back-button {
-  min-width: 72px;
-  color: #334155;
-  border-color: #d1d5db;
-  font-weight: 700;
-  box-shadow: none;
 }
 
 .contract-create-page__form {
@@ -1083,7 +1057,6 @@ function goToContractList() {
     grid-template-columns: 1fr;
   }
 
-  .contract-create-page__back-button,
   .customer-search input {
     width: 100%;
   }

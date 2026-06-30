@@ -371,7 +371,10 @@
             </div>
           </article>
         </div>
-        <button class="schedule-panel__memo" type="button" @click="openScheduleCreate">상담 일정 추가하기</button>
+        <button class="schedule-panel__memo" type="button" @click="openScheduleCreate">
+          <v-icon icon="mdi-plus" size="16" />
+          <span>상담 일정 추가하기</span>
+        </button>
       </section>
     </aside>
 
@@ -2451,13 +2454,34 @@ function toDateInputValue(date) {
   width: 100%;
   height: 42px;
   margin-top: 12px;
-  border: 0;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 7px;
-  background: #f8fafc;
-  color: #94a3b8;
+  background: #fff7ed;
+  color: #f97316;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.schedule-panel__memo:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.16);
+}
+
+.schedule-panel__memo:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.12);
 }
 
 .schedule-edit-modal {

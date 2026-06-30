@@ -1,10 +1,6 @@
 <template>
   <section class="detail-page">
-    <nav class="detail-breadcrumb">
-      <span>상담 관리</span>
-      <v-icon icon="mdi-chevron-right" size="15" />
-      <strong>{{ isDraft ? '임시저장 상담일지 상세' : '상담일지 상세' }}</strong>
-    </nav>
+    <PageBackLink label="상담 목록" @click="goList" />
 
     <div class="detail-heading">
       <div>
@@ -12,7 +8,6 @@
         <p>선택한 상담일지의 주요 정보와 유형별 상세 내용을 확인합니다.</p>
       </div>
       <div class="detail-actions">
-        <v-btn variant="outlined" @click="goList">목록</v-btn>
         <v-btn v-if="isDraft" class="primary-button" @click="goEdit">수정</v-btn>
       </div>
     </div>
@@ -68,6 +63,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getConsultation, getConsultationDraftFromApi } from '../../api/consultations'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { getConsultationChannelLabel, getConsultationTypeLabel } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
@@ -524,20 +520,10 @@ function retentionLabel(value) {
   color: #111827;
 }
 
-.detail-breadcrumb,
 .detail-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.detail-breadcrumb {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.detail-breadcrumb strong {
-  color: #111827;
 }
 
 .detail-heading {
