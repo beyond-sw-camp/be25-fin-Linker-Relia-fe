@@ -77,6 +77,7 @@
     <EsgImpactDrawer
       v-model="isEsgDrawerOpen"
       :impact="esgImpact"
+      @change-month="esgImpactStore.fetchMyImpact"
     />
 
     <button class="app-sidebar__toggle" type="button" @click="isCollapsed = !isCollapsed">

@@ -1,32 +1,43 @@
 const ESG_ACTIVITY_STORAGE_KEY = 'relia.esg.activities'
 
-const ACTIVITY_PRESETS = {
+export const ESG_ACTIVITY_PRESETS = {
   CONSULTATION: {
-    title: '상담 일지 작성',
+    title: '상담일지 작성',
     description: '종이 3장 절감',
+    paperSavedCount: 3,
     seaLevelDelta: -0.02,
   },
   AI_BRIEFING: {
     title: 'AI 브리핑 생성',
     description: '종이 5장 절감',
+    paperSavedCount: 5,
     seaLevelDelta: -0.03,
+  },
+  HANDOVER: {
+    title: '인수인계 완료',
+    description: '종이 4장 절감',
+    paperSavedCount: 4,
+    seaLevelDelta: -0.025,
   },
 }
 
-export function recordLocalEsgImpactActivity(type, occurredAt = new Date()) {
-  const preset = ACTIVITY_PRESETS[type]
+export function recordLocalEsgImpactActivity(type, occurredAt = new Date(), context = {}) {
+  const preset = ESG_ACTIVITY_PRESETS[type]
   if (!preset || typeof window === 'undefined') return null
 
   const occurredDate = normalizeDate(occurredAt)
+  const sourceId = String(context.sourceId ?? context.id ?? '').trim()
   const activity = {
-    id: `${type}-${occurredDate.getTime()}`,
+    id: sourceId ? `${type}-${sourceId}` : `${type}-${occurredDate.getTime()}`,
     targetMonth: formatMonth(occurredDate),
     time: formatTime(occurredDate),
     type,
+    isLocal: true,
     ...preset,
   }
   const activities = readLocalEsgImpactActivities()
-  window.localStorage.setItem(ESG_ACTIVITY_STORAGE_KEY, JSON.stringify([activity, ...activities].slice(0, 50)))
+  const nextActivities = [activity, ...activities.filter((item) => item.id !== activity.id)].slice(0, 50)
+  window.localStorage.setItem(ESG_ACTIVITY_STORAGE_KEY, JSON.stringify(nextActivities))
 
   return activity
 }

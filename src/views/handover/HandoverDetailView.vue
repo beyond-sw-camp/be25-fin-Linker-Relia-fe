@@ -356,10 +356,12 @@ import {
 import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
+import { useEsgImpactStore } from '../../stores/esgImpactStore'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const esgImpactStore = useEsgImpactStore()
 
 const detail = reactive(createEmptyDetail())
 const isLoading = ref(false)
@@ -503,6 +505,11 @@ async function submitApproval(approvalStatus) {
       approvalStatus,
       rejectionReason: approvalStatus === 'REJECTED' ? rejectionReason.value.trim() : null,
     })
+    if (approvalStatus === 'APPROVED') {
+      esgImpactStore.recordActivity('HANDOVER', new Date(), {
+        sourceId: detail.handoverRequestId,
+      })
+    }
     await loadDetail()
     resetRejectModal()
   } catch (error) {
@@ -614,6 +621,9 @@ async function submitAssign() {
   try {
     await assignHandoverFp(detail.handoverRequestId, {
       assignedFpId: selectedFpId.value,
+    })
+    esgImpactStore.recordActivity('HANDOVER', new Date(), {
+      sourceId: detail.handoverRequestId,
     })
     resetAssignModal()
     await loadDetail()
