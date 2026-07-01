@@ -2,10 +2,6 @@
   <section class="journal-page" :class="{ 'journal-page--with-stt': isSttPreviewOpen }">
     <PageBackLink label="상담 목록" @click="goBack" />
 
-    <div class="journal-heading">
-      <h2>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</h2>
-    </div>
-
     <form
       class="journal-workspace"
       :class="{ 'journal-workspace--focus-main': isSttPreviewOpen }"
@@ -2648,18 +2644,6 @@ function toApiDateTime(value) {
 <style scoped>
 .journal-page {
   color: #111827;
-}
-
-.journal-heading {
-  margin-bottom: 16px;
-}
-
-.journal-heading h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
 }
 
 .journal-workspace {

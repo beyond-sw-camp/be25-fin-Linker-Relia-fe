@@ -2,13 +2,6 @@
   <section class="contract-create-page">
     <PageBackLink label="계약 목록" @click="goToContractList" />
 
-    <div class="contract-create-page__header">
-      <div>
-        <h2>계약 관리 - 계약 등록</h2>
-        <p>등록된 고객 정보를 불러와 보험 계약 정보를 등록할 수 있습니다.</p>
-      </div>
-    </div>
-
     <form class="contract-create-page__form" @submit.prevent="submitContract">
       <section class="contract-create-card">
         <header class="contract-create-card__header">
@@ -696,22 +689,6 @@ function goToContractList() {
   color: #111827;
 }
 
-.contract-create-page__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-  padding-bottom: 2px;
-}
-
-.contract-create-page__header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.contract-create-page__header p,
 .contract-create-card__header p {
   margin: 8px 0 0;
   color: #64748b;
@@ -1072,7 +1049,6 @@ function goToContractList() {
 }
 
 @media (max-width: 960px) {
-  .contract-create-page__header,
   .customer-search {
     display: grid;
     grid-template-columns: 1fr;

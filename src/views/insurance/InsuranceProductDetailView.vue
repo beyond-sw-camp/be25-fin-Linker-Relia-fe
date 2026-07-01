@@ -2,13 +2,6 @@
   <section class="insurance-product-detail-page">
     <PageBackLink label="보험 상품 목록" @click="goToList" />
 
-    <header class="insurance-product-detail-page__header">
-      <div>
-        <h2>보험 상품 상세</h2>
-        <p>보험 상품의 상세 정보를 확인할 수 있습니다.</p>
-      </div>
-    </header>
-
     <v-alert v-if="errorMessage" type="error" variant="tonal">
       {{ errorMessage }}
     </v-alert>
@@ -421,27 +414,6 @@ function getCurrentDate() {
   min-width: 0;
 }
 
-.insurance-product-detail-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.insurance-product-detail-page__header h2 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.25;
-  color: #111827;
-  font-weight: 800;
-}
-
-.insurance-product-detail-page__header p {
-  margin: 8px 0 0;
-  color: #6b7280;
-  font-size: 13px;
-}
-
 .insurance-product-detail-page__cancel-button,
 .insurance-product-detail-page__submit-button {
   height: 40px;
@@ -611,11 +583,6 @@ function getCurrentDate() {
 }
 
 @media (max-width: 1024px) {
-  .insurance-product-detail-page__header {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
   .insurance-product-detail-grid {
     grid-template-columns: 1fr;
     gap: 0;

@@ -2,14 +2,8 @@
   <section class="detail-page">
     <PageBackLink label="상담 목록" @click="goList" />
 
-    <div class="detail-heading">
-      <div>
-        <h2>{{ isDraft ? '임시저장 상담일지 상세조회' : '상담일지 상세조회' }}</h2>
-        <p>선택한 상담일지의 주요 정보와 유형별 상세 내용을 확인합니다.</p>
-      </div>
-      <div class="detail-actions">
-        <v-btn v-if="isDraft" class="primary-button" @click="goEdit">수정</v-btn>
-      </div>
+    <div v-if="isDraft" class="detail-actions">
+      <v-btn class="primary-button" @click="goEdit">수정</v-btn>
     </div>
 
     <v-alert v-if="errorMessage" type="error" variant="tonal">{{ errorMessage }}</v-alert>
@@ -524,26 +518,7 @@ function retentionLabel(value) {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.detail-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.detail-heading h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.detail-heading p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 13px;
+  justify-content: flex-end;
 }
 
 .primary-button {
@@ -658,7 +633,6 @@ function retentionLabel(value) {
 }
 
 @media (max-width: 760px) {
-  .detail-heading,
   .detail-card header {
     display: grid;
   }

@@ -2,12 +2,6 @@
   <section class="handover-detail" aria-label="인수인계 요청 상세">
     <header class="handover-detail__header">
       <PageBackLink label="인수인계 요청 목록" @click="goBack" />
-      <div class="handover-detail__title-row">
-        <h1>요청 상세</h1>
-        <span class="handover-detail-status" :class="getStatusClass(detail.requestStatus)">
-          {{ getStatusLabel(detail.requestStatus) }}
-        </span>
-      </div>
     </header>
 
     <div v-if="isLoading" class="handover-detail-state">
@@ -134,6 +128,9 @@
           <h2>
             <v-icon icon="mdi-account-outline" size="25" />
             추천 설계사
+            <span class="handover-detail-status" :class="getStatusClass(detail.requestStatus)">
+              {{ getStatusLabel(detail.requestStatus) }}
+            </span>
           </h2>
 
           <div v-if="detail.recommendation.rejectedFpName" class="reject-banner">
@@ -985,23 +982,10 @@ function formatAgeBand(value) {
   gap: 14px;
 }
 
-.handover-detail__title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.handover-detail h1 {
-  margin: 0;
-  color: #111827;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
 .handover-detail-status {
   display: inline-flex;
   align-items: center;
+  margin-left: 4px;
   min-height: 24px;
   padding: 0 10px;
   border-radius: 999px;
