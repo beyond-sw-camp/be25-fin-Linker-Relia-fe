@@ -21,15 +21,6 @@
               <div>
                 <div class="esg-dashboard__title-row">
                   <h2>해수면 상승 완화 현황</h2>
-                  <button
-                    type="button"
-                    class="esg-dashboard__info-button"
-                    aria-label="환경 기여 알아보기"
-                    @click="isImpactInfoOpen = true"
-                  >
-                    <v-icon icon="mdi-information-outline" size="18" />
-                    <span class="esg-dashboard__info-tooltip" role="tooltip">환경 기여 알아보기</span>
-                  </button>
                 </div>
                 <p>상담일지 작성 · AI 브리핑 생성 · 인수인계 완료가 종이 사용을 줄이고
                   <br>
@@ -37,23 +28,33 @@
               </div>
             </div>
 
-            <div class="esg-dashboard__month-wrap">
-              <button type="button" class="esg-dashboard__month" @click="monthMenuOpen = !monthMenuOpen">
-                <v-icon icon="mdi-calendar-month-outline" size="13" />
-                {{ monthLabel }} ESG 챌린지
-                <v-icon :icon="monthMenuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" size="14" />
+            <div class="esg-dashboard__actions">
+              <button
+                type="button"
+                class="esg-dashboard__report-button"
+                @click="isImpactInfoOpen = true"
+              >
+                <v-icon icon="mdi-file-chart-outline" size="15" />
+                환경 기여 리포트
               </button>
-              <div v-if="monthMenuOpen" class="esg-dashboard__month-menu">
-                <button
-                  v-for="option in monthOptions"
-                  :key="option.value"
-                  type="button"
-                  :class="{ 'is-selected': option.value === targetMonthValue }"
-                  @click="selectTargetMonth(option.value)"
-                >
-                  <span>{{ option.label }} ESG 챌린지</span>
-                  <v-icon v-if="option.value === targetMonthValue" icon="mdi-check" size="13" />
+              <div class="esg-dashboard__month-wrap">
+                <button type="button" class="esg-dashboard__month" @click="monthMenuOpen = !monthMenuOpen">
+                  <v-icon icon="mdi-calendar-month-outline" size="13" />
+                  {{ monthLabel }} ESG 챌린지
+                  <v-icon :icon="monthMenuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" size="14" />
                 </button>
+                <div v-if="monthMenuOpen" class="esg-dashboard__month-menu">
+                  <button
+                    v-for="option in monthOptions"
+                    :key="option.value"
+                    type="button"
+                    :class="{ 'is-selected': option.value === targetMonthValue }"
+                    @click="selectTargetMonth(option.value)"
+                  >
+                    <span>{{ option.label }} ESG 챌린지</span>
+                    <v-icon v-if="option.value === targetMonthValue" icon="mdi-check" size="13" />
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -351,7 +352,7 @@
 
           <footer class="esg-info-modal__footer">
             <p>
-              계산 예시는 이해를 돕기 위한 예시이며, 실제 절감량은 이번 달 실적을 기준으로 자동 계산됩니다.
+              위 수치는 이번 달 실적 데이터를 기준으로 자동 계산되며, CO₂ 절감량은 안내된 계산 기준에 따라 산정됩니다.
             </p>
           </footer>
         </section>
@@ -682,69 +683,6 @@ function formatFixedNumber(value, digits) {
   min-width: 0;
 }
 
-.esg-dashboard__info-button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #2563eb;
-  cursor: pointer;
-}
-
-.esg-dashboard__info-button:hover,
-.esg-dashboard__info-button:focus-visible {
-  color: #1d4ed8;
-}
-
-.esg-dashboard__info-button:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.28);
-  outline-offset: 2px;
-  border-radius: 999px;
-}
-
-.esg-dashboard__info-tooltip {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  z-index: 50;
-  width: max-content;
-  max-width: 160px;
-  padding: 6px 9px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.94);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.2;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%) translateX(-3px);
-  transition:
-    opacity 0.14s ease,
-    transform 0.14s ease;
-}
-
-.esg-dashboard__info-tooltip::after {
-  content: '';
-  position: absolute;
-  right: 100%;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  background: inherit;
-  transform: translate(4px, -50%) rotate(45deg);
-}
-
-.esg-dashboard__info-button:hover .esg-dashboard__info-tooltip,
-.esg-dashboard__info-button:focus-visible .esg-dashboard__info-tooltip {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-
 .esg-dashboard__headline strong {
   display: block;
   margin-top: 4px;
@@ -759,6 +697,45 @@ function formatFixedNumber(value, digits) {
   font-size: 11px;
   font-weight: 600;
   line-height: 1.45;
+}
+
+.esg-dashboard__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.esg-dashboard__report-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #20c7ba, #2dd4bf);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 950;
+  white-space: nowrap;
+  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.2);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+}
+
+.esg-dashboard__report-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(20, 184, 166, 0.26);
+  filter: brightness(1.02);
+}
+
+.esg-dashboard__report-button:focus-visible {
+  outline: 2px solid rgba(45, 212, 191, 0.36);
+  outline-offset: 2px;
 }
 
 .esg-dashboard__month-wrap {
@@ -1987,6 +1964,16 @@ function formatFixedNumber(value, digits) {
   .esg-dashboard__top,
   .esg-dashboard__headline {
     display: grid;
+  }
+
+  .esg-dashboard__actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .esg-dashboard__report-button,
+  .esg-dashboard__month {
+    min-height: 32px;
   }
 
   .esg-summary,
