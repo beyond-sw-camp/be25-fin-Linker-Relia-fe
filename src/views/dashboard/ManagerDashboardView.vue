@@ -1451,22 +1451,26 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .dashboard-filter__branch-field {
-  width: 220px;
+  width: 160px;
 }
 
 .dashboard-filter__month-field {
-  width: 180px;
+  width: 160px;
 }
 
 .dashboard-filter :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: none;
 }
 
 .dashboard-filter :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .dashboard-filter__error {
@@ -1475,8 +1479,9 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .ranking-panel__sort {
-  min-width: 176px;
-  height: 40px;
+  width: 160px;
+  min-width: 160px;
+  height: 34px;
   padding: 0 34px 0 14px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
@@ -1658,7 +1663,7 @@ function getAdvisorCellValue(advisor, key) {
   color: #64748b;
   font-size: 13px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 3;
 }
 
 .chart-panel__state {
@@ -1798,7 +1803,7 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .ranking-panel__sort {
-  min-width: 140px;
+  min-width: 160px;
 }
 
 .ranking-table-wrap {
@@ -1856,7 +1861,7 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 28px;
   background: #f1f5f9;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-align: left;
   white-space: nowrap;
@@ -2063,7 +2068,10 @@ function getAdvisorCellValue(advisor, key) {
 .ranking-pagination {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  color: #64748b;
 }
 
 @media (max-width: 1180px) {

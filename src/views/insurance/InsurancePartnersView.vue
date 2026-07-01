@@ -400,7 +400,7 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .summary-card__label {
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -411,19 +411,19 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .summary-card__value strong {
-  font-size: 34px;
-  line-height: 1;
-  color: #1f2937;
+  font-size: 28px;
+  line-height: 1.08;
+  color: #111827;
 }
 
 .summary-card__value span {
-  color: #6b7280;
+  color: #475569;
   font-size: 13px;
 }
 
 .summary-card__content p {
   margin: 0;
-  color: #9ca3af;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -464,31 +464,53 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .insurance-page__name-filter {
-  width: 240px;
+  width: 160px;
   max-width: 100%;
-  flex: 1 1 240px;
+  flex: 0 0 160px;
 }
 
 .insurance-page__status-filter {
-  width: 180px;
+  width: 160px;
   max-width: 100%;
   flex: 0 0 auto;
 }
 
 .insurance-page__search-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 10px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   padding: 0 18px;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.insurance-page__search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.insurance-page__search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .insurance-page__reset-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;
@@ -607,14 +629,18 @@ function getApiErrorMessage(error, fallbackMessage) {
 
 .insurance-page__status-filter :deep(.v-field),
 .insurance-page__name-filter :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .insurance-page__status-filter :deep(.v-field__input),
 .insurance-page__name-filter :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .insurance-page__pagination :deep(.v-pagination__item--is-active .v-btn) {

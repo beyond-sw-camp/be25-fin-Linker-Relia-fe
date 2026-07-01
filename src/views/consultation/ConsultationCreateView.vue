@@ -82,7 +82,7 @@
                   ref="customerSearchInput"
                   v-model.trim="customerKeyword"
                   class="control"
-                  placeholder="고객명 검색"
+                  placeholder="고객명"
                   @keyup.enter.prevent="loadCustomers"
                 />
                 <button type="button" @click="loadCustomers">
@@ -356,15 +356,26 @@
         </section>
 
         <section class="stt-card">
-          <v-icon icon="mdi-microphone-outline" size="18" />
-          <div>
-            <strong>AI 녹음 작성</strong>
-            <p>녹음한 상담 내용을 바탕으로 상담일지 초안을 작성할 수 있습니다.</p>
+          <div class="stt-card__identity">
+            <span class="stt-card__sparkle" aria-hidden="true">
+              <v-icon icon="mdi-microphone-outline" size="24" />
+            </span>
+          
+            <div class="stt-card__content">
+              <strong>AI 녹음 작성</strong>
+              <p>녹음한 상담 내용을 AI가 분석하여 상담일지 초안을 생성합니다.</p>
+
+              <small class="stt-card__hint">
+                {{ sttHintMessage }}
+              </small>
+            </div>
           </div>
-          <div class="stt-actions">
-            <button type="button" @click="openSttPreview">AI 녹음 작성</button>
-          </div>
-          <p v-if="!canOpenSttPreview" class="stt-card__hint">{{ sttHintMessage }}</p>
+        
+          <button type="button" class="stt-card__button" @click="openSttPreview">
+            <v-icon icon="mdi-auto-fix" size="17" />
+            AI 녹음 작성
+          </button>
+      
         </section>
 
         <section v-if="needsContract" class="form-card">
@@ -2667,6 +2678,10 @@ function toApiDateTime(value) {
   padding: 16px;
 }
 
+.side-card .field {
+  width: 100%;
+}
+
 .side-card h3,
 .form-card h3 {
   margin: 0 0 14px;
@@ -2708,29 +2723,159 @@ function toApiDateTime(value) {
 }
 
 .search-control {
-  min-height: 40px;
+  display: flex;
+  width: 100px;
+  max-width: 100%;
+  min-height: 34px;
+  height: 34px;
   border: 1px solid #d9e0ea;
   border-radius: 10px;
   background: #ffffff;
-  box-shadow: none;
 }
 
 .search-control .control,
 .search-control input {
+  flex: 1;
+  min-width: 0;
   border: 0;
 }
 
-.search-control button,
+.search-control button {
+  width: 55px;
+  min-width: 55px;
+}
+
 .address-box__button,
-.add-button,
-.stt-actions button {
-  height: 40px;
+.add-button {
+  height: 34px;
   border-radius: 10px;
   font-family: inherit;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
+}
+
+.stt-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 28px;
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(96, 165, 250, 0.18), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(34, 211, 238, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(248, 251, 255, 0.96) 0%, rgba(239, 246, 255, 0.9) 52%, rgba(255, 255, 255, 0.96) 100%);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.1);
+}
+
+.stt-card__content {
+  max-width: 560px;
+  margin-left: 30px;
+  gap: 20px;
+}
+
+.stt-card::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
+.stt-card__identity{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+}
+
+.stt-card__sparkle {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(147, 197, 253, 0.5);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(219, 234, 254, 0.74));
+  color: #2563eb;
+  box-shadow:
+    0 14px 28px rgba(37, 99, 235, 0.14),
+    16px 10px 34px rgba(34, 211, 238, 0.12);
+}
+
+.stt-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.stt-card p {
+  margin: 0;
+}
+
+.stt-card__button {
+  position: relative;
+  width: 132px;
+  min-width: 150px;
+  height: 38px;
+  min-height: 42px;
+  display: inline-flex;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0px 12px;
+  background: linear-gradient(110deg, #2563eb, #38bdf8 58%, #5eead4);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.stt-card__button:hover {
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.stt-card__hint {
+  display: block;
+  margin-top: 8px;
+}
+
+.search-control button {
+  width: 55px;
+  min-width: 55px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  color: #f97316;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.search-control button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.search-control button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .pill,
@@ -2749,28 +2894,50 @@ function toApiDateTime(value) {
 }
 
 .stt-card {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 10px 16px;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 22px 24px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(59, 130, 246, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(14, 165, 233, 0.14), transparent 30%),
+    linear-gradient(135deg, #f8fbff 0%, #eef6ff 48%, #f8fbff 100%);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.1);
 }
 
-.stt-card > :nth-child(2) {
-  min-width: 0;
+.stt-card__icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(59, 130, 246, 0.22);
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  box-shadow: none;
 }
 
-.stt-actions {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+.stt-card__icon .v-icon {
+  flex: 0 0 auto;
 }
 
-.stt-card__hint {
-  grid-column: 2 / -1;
-  margin: -2px 0 0;
-  color: #f97316;
-  font-size: 12px;
-  font-weight: 700;
+.stt-card strong {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.stt-card p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .side-card--attention {
@@ -3098,6 +3265,12 @@ function toApiDateTime(value) {
   opacity: 1;
 }
 
+.search-control input::placeholder {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
+}
+
 .control.is-error {
   border-color: #ef4444;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
@@ -3298,20 +3471,39 @@ function toApiDateTime(value) {
 
 .address-box__search {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
+  grid-template-columns: 160px 55px;
   gap: 8px;
 }
 
 .address-box__button {
   height: 34px;
+  width: 55px;
+  min-width: 55px;
   padding: 0 12px;
-  border: 1px solid #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 6px;
   background: #fff7ed;
   color: #f97316;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.address-box__button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.address-box__button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .address-results {
@@ -3444,13 +3636,24 @@ function toApiDateTime(value) {
     grid-template-columns: 1fr;
   }
 
-  .stt-actions {
-    justify-content: flex-start;
+  .stt-card__button {
+  width: 180px;
+  min-width: 180px;
+  height: 48px;
+  flex: none;
   }
 
-  .stt-card__hint {
-    grid-column: auto;
-    margin-top: -4px;
+  .stt-card__content{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .stt-card__hint{
+    margin-top:6px;
+    font-size:14px;
+    color:#64748b;
+    line-height:1.6;
   }
 
   .prospect-grid,

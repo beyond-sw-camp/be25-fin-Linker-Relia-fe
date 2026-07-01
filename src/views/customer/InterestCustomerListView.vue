@@ -66,12 +66,12 @@
 
           <v-text-field
             v-model="filters.customerName"
-            label="고객명"
-            placeholder="고객명을 입력하세요"
+            placeholder="고객명"
             variant="outlined"
             density="comfortable"
             hide-details
             class="customer-page__name-filter"
+            aria-label="고객명"
             @keyup.enter="searchCustomers"
           />
 
@@ -300,7 +300,7 @@ function formatDDay(value) {
 .customer-page__organization-filter,
 .customer-page__reason-filter {
   min-width: 0;
-  width: 252px;
+  width: 160px;
   flex: 0 0 auto;
 }
 
@@ -342,40 +342,72 @@ function formatDDay(value) {
 }
 
 .customer-page__name-filter {
-  width: 240px;
+  width: 160px;
   max-width: 100%;
-  flex: 1 1 240px;
+  flex: 0 0 160px;
+}
+
+.customer-page__name-filter :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .customer-page__sort-filter {
-  width: 180px;
+  width: 160px;
   flex: 0 0 auto;
 }
 
 .customer-page__toolbar :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .customer-page__toolbar :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .customer-page__search-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 10px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   padding: 0 18px;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.customer-page__search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.customer-page__search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .customer-page__reset-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;

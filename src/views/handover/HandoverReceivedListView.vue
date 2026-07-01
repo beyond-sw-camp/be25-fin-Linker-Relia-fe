@@ -23,7 +23,7 @@
         <form class="received-search" @submit.prevent="searchReceivedRows">
           <v-text-field
             v-model.trim="filters.customerName"
-            placeholder="고객명 검색"
+            placeholder="고객명"
             variant="outlined"
             density="comfortable"
             hide-details
@@ -408,7 +408,7 @@ function formatDate(value) {
 
 .received-search {
   display: grid;
-  grid-template-columns: 240px auto;
+  grid-template-columns: 160px 55px;
   align-items: center;
   gap: 12px;
 }
@@ -419,26 +419,55 @@ function formatDate(value) {
 }
 
 .received-search__button {
-  min-width: 64px;
-  height: 40px;
+  min-width: 0;
+  width: 55px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 10px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
   padding: 0 18px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.received-search__button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.received-search__button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .received-search :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .received-search :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
+}
+
+.received-search__input :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .received-table {

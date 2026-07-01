@@ -14,7 +14,7 @@
               <input
                 v-model.trim="customerSearchKeyword"
                 type="text"
-                placeholder="고객명을 입력하세요"
+                placeholder="고객명"
                 @keyup.enter="searchCustomers"
               />
             </label>
@@ -24,7 +24,7 @@
               :disabled="isCustomerSearchLoading"
               @click="searchCustomers"
             >
-              {{ isCustomerSearchLoading ? '검색 중' : '고객 검색' }}
+              {{ isCustomerSearchLoading ? '검색 중' : '검색' }}
             </button>
             <button
               type="button"
@@ -757,12 +757,18 @@ function goToContractList() {
 
 .customer-search input,
 .contract-create-field input {
-  height: 40px;
+  height: 34px;
   padding: 0 14px;
 }
 
 .customer-search input {
-  width: 220px;
+  width: 160px;
+}
+
+.customer-search input::placeholder {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .contract-create-field textarea {
@@ -779,7 +785,9 @@ function goToContractList() {
 }
 
 .contract-create-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   padding: 0 18px;
   border: 0;
   border-radius: 10px;
@@ -789,7 +797,30 @@ function goToContractList() {
   cursor: pointer;
 }
 
-.contract-create-button--primary,
+.contract-create-button--primary {
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  color: #f97316;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.contract-create-button--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.contract-create-button--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
+}
+
 .contract-create-actions__submit {
   background: #f97316;
   color: #ffffff;

@@ -55,7 +55,6 @@
       </article>
     </div>
 
-    <section class="contract-panel">
       <div class="contract-list-controls">
         <div class="contract-tabs" role="tablist" aria-label="계약 상태">
           <button
@@ -72,21 +71,20 @@
 
         <div class="contract-sort" aria-label="계약 목록 정렬 기준">
           <span class="contract-sort__label">정렬 기준</span>
-          <div class="contract-sort__buttons" role="group">
-            <button
-              v-for="option in sortOptions"
-              :key="option.value"
-              type="button"
-              class="contract-sort__button"
-              :class="{ 'contract-sort__button--active': contractSort === option.value }"
-              @click="changeSort(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
+          <v-select
+            v-model="contractSort"
+            :items="sortOptions"
+            item-title="label"
+            item-value="value"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="contract-sort__select"
+          />
         </div>
       </div>
 
+    <section class="contract-panel">
       <div class="contract-table">
         <table>
           <thead>
@@ -146,6 +144,7 @@
           </tbody>
         </table>
       </div>
+    </section>
 
       <div class="contract-panel__pagination">
         <span>{{ rangeLabel }}</span>
@@ -159,8 +158,6 @@
           />
         </div>
       </div>
-    </section>
-
   </section>
 </template>
 
@@ -320,6 +317,14 @@ watch(
   },
 )
 
+watch(
+  () => contractSort.value,
+  () => {
+    currentPage.value = 1
+    loadContractList()
+  },
+)
+
 onMounted(() => {
   loadContractList()
   loadContractSummary()
@@ -339,16 +344,6 @@ function shouldShowMaturityBadge(status) {
   }
 
   return isNearMaturityContract(status)
-}
-
-function changeSort(sort) {
-  if (contractSort.value === sort) {
-    return
-  }
-
-  contractSort.value = sort
-  currentPage.value = 1
-  loadContractList()
 }
 
 function goToContractCreate() {
@@ -563,18 +558,22 @@ function isNearMaturityContract(status) {
 }
 
 .contract-page__filter {
-  width: 180px;
+  width: 160px;
   flex: 0 0 auto;
 }
 
 .contract-page__toolbar :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .contract-page__toolbar :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .contract-page__create-button {
@@ -639,7 +638,7 @@ function isNearMaturityContract(status) {
 .contract-summary-card__value strong {
   font-size: 34px;
   line-height: 1;
-  color: #1f2937;
+  color: #111827;
 }
 
 .contract-summary-card__value span,
@@ -656,14 +655,11 @@ function isNearMaturityContract(status) {
 }
 
 .contract-panel {
+  padding: 12px;
   border: 1px solid #edf1f7;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
-}
-
-.contract-panel {
-  padding: 12px;
 }
 
 .contract-list-controls {
@@ -714,44 +710,27 @@ function isNearMaturityContract(status) {
   white-space: nowrap;
 }
 
-.contract-sort__buttons {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid #d1d5db;
+.contract-sort__select {
+  width: 160px;
+  flex: 0 0 auto;
+}
+
+.contract-sort__select :deep(.v-field) {
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
-  background: #ffffff;
+  box-shadow: none;
 }
 
-.contract-sort__button {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-right: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.contract-sort__button:last-child {
-  border-right: 0;
-}
-
-.contract-sort__button:hover {
-  color: #f97316;
-}
-
-.contract-sort__button--active,
-.contract-sort__button--active:hover {
-  background: #f97316;
-  color: #ffffff;
+.contract-sort__select :deep(.v-field__input) {
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .contract-table {
   overflow-x: auto;
-  margin-top: 16px;
   border: 1px solid #f0f3f8;
   border-radius: 16px;
 }
@@ -918,13 +897,8 @@ td span + .contract-badge {
     flex-direction: column;
   }
 
-  .contract-sort__buttons {
+  .contract-sort__select {
     width: 100%;
-    overflow-x: auto;
-  }
-
-  .contract-sort__button {
-    flex: 1 0 auto;
   }
 
   .contract-page__summary {

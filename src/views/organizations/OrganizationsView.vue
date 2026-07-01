@@ -2111,6 +2111,36 @@ const EmptyState = defineComponent({
   color: #ffffff;
 }
 
+.organization-member-filter-actions .button--primary,
+.organization-filter-actions .button--primary {
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  min-height: 34px;
+  border-color: rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  color: #f97316;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.organization-member-filter-actions .button--primary:hover:not(:disabled),
+.organization-filter-actions .button--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.organization-member-filter-actions .button--primary:active:not(:disabled),
+.organization-filter-actions .button--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
+}
+
 .button--secondary {
   border-color: #d1d5db;
   background: #ffffff;
@@ -2293,7 +2323,7 @@ const EmptyState = defineComponent({
   display: grid;
   width: fit-content;
   max-width: 100%;
-  grid-template-columns: repeat(4, 220px) auto;
+  grid-template-columns: repeat(4, 160px) auto;
   gap: 12px;
   align-items: end;
   margin: 0 0 14px auto;
@@ -2305,7 +2335,7 @@ const EmptyState = defineComponent({
 }
 
 .organization-member-filters--restricted {
-  grid-template-columns: 220px 220px auto;
+  grid-template-columns: repeat(2, 160px) auto;
 }
 
 .organization-member-filter-actions {
@@ -2316,14 +2346,18 @@ const EmptyState = defineComponent({
 
 .organization-member-search-field :deep(.v-field),
 .organization-search-field :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .organization-member-search-field :deep(.v-field__input),
 .organization-search-field :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .branch-summary-strip {
@@ -2678,7 +2712,7 @@ const EmptyState = defineComponent({
 .organization-filter-panel .filter-grid {
   width: fit-content;
   max-width: 100%;
-  grid-template-columns: 240px 240px 240px auto;
+  grid-template-columns: repeat(3, 160px) auto;
   align-items: end;
   gap: 12px;
   justify-content: end;
@@ -2686,7 +2720,15 @@ const EmptyState = defineComponent({
 }
 
 .organization-filter-panel .filter-grid--restricted-fp {
-  grid-template-columns: 240px 240px auto;
+  grid-template-columns: repeat(2, 160px) auto;
+}
+
+.organization-member-filter-actions .button,
+.organization-filter-actions .button {
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  min-height: 34px;
 }
 
 .organization-filter-actions {
