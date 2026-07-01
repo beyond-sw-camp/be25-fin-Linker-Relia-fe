@@ -193,19 +193,19 @@ function fillTestUser(testUser) {
   justify-content: center;
   gap: 24px;
   align-items: stretch;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 42%, #ffffff 100%);
+  box-shadow: 0 24px 44px rgba(15, 23, 42, 0.08);
 }
 
 .login-shell__support {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 28px;
-  border: 1px solid #fed7aa;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.32), transparent 30%),
-    linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
-  box-shadow: 0 20px 36px rgba(249, 115, 22, 0.08);
+  min-height: 100%;
+  padding: 8px 12px 8px 8px;
 }
 
 .login-shell__brand {
@@ -319,8 +319,8 @@ function fillTestUser(testUser) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #edf0f5;
   border-radius: 24px;
   box-shadow: 0 18px 34px rgba(15, 23, 42, 0.06);
   padding: 28px;
@@ -414,6 +414,7 @@ function fillTestUser(testUser) {
 @media (max-width: 960px) {
   .login-shell {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 }
 
