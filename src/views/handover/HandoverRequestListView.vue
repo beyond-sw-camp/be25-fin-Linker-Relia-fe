@@ -1135,7 +1135,7 @@ function getTrendY(value) {
 
 .handover-filters {
   display: grid;
-  grid-template-columns: 160px 160px 240px auto;
+  grid-template-columns: repeat(3, 160px) 55px;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
@@ -1144,7 +1144,7 @@ function getTrendY(value) {
 }
 
 .handover-filters--with-branch {
-  grid-template-columns: 180px 160px 160px 240px auto;
+  grid-template-columns: repeat(4, 160px) 55px;
 }
 
 .handover-filters__branch,
@@ -1159,26 +1159,55 @@ function getTrendY(value) {
 }
 
 .handover-filters__button {
-  height: 40px;
-  min-width: 64px;
+  width: 55px;
+  height: 34px;
+  min-width: 0;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 10px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
   padding: 0 18px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.handover-filters__button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.handover-filters__button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .handover-filters :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .handover-filters :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
+}
+
+.handover-filters__search :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .handover-table {

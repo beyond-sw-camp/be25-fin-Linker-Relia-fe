@@ -2,13 +2,6 @@
   <section class="contract-detail-page">
     <PageBackLink label="보유 계약 목록" @click="goToContractList" />
 
-    <div class="contract-detail-page__header">
-      <div>
-        <h2>계약 상세</h2>
-        <p>등록된 고객 정보와 보험 계약 정보를 확인할 수 있습니다.</p>
-      </div>
-    </div>
-
     <div v-if="isContractDetailLoading" class="contract-detail-state">
       <v-progress-circular indeterminate color="#f97316" />
       <p>계약 상세 정보를 불러오는 중입니다.</p>
@@ -327,26 +320,6 @@ function formatCurrency(value) {
   color: #111827;
 }
 
-.contract-detail-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.contract-detail-page__header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.contract-detail-page__header p {
-  margin: 8px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
 .contract-detail-card {
   overflow: hidden;
   border: 1px solid #edf1f7;
@@ -481,13 +454,8 @@ function formatCurrency(value) {
 }
 
 @media (max-width: 768px) {
-  .contract-detail-page__header,
   .detail-info-grid {
     grid-template-columns: 1fr;
-  }
-
-  .contract-detail-page__header {
-    display: grid;
   }
 
   .contract-summary-grid {

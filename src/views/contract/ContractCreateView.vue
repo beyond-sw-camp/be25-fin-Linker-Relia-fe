@@ -2,13 +2,6 @@
   <section class="contract-create-page">
     <PageBackLink label="계약 목록" @click="goToContractList" />
 
-    <div class="contract-create-page__header">
-      <div>
-        <h2>계약 관리 - 계약 등록</h2>
-        <p>등록된 고객 정보를 불러와 보험 계약 정보를 등록할 수 있습니다.</p>
-      </div>
-    </div>
-
     <form class="contract-create-page__form" @submit.prevent="submitContract">
       <section class="contract-create-card">
         <header class="contract-create-card__header">
@@ -21,7 +14,7 @@
               <input
                 v-model.trim="customerSearchKeyword"
                 type="text"
-                placeholder="고객명을 입력하세요"
+                placeholder="고객명"
                 @keyup.enter="searchCustomers"
               />
             </label>
@@ -31,7 +24,7 @@
               :disabled="isCustomerSearchLoading"
               @click="searchCustomers"
             >
-              {{ isCustomerSearchLoading ? '검색 중' : '고객 검색' }}
+              {{ isCustomerSearchLoading ? '검색 중' : '검색' }}
             </button>
             <button
               type="button"
@@ -696,22 +689,6 @@ function goToContractList() {
   color: #111827;
 }
 
-.contract-create-page__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-  padding-bottom: 2px;
-}
-
-.contract-create-page__header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.contract-create-page__header p,
 .contract-create-card__header p {
   margin: 8px 0 0;
   color: #64748b;
@@ -780,12 +757,18 @@ function goToContractList() {
 
 .customer-search input,
 .contract-create-field input {
-  height: 40px;
+  height: 34px;
   padding: 0 14px;
 }
 
 .customer-search input {
-  width: 220px;
+  width: 160px;
+}
+
+.customer-search input::placeholder {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .contract-create-field textarea {
@@ -802,7 +785,9 @@ function goToContractList() {
 }
 
 .contract-create-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   padding: 0 18px;
   border: 0;
   border-radius: 10px;
@@ -812,7 +797,30 @@ function goToContractList() {
   cursor: pointer;
 }
 
-.contract-create-button--primary,
+.contract-create-button--primary {
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  color: #f97316;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.contract-create-button--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.contract-create-button--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
+}
+
 .contract-create-actions__submit {
   background: #f97316;
   color: #ffffff;
@@ -1072,7 +1080,6 @@ function goToContractList() {
 }
 
 @media (max-width: 960px) {
-  .contract-create-page__header,
   .customer-search {
     display: grid;
     grid-template-columns: 1fr;

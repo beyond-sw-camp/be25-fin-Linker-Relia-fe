@@ -1367,24 +1367,46 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-page__organization-filter {
-  width: 220px;
+  width: 160px;
 }
 
 .commission-page__month-field {
-  width: 180px;
+  width: 160px;
 }
 
 .commission-page__search-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   padding: 0 18px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 12px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.commission-page__search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.commission-page__search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .commission-page__reset-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   padding: 0 18px;
   border-radius: 10px;
   border-color: #d1d5db;
@@ -1406,13 +1428,17 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-page__toolbar :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .commission-page__toolbar :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .commission-summary {

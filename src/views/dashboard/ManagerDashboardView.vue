@@ -1,46 +1,55 @@
 <template>
   <section class="manager-dashboard" aria-label="관리자 대시보드">
-    <div class="dashboard-filter">
-      <label v-if="isHqManager" class="dashboard-filter__field dashboard-filter__field--branch">
-        <v-select
-          v-model="selectedBranch"
-          :items="branchOptions"
-          item-title="label"
-          item-value="value"
-          label="지점 선택"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingBranches"
-          :disabled="isLoadingBranches"
-          class="dashboard-filter__branch-field"
-        />
-        <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
-      </label>
+    <div class="manager-dashboard__top">
+      <div class="manager-dashboard__heading">
+        <h2>종합 실적 보고서</h2>
+        <p :class="{ 'manager-dashboard__message--error': summaryErrorMessage }">{{ reportDescription }}</p>
+      </div>
 
-      <label class="dashboard-filter__field dashboard-filter__field--month">
-        <v-text-field
-          v-model="selectedMonth"
-          type="month"
-          label="정산 월"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingMonths"
-          :disabled="isLoadingMonths"
-          :max="latestAvailableMonth"
-          class="dashboard-filter__month-field"
-        />
-        <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
-      </label>
+      <div class="dashboard-filter">
+        <label v-if="isHqManager" class="dashboard-filter__field dashboard-filter__field--branch">
+          <v-select
+            v-model="selectedBranch"
+            :items="branchOptions"
+            item-title="label"
+            item-value="value"
+            label="지점 선택"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :loading="isLoadingBranches"
+            :disabled="isLoadingBranches"
+            class="dashboard-filter__branch-field"
+          />
+          <small v-if="branchErrorMessage" class="dashboard-filter__error">{{ branchErrorMessage }}</small>
+        </label>
+
+        <label class="dashboard-filter__field dashboard-filter__field--month">
+          <v-text-field
+            v-model="selectedMonth"
+            type="month"
+            label="정산 월"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :loading="isLoadingMonths"
+            :disabled="isLoadingMonths"
+            :max="latestAvailableMonth"
+            class="dashboard-filter__month-field"
+          />
+          <small v-if="monthErrorMessage" class="dashboard-filter__error">{{ monthErrorMessage }}</small>
+        </label>
+      </div>
+    </div>
+
+    <div class="manager-dashboard__notice">
+      <span>
+        <v-icon icon="mdi-information-outline" size="16" />
+        {{ reportNoticeText }}
+      </span>
     </div>
 
     <section class="report-panel">
-      <div class="report-panel__heading">
-        <h2>종합 실적 보고서</h2>
-        <p :class="{ 'report-panel__message--error': summaryErrorMessage }">{{ reportDescription }}</p>
-      </div>
-
       <div class="metric-grid">
         <article v-for="metric in metrics" :key="metric.label" class="metric-card">
           <span>{{ metric.label }}</span>
@@ -50,7 +59,9 @@
           <p v-if="metric.secondaryLabel" class="metric-card__secondary">
             {{ metric.secondaryLabel }} {{ metric.secondaryValue }}{{ metric.secondaryUnit }}
           </p>
-          <p :class="metric.trendClass">{{ metric.caption }}</p>
+          <p v-if="metric.caption" class="metric-card__trend">
+            {{ metric.caption }}
+          </p>
         </article>
       </div>
 
@@ -101,6 +112,7 @@
     <section class="ranking-panel">
       <div class="ranking-panel__heading">
         <div>
+          <h2>{{ rankingTitle }}</h2>
           <div class="ranking-panel__tabs">
             <button
               type="button"
@@ -121,7 +133,6 @@
             </button>
             <span class="ranking-panel__hint">{{ rankingHint }}</span>
           </div>
-          <h2>{{ rankingTitle }}</h2>
         </div>
 
         <div v-if="isBranchRankingView" class="ranking-panel__controls">
@@ -385,6 +396,11 @@ const reportDescription = computed(() => {
   return '맞춤형 고객 관계 관리 솔루션을 만나보세요.'
 })
 
+const reportNoticeText = computed(() => {
+  const closingMonthLabel = formatClosingMonthLabel(selectedMonth.value || latestAvailableMonth.value)
+  return `${closingMonthLabel} 마감 기준으로 집계된 데이터입니다.`
+})
+
 const footerText = computed(() => {
   if (isBranchRankingView.value) {
     if (branchRankingPageInfo.value.totalElements === 0) {
@@ -411,28 +427,28 @@ const metrics = computed(() => [
     value: formatNumber(summary.value.advisorCount),
     unit: '명',
     caption: formatCountDiffCaption(summary.value.advisorCountDiff, '명'),
-    trendClass: getCountTrendClass(summary.value.advisorCountDiff),
+    isDown: Number(summary.value.advisorCountDiff) < 0,
   },
   {
     label: '고객',
     value: formatNumber(summary.value.customerCount),
     unit: '명',
     caption: formatCountDiffCaption(summary.value.customerCountDiff, '명'),
-    trendClass: getCountTrendClass(summary.value.customerCountDiff),
+    isDown: Number(summary.value.customerCountDiff) < 0,
   },
   {
     label: '계약',
     value: formatNumber(summary.value.contractCount),
     unit: '건',
     caption: formatCountDiffCaption(summary.value.contractCountDiff, '건'),
-    trendClass: getCountTrendClass(summary.value.contractCountDiff),
+    isDown: Number(summary.value.contractCountDiff) < 0,
   },
   {
     label: '관심 고객',
     value: formatNumber(summary.value.interestCustomerCount),
     unit: '명',
     caption: formatCountDiffCaption(summary.value.interestCustomerCountDiff, '명'),
-    trendClass: getCountTrendClass(summary.value.interestCustomerCountDiff),
+    isDown: Number(summary.value.interestCustomerCountDiff) < 0,
     danger: summary.value.interestCustomerCount > 0,
   },
   {
@@ -440,28 +456,28 @@ const metrics = computed(() => [
     value: formatDecimal(summary.value.contractSuccessRate, 1),
     unit: '%',
     caption: formatPercentDiffCaption(summary.value.contractSuccessRateDiff),
-    trendClass: getRateTrendClass(summary.value.contractSuccessRateDiff),
+    isDown: Number(summary.value.contractSuccessRateDiff) < 0,
   },
   {
     label: '계약 유지율',
     value: formatDecimal(summary.value.retentionRate, 1),
     unit: '%',
     caption: formatPercentDiffCaption(summary.value.retentionRateDiff),
-    trendClass: getRateTrendClass(summary.value.retentionRateDiff),
+    isDown: Number(summary.value.retentionRateDiff) < 0,
   },
   {
     label: '해지 계약 수',
     value: formatNumber(summary.value.terminatedContractCount),
     unit: '건',
     caption: formatCountDiffCaption(summary.value.terminatedContractCountDiff, '건'),
-    trendClass: getCountTrendClass(summary.value.terminatedContractCountDiff),
+    isDown: Number(summary.value.terminatedContractCountDiff) < 0,
   },
   {
     label: '수입 수수료',
     value: formatNumber(summary.value.commissionAmount),
     unit: '원',
     caption: '',
-    trendClass: 'is-muted',
+    isDown: false,
     secondaryLabel: '지급 수수료',
     secondaryValue: formatNumber(summary.value.paymentCommissionAmount),
     secondaryUnit: '원',
@@ -935,26 +951,26 @@ function formatSignedNumber(value, fractionDigits = 0) {
   })
 
   if (numericValue > 0) {
-    return `▲ ${absoluteValue}`
+    return `+${absoluteValue}`
   }
 
   if (numericValue < 0) {
-    return `▼ ${absoluteValue}`
+    return `-${absoluteValue}`
   }
 
   return absoluteValue
 }
 
 function formatCountDiffCaption(value, unit) {
-  return `전월 대비 ${formatSignedNumber(value)}${unit}`
+  return `${formatSignedNumber(value)}${unit} 전월 대비`
 }
 
 function formatPercentDiffCaption(value) {
-  return `전월 대비 ${formatSignedNumber(value, 1)}%`
+  return `${formatSignedNumber(value, 1)}% 전월 대비`
 }
 
 function formatCurrencyDiffCaption(value) {
-  return `전월 대비 ${formatSignedNumber(value)}원`
+  return `${formatSignedNumber(value)}원 전월 대비`
 }
 
 function buildDonutItems(items) {
@@ -1377,6 +1393,52 @@ function getAdvisorCellValue(advisor, key) {
   color: #1f2937;
 }
 
+.manager-dashboard__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.manager-dashboard__heading h2 {
+  margin: 0 0 4px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.manager-dashboard__heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.manager-dashboard__message--error {
+  color: #dc2626;
+}
+
+.manager-dashboard__notice {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 16px;
+  border: 1px solid #fb923c;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #f97316;
+  font-size: 12px;
+}
+
+.manager-dashboard__notice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
 .dashboard-filter {
   display: flex;
   align-items: flex-end;
@@ -1395,22 +1457,26 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .dashboard-filter__branch-field {
-  width: 220px;
+  width: 160px;
 }
 
 .dashboard-filter__month-field {
-  width: 180px;
+  width: 160px;
 }
 
 .dashboard-filter :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: none;
 }
 
 .dashboard-filter :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .dashboard-filter__error {
@@ -1419,8 +1485,9 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .ranking-panel__sort {
-  min-width: 176px;
-  height: 40px;
+  width: 160px;
+  min-width: 160px;
+  height: 34px;
   padding: 0 34px 0 14px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
@@ -1446,12 +1513,6 @@ function getAdvisorCellValue(advisor, key) {
   padding: 12px;
 }
 
-.report-panel__heading {
-  margin: 0 0 12px;
-  padding: 0 4px;
-}
-
-.report-panel__heading h2,
 .ranking-panel__heading h2 {
   margin: 0 0 8px;
   font-size: 16px;
@@ -1459,15 +1520,10 @@ function getAdvisorCellValue(advisor, key) {
   letter-spacing: 0;
 }
 
-.report-panel__heading p,
 .ranking-panel__hint {
   margin: 0;
   color: #64748b;
   font-size: 13px;
-}
-
-.report-panel__message--error {
-  color: #dc2626;
 }
 
 .metric-grid {
@@ -1488,7 +1544,7 @@ function getAdvisorCellValue(advisor, key) {
 .metric-card span {
   display: block;
   margin-bottom: 10px;
-  color: #6b7280;
+  color: #475569;
   font-size: 13px;
   font-weight: 700;
 }
@@ -1497,7 +1553,7 @@ function getAdvisorCellValue(advisor, key) {
   display: block;
   margin-bottom: 8px;
   color: #111827;
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
@@ -1505,11 +1561,12 @@ function getAdvisorCellValue(advisor, key) {
 
 .metric-card strong.is-danger {
   color: #dc2626;
+  font-size: 28px;
 }
 
 .metric-card small {
   margin-left: 4px;
-  color: #64748b;
+  color: #475569;
   font-size: 13px;
   font-weight: 500;
 }
@@ -1519,18 +1576,22 @@ function getAdvisorCellValue(advisor, key) {
   font-size: 13px;
 }
 
-.metric-card__secondary {
-  margin: 0 0 9px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.is-up {
+.metric-card__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
   color: #16a34a;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.is-down {
-  color: #dc2626;
+.metric-card__secondary {
+  gap: 2px;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .is-goal {
@@ -1558,19 +1619,19 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .top-performer-card span {
-  color: #6b7280;
+  color: #475569;
   font-size: 13px;
   font-weight: 700;
 }
 
 .top-performer-card span strong {
-  color: #64748b;
+  color: #111827;
   font-size: 21px;
 }
 
 .top-performer-card p {
   margin: 10px 0 0;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -1617,7 +1678,7 @@ function getAdvisorCellValue(advisor, key) {
   color: #64748b;
   font-size: 13px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 3;
 }
 
 .chart-panel__state {
@@ -1674,7 +1735,7 @@ function getAdvisorCellValue(advisor, key) {
   margin: 0;
   padding: 0;
   list-style: none;
-  color: #6b7280;
+  color: #94a3b8;
   font-size: 13px;
 }
 
@@ -1692,7 +1753,7 @@ function getAdvisorCellValue(advisor, key) {
 }
 
 .donut-summary li span {
-  color: #475569;
+  color: #64748b;
 }
 
 .donut-summary li strong {
@@ -1722,25 +1783,26 @@ function getAdvisorCellValue(advisor, key) {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-top: 12px;
 }
 
 .ranking-panel__tab {
   min-width: 94px;
   height: 34px;
   padding: 0 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #475569;
   border-radius: 999px;
   background: #f8fafc;
-  color: #64748b;
+  color: #475569;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .ranking-panel__tab.active {
-  border-color: #fb923c;
+  border-color: #f97316;
   background: #fff7ed;
-  color: #ea580c;
+  color: #f97316;
+  font-weight: 600;
 }
 
 .ranking-panel__tab:disabled {
@@ -1752,10 +1814,11 @@ function getAdvisorCellValue(advisor, key) {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 29px;
 }
 
 .ranking-panel__sort {
-  min-width: 140px;
+  min-width: 160px;
 }
 
 .ranking-table-wrap {
@@ -1786,7 +1849,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #ffffff;
   color: #374151;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .branch-change--up {
@@ -1813,7 +1876,7 @@ function getAdvisorCellValue(advisor, key) {
   padding: 0 28px;
   background: #f1f5f9;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-align: left;
   white-space: nowrap;
@@ -1823,7 +1886,7 @@ function getAdvisorCellValue(advisor, key) {
   height: 62px;
   padding: 0 22px;
   border-top: 1px solid #e5e7eb;
-  color: #374151;
+  color: #475569;
   white-space: nowrap;
 }
 
@@ -1877,6 +1940,7 @@ function getAdvisorCellValue(advisor, key) {
 .ranking-table--advisor th:nth-child(2),
 .ranking-table--advisor td:nth-child(2) {
   width: 150px;
+  padding-left: 80px;
 }
 
 .ranking-table--advisor .advisor-col--branch {
@@ -1894,13 +1958,19 @@ function getAdvisorCellValue(advisor, key) {
   text-align: center;
 }
 
+.ranking-table--branch td.branch-ranking-col--rank {
+  font-weight: 700;
+}
+
 .ranking-table--branch th.branch-ranking-col--name,
 .ranking-table--branch td.branch-ranking-col--name {
+  padding-left: 100px;
   text-align: left;
 }
 
 .ranking-table--branch th.branch-ranking-col--amount,
 .ranking-table--branch td.branch-ranking-col--amount {
+  padding-right: 80px;
   text-align: right;
 }
 
@@ -1987,7 +2057,7 @@ function getAdvisorCellValue(advisor, key) {
   border: 1px solid #d1d5db;
   border-radius: 999px;
   background: #ffffff;
-  color: #4b5563;
+  color: #475569;
   font-size: 12px;
   font-weight: 700;
 }
@@ -2001,7 +2071,7 @@ function getAdvisorCellValue(advisor, key) {
   padding: 10px 18px;
   border-top: 1px solid #e5e7eb;
   background: #f1f5f9;
-  color: #6b7280;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -2013,7 +2083,10 @@ function getAdvisorCellValue(advisor, key) {
 .ranking-pagination {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  color: #64748b;
 }
 
 @media (max-width: 1180px) {
@@ -2030,11 +2103,20 @@ function getAdvisorCellValue(advisor, key) {
   .ranking-panel__heading {
     flex-direction: column;
   }
+
+  .ranking-panel__controls {
+    margin-top: 0;
+  }
 }
 
 @media (max-width: 880px) {
+  .manager-dashboard__top {
+    display: grid;
+  }
+
   .dashboard-filter {
     display: grid;
+    justify-content: stretch;
   }
 
   .top-performer-grid,

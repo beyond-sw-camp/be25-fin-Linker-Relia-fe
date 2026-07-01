@@ -12,10 +12,6 @@
     <template v-else-if="customer">
       <PageBackLink :label="backLinkLabel" @click="goBack" />
 
-      <div class="customer-detail__heading">
-        <h2>고객 상세</h2>
-      </div>
-
       <section class="customer-profile">
         <div class="customer-profile__identity">
           <div class="customer-profile__avatar">
@@ -709,19 +705,6 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 .customer-detail {
   display: grid;
   gap: 16px;
-}
-
-.customer-detail__heading h2 {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-  color: #111827;
-}
-
-.customer-detail__heading p {
-  margin: 0;
-  color: #6b7280;
 }
 
 .customer-profile {

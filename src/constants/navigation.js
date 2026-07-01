@@ -346,13 +346,6 @@ export const MENU_BY_ROLE = {
       to: { name: 'fp-dashboard' },
     },
     {
-      title: '마이 페이지',
-      icon: 'mdi-account-circle-outline',
-      children: [
-        { title: '내 정보 조회', to: { name: 'fp-my-page' } },
-      ],
-    },
-    {
       title: '고객 관리',
       icon: 'mdi-account-group-outline',
       children: [
@@ -390,6 +383,13 @@ export const MENU_BY_ROLE = {
       icon: 'mdi-trending-up',
       children: [
         { title: '설계사 지급 수수료 현황', to: { name: 'fp-commissions' } },
+      ],
+    },
+    {
+      title: '마이 페이지',
+      icon: 'mdi-account-circle-outline',
+      children: [
+        { title: '내 정보 조회', to: { name: 'fp-my-page' } },
       ],
     },
   ],

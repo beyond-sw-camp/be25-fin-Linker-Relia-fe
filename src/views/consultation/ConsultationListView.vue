@@ -5,114 +5,121 @@
     </v-snackbar>
 
     <section class="metric-row">
-      <article v-for="metric in metrics" :key="metric.label">
-        <v-icon :icon="metric.icon" size="18" />
-        <div class="metric-row__value">
+      <article v-for="metric in metrics" :key="metric.label" class="summary-card">
+        <div class="summary-card__icon" :style="{ backgroundColor: metric.tone, color: metric.accent }">
+          <v-icon :icon="metric.icon" size="18" />
+        </div>
+        <div class="summary-card__value">
           <strong>{{ metric.value }}</strong>
           <span>건</span>
         </div>
-        <span>{{ metric.label }}</span>
+        <p>{{ metric.label }}</p>
       </article>
     </section>
 
-    <section class="filter-panel">
+    <section class="consultation-filter-panel">
       <h3>검색 및 필터</h3>
-      <div class="filter-grid">
-        <v-select
-          v-if="showBranchFilter"
-          v-model="filters.organizationCode"
-          :items="branches"
-          item-title="title"
-          item-value="value"
-          label="지점 선택"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingBranches"
-          :disabled="isLoadingBranches"
-        />
-        <v-text-field
-          v-model="filters.customerName"
-          label="고객명"
-          placeholder="고객명 입력"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          @keyup.enter="searchConsultations"
-        />
-        <v-select
-          v-model="filters.consultationType"
-          :items="consultationTypeOptions"
-          item-title="label"
-          item-value="value"
-          label="상담 유형"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-        />
-        <v-select
-          v-model="filters.consultationChannel"
-          :items="channelOptions"
-          item-title="label"
-          item-value="value"
-          label="상담 방식"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-        />
-        <v-text-field
-          v-model="filters.startedAt"
-          label="시작일"
-          type="date"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-        />
-        <v-text-field
-          v-model="filters.endedAt"
-          label="종료일"
-          type="date"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-        />
-        <v-select
-          v-model="filters.sortOrder"
-          :items="sortOptions"
-          item-title="label"
-          item-value="value"
-          label="정렬"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-        />
-      </div>
-      <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="comfortable">
-        {{ branchErrorMessage || branchFpErrorMessage }}
-      </v-alert>
-      <div class="filter-actions">
-        <v-btn class="search-button" @click="searchConsultations">
-          검색
-        </v-btn>
-        <v-btn variant="outlined" class="reset-button" @click="resetFilters">
-          초기화
-        </v-btn>
-        <v-btn v-if="canCreateConsultation" class="create-button" @click="goToCreate">
-          <v-icon icon="mdi-plus" size="16" />
-          상담일지 작성
-        </v-btn>
+      <div class="consultation-panel__toolbar">
+        <div class="filter-grid filter-grid--top">
+          <v-select
+            v-if="showBranchFilter"
+            v-model="filters.organizationCode"
+            :items="branches"
+            item-title="title"
+            item-value="value"
+            label="지점 선택"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :loading="isLoadingBranches"
+            :disabled="isLoadingBranches"
+          />
+          <v-text-field
+            v-model="filters.customerName"
+            placeholder="고객명"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="filter-grid__customer-name"
+            aria-label="고객명"
+            @keyup.enter="searchConsultations"
+          />
+          <v-select
+            v-model="filters.consultationType"
+            :items="consultationTypeOptions"
+            item-title="label"
+            item-value="value"
+            label="상담 유형"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+          <v-select
+            v-model="filters.consultationChannel"
+            :items="channelOptions"
+            item-title="label"
+            item-value="value"
+            label="상담 방식"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+          <v-select
+            v-model="filters.sortOrder"
+            :items="sortOptions"
+            item-title="label"
+            item-value="value"
+            label="정렬"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+          </div>
+
+          <div class="filter-grid filter-grid--bottom">
+          <v-text-field
+            v-model="filters.startedAt"
+            class="filter-grid__date-field"
+            label="시작일"
+            type="date"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+          <v-text-field
+            v-model="filters.endedAt"
+            class="filter-grid__date-field"
+            label="종료일"
+            type="date"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+
+          <div class="filter-actions">
+            <v-btn class="search-button" @click="searchConsultations">
+              검색
+            </v-btn>
+            <v-btn variant="outlined" class="reset-button" @click="resetFilters">
+              초기화
+            </v-btn>
+            <v-btn v-if="canCreateConsultation" class="create-button" @click="goToCreate">
+              <v-icon icon="mdi-plus" size="16" />
+              상담일지 작성
+            </v-btn>
+          </div>
+        </div>
       </div>
     </section>
 
+    <v-alert v-if="branchErrorMessage || branchFpErrorMessage" type="warning" variant="tonal" density="comfortable">
+      {{ branchErrorMessage || branchFpErrorMessage }}
+    </v-alert>
+    <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
+      {{ errorMessage }}
+    </v-alert>
+
     <section class="consultation-panel">
-      <header>
-        <span>{{ rangeLabel }}</span>
-      </header>
-
-      <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
-        {{ errorMessage }}
-      </v-alert>
-
       <div class="consultation-table">
         <table>
           <thead>
@@ -124,12 +131,11 @@
               <th>계약번호</th>
               <th>담당 FP</th>
               <th>다음 상담 예정</th>
-              <th>상세</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="8" class="consultation-table__state">
+              <td colspan="7" class="consultation-table__state">
                 <v-progress-circular indeterminate color="#f97316" size="26" />
                 <span>상담 목록을 불러오는 중입니다.</span>
               </td>
@@ -152,13 +158,10 @@
                 <td>{{ consultation.contractCode || consultation.contractId || '-' }}</td>
                 <td>{{ consultation.fpName || consultation.fpId || '-' }}</td>
                 <td>{{ formatDateTime(consultation.nextScheduledAt) }}</td>
-                <td>
-                  <button type="button" class="detail-button" @click.stop="goToDetail(consultation)">상세</button>
-                </td>
               </tr>
             </template>
             <tr v-if="!isLoading && visibleRows.length === 0">
-              <td colspan="8" class="consultation-table__empty">조건에 맞는 상담 내역이 없습니다.</td>
+              <td colspan="7" class="consultation-table__empty">조건에 맞는 상담 내역이 없습니다.</td>
             </tr>
           </tbody>
         </table>
@@ -271,8 +274,20 @@ const visibleRows = computed(() => {
 const totalElements = computed(() => filteredRows.value.length)
 const totalPages = computed(() => Math.ceil(totalElements.value / pageSize.value))
 const metrics = computed(() => [
-  { icon: 'mdi-file-document-outline', value: totalElements.value.toLocaleString('ko-KR'), label: '전체 상담일지' },
-  { icon: 'mdi-swap-horizontal-bold', value: contractCount.value.toLocaleString('ko-KR'), label: '계약 전환 건수' },
+  {
+    icon: 'mdi-file-document-outline',
+    value: totalElements.value.toLocaleString('ko-KR'),
+    label: '전체 상담일지',
+    accent: '#f97316',
+    tone: '#fff7ed',
+  },
+  {
+    icon: 'mdi-swap-horizontal-bold',
+    value: contractCount.value.toLocaleString('ko-KR'),
+    label: '계약 전환 건수',
+    accent: '#f97316',
+    tone: '#fff7ed',
+  },
 ])
 const rangeLabel = computed(() => {
   if (totalElements.value === 0) return '총 0건'
@@ -639,20 +654,18 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 18px;
 }
 
-.filter-panel,
+.consultation-filter-panel,
 .consultation-panel {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
 }
 
-.metric-row article {
-  display: grid;
-  gap: 6px;
+.summary-card {
   padding: 16px 18px;
   border: 1px solid #e9edf5;
   border-radius: 16px;
@@ -660,75 +673,104 @@ function mergeConsultationRows(serverRows, localRows) {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
-.metric-row article :deep(.v-icon) {
+.summary-card__icon {
   display: grid;
   width: 34px;
   height: 34px;
   place-items: center;
   margin-bottom: 12px;
   border-radius: 10px;
-  background: #fff7ed;
-  color: #f97316;
 }
 
-.metric-row__value {
+.summary-card__value {
   display: flex;
   align-items: baseline;
   gap: 6px;
   margin-bottom: 6px;
 }
 
-.metric-row strong {
-  font-size: 34px;
+.summary-card__value strong {
+  font-size: 28px;
   line-height: 1;
-  color: #1f2937;
+  color: #111827;
 }
 
-.metric-row span {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.metric-row__value span {
-  font-size: 13px;
-}
-
-.filter-panel {
-  display: grid;
-  gap: 16px;
-  padding: 16px 18px;
-}
-
-.filter-panel h3,
-.consultation-panel h3 {
+.summary-card__value span,
+.summary-card p {
   margin: 0;
-  font-size: 14px;
-  font-weight: 800;
+  color: #64748b;
+}
+
+.summary-card__value span {
+  font-size: 13px;
+}
+
+.summary-card p {
+  font-size: 13px;
+}
+
+.consultation-filter-panel > h3 {
+  display: none;
+}
+
+.consultation-panel__toolbar {
+  display: grid;
+  gap: 12px;
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
+  align-items: end;
 }
 
-.filter-panel :deep(.v-field) {
-  min-height: 40px;
+.filter-grid--top {
+  grid-template-columns: repeat(5, 160px);
+}
+
+.filter-grid--bottom {
+  grid-template-columns: 160px 160px 1fr;
+  gap: 8px;
+}
+
+.filter-grid__date-field {
+  width: 160px;
+}
+
+.filter-grid__customer-name {
+  max-width: 100%;
+}
+
+.consultation-filter-panel :deep(.v-field) {
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
-.filter-panel :deep(.v-field__input) {
-  font-size: 13px;
+.consultation-filter-panel :deep(.v-field__input) {
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
+}
+
+.filter-grid__customer-name :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .filter-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
+  grid-column: 3 / 5;
 }
 
 .filter-actions :deep(.v-btn) {
-  height: 40px;
+  width: 160px;
+  height: 34px;
   border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -736,18 +778,54 @@ function mergeConsultationRows(serverRows, localRows) {
   box-shadow: none;
 }
 
-.search-button {
+.filter-actions .search-button {
+  width: 55px;
+  min-width: 55px;
   padding: 0 18px;
 }
 
-.reset-button {
+.filter-actions .reset-button {
+  width: 55px;
+  min-width: 55px;
   padding: 0 16px;
 }
 
-.search-button,
+.search-button {
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  background: #fff7ed;
+  color: #f97316;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
+}
+
 .create-button {
+  width: 160px;
+  min-width: 160px;
+  height: 34px;
+  justify-self: start;
+  border-radius: 10px;
   background: #f97316;
   color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
 }
 
 .reset-button {
@@ -757,11 +835,17 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .consultation-panel {
   display: grid;
-  gap: 12px;
   padding: 12px;
   border-radius: 18px;
   border-color: #edf1f7;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+}
+
+.consultation-filter-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .consultation-panel header {
@@ -861,24 +945,13 @@ function mergeConsultationRows(serverRows, localRows) {
   color: #dc2626;
 }
 
-.detail-button {
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid #f97316;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #f97316;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
 .consultation-panel__pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   color: #64748b;
+  margin-top: 16px;
   font-size: 12px;
 }
 
@@ -888,9 +961,22 @@ function mergeConsultationRows(serverRows, localRows) {
 }
 
 @media (max-width: 1100px) {
-  .metric-row,
+  .metric-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .consultation-panel__toolbar {
+    display: grid;
+    gap: 14px;
+  }
+
   .filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-basis: auto;
+  }
+
+  .filter-actions {
+    justify-content: flex-start;
   }
 }
 

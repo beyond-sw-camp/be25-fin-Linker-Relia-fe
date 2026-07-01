@@ -2,7 +2,10 @@
   <section class="customer-page">
     <div class="customer-page__summary">
       <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-        <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
+        <div
+          class="summary-card__icon"
+          :style="{ backgroundColor: card.tone, color: card.accent }"
+        >
           <v-icon :icon="card.icon" size="18" />
         </div>
         <div class="summary-card__value">
@@ -65,12 +68,12 @@
 
           <v-text-field
             v-model="filters.customerName"
-            label="고객명"
-            placeholder="고객명을 입력하세요"
+            placeholder="고객명"
             variant="outlined"
             density="comfortable"
             hide-details
             class="customer-page__name-filter"
+            aria-label="고객명"
             @keyup.enter="searchCustomers"
           />
 
@@ -198,8 +201,8 @@ const summaryCards = computed(() => [
   {
     label: '전체 고객 수',
     value: summary.value.totalCustomerCount.toLocaleString('ko-KR'),
-    accent: '#475569',
-    tone: '#f8fafc',
+    accent: '#7c3aed',
+    tone: '#ede9fe',
     icon: 'mdi-account-group-outline',
   },
   {
@@ -265,7 +268,7 @@ function goToCustomerDetail(customerId) {
 
 .customer-page__organization-filter {
   min-width: 0;
-  width: 180px;
+  width: 160px;
   flex: 0 0 auto;
 }
 
@@ -281,24 +284,34 @@ function goToCustomerDetail(customerId) {
 }
 
 .customer-page__name-filter {
-  width: 240px;
+  width: 160px;
   max-width: 100%;
-  flex: 1 1 240px;
+  flex: 0 0 160px;
+}
+
+.customer-page__name-filter :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .customer-page__sort-filter {
-  width: 180px;
+  width: 160px;
   flex: 0 0 auto;
 }
 
 .customer-page__toolbar :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .customer-page__toolbar :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .status-tabs {
@@ -316,7 +329,7 @@ function goToCustomerDetail(customerId) {
   border-bottom: 2px solid transparent;
   background: transparent;
   font-size: 14px;
-  color: #6b7280;
+  color: #64748b;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -324,23 +337,45 @@ function goToCustomerDetail(customerId) {
 .status-tabs__button--active {
   color: #f97316;
   border-bottom-color: #f97316;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .customer-page__search-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 10px;
-  background: #f97316;
-  color: #ffffff;
+  background: #fff7ed;
+  color: #f97316;
   padding: 0 18px;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0;
   box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.customer-page__search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.customer-page__search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .customer-page__reset-button {
-  height: 40px;
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
   border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;
@@ -388,13 +423,13 @@ function goToCustomerDetail(customerId) {
 .summary-card__value strong {
   font-size: 34px;
   line-height: 1;
-  color: #1f2937;
+  color: #111827;
 }
 
 .summary-card__value span,
 .summary-card p {
   margin: 0;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .summary-card__value span {
@@ -438,15 +473,15 @@ function goToCustomerDetail(customerId) {
 .customer-table th,
 .customer-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #e5e7eb;
   font-size: 13px;
   text-align: center;
-  color: #475569;
+  color: #64748b;
 }
 
 .customer-table th {
-  background: #f8fafc;
-  font-size: 12px;
+  background: #f1f5f9;
+  font-size: 13px;
   font-weight: 700;
   color: #64748b;
 }

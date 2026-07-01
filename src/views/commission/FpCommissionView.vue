@@ -843,11 +843,13 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-page__month-field {
-  width: 180px;
+  width: 160px;
 }
 
 .commission-page__reset-button {
-  height: 40px;
+  width: 120px;
+  min-width: 55px;
+  height: 34px;
   padding: 0 18px;
   border-radius: 10px;
   border-color: #d1d5db;
@@ -869,13 +871,17 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-page__toolbar :deep(.v-field) {
-  min-height: 40px;
+  min-height: 34px;
+  height: 34px;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .commission-page__toolbar :deep(.v-field__input) {
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
 }
 
 .commission-summary {
@@ -915,7 +921,7 @@ function getLatestAvailableClosingMonth() {
 .summary-card__value {
   display: block;
   margin-top: 10px;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.08;
   color: #111827;
 }
@@ -929,8 +935,14 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card__caption {
-  margin-top: 8px;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 700;
+
 }
 
 .commission-layout {
