@@ -70,7 +70,9 @@ export async function getOrganizationFpContracts(fpId, params = {}) {
 }
 
 export async function resignOrganizationFp(fpId, payload) {
-  const response = await authApi.patch(`/organizations/fps/${fpId}/resign`, payload)
+  const response = await authApi.patch(`/organizations/fps/${fpId}/resign`, payload, {
+    timeout: 30000,
+  })
   return unwrapResult(response) ?? null
 }
 
