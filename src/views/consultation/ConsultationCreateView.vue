@@ -2008,6 +2008,13 @@ async function submitConsultation() {
     esgImpactStore.recordActivity(
       'CONSULTATION',
       response?.result?.createdAt ?? response?.result?.consultedAt ?? payload.consultedAt,
+      {
+        sourceId:
+          response?.result?.consultationId ??
+          response?.result?.id ??
+          payload.customerId ??
+          payload.consultedAt,
+      },
     )
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'

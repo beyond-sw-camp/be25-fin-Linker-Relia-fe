@@ -182,6 +182,13 @@ export function useCustomerDetail(customerId) {
       esgImpactStore.recordActivity(
         'AI_BRIEFING',
         response?.result?.createdAt ?? response?.result?.updatedAt,
+        {
+          sourceId:
+            response?.result?.aiBriefingId ??
+            response?.result?.briefingId ??
+            response?.result?.id ??
+            `${customerId.value}-${response?.result?.createdAt ?? response?.result?.updatedAt ?? Date.now()}`,
+        },
       )
     } catch (error) {
       briefing.errorMessage = getAiBriefingCreateErrorMessage(error)
