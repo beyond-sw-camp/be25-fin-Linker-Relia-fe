@@ -268,7 +268,7 @@ import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 
-const ALL_BRANCH_LABEL = '전사(전체 지점)'
+const ALL_BRANCH_LABEL = '전체 지점'
 const ALL_BRANCH_VALUE = ''
 
 const selectedBranch = ref(ALL_BRANCH_VALUE)
@@ -531,9 +531,7 @@ async function loadBranchOptions() {
     branchOptions.value = [
       { label: ALL_BRANCH_LABEL, value: ALL_BRANCH_VALUE },
       ...organizations.map((branch) => ({
-        label: branch.organizationCode && branch.organizationName
-          ? `${branch.organizationCode} · ${branch.organizationName}`
-          : branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
         value: branch.organizationCode ?? branch.organizationName ?? 'unknown',
       })),
     ]
