@@ -1641,7 +1641,7 @@ function toDateInputValue(date) {
   border: 1px solid #fb923c;
   border-radius: 12px;
   background: #fff7ed;
-  color: #c2410c;
+  color: #f97316;
   font-size: 12px;
 }
 
@@ -1708,7 +1708,7 @@ function toDateInputValue(date) {
 
 .metric-card__value span,
 .metric-card p {
-  color: #64748b;
+  color: #475569;
 }
 
 .metric-card p {
@@ -1815,12 +1815,13 @@ function toDateInputValue(date) {
   margin-left: 2px;
   font-size: 13px;
   font-weight: 500;
+  color: #475569;
 }
 
 .status-card p {
   margin: 8px 0 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .status-card--review {
@@ -1888,8 +1889,8 @@ function toDateInputValue(date) {
   border-radius: 12px;
   background: #f8fafc;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -2082,6 +2083,7 @@ function toDateInputValue(date) {
 .line-chart-tooltip strong {
   color: #111827;
   font-size: 12px;
+  font-weight: 600;
 }
 
 .chart-legend {
@@ -2297,7 +2299,7 @@ function toDateInputValue(date) {
   border-radius: 10px;
   background: #f8fafc;
   color: #64748b;
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -2460,7 +2462,7 @@ function toDateInputValue(date) {
   background: #fff7ed;
   color: #f97316;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -2477,12 +2479,12 @@ function toDateInputValue(date) {
   transform: translateY(-1px);
   border-color: rgba(249, 115, 22, 0.55);
   background: #ffedd5;
-  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.16);
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
 }
 
 .schedule-panel__memo:active {
   transform: translateY(0);
-  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.12);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 }
 
 .schedule-edit-modal {
