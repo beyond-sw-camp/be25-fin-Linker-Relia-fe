@@ -54,8 +54,11 @@
         <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
           <v-icon :icon="card.icon" size="18" />
         </div>
+        <div class="summary-card__metric" :class="card.valueClass">
+          <strong class="summary-card__value">{{ card.value }}</strong>
+          <span v-if="card.unit" class="summary-card__unit">{{ card.unit }}</span>
+        </div>
         <p class="summary-card__label">{{ card.label }}</p>
-        <strong class="summary-card__value" :class="card.valueClass">{{ card.value }}</strong>
         <p class="summary-card__caption">{{ card.caption }}</p>
       </article>
     </div>
@@ -419,7 +422,8 @@ const summaryCards = computed(() => {
   return [
     {
       label: '총 지급 수수료',
-      value: formatCurrency(summary.value.totalPaymentCommissionAmount),
+      value: formatCurrencyAmount(summary.value.totalPaymentCommissionAmount),
+      unit: '원',
       caption: basePaymentCaption,
       accent: '#f97316',
       tone: '#fff3e8',
@@ -427,7 +431,8 @@ const summaryCards = computed(() => {
     },
     {
       label: incomeLabel,
-      value: formatCurrency(summary.value.netCommissionAmount),
+      value: formatCurrencyAmount(summary.value.netCommissionAmount),
+      unit: '원',
       caption: incomeCaption,
       accent: '#2563eb',
       tone: '#eff6ff',
@@ -444,7 +449,8 @@ const summaryCards = computed(() => {
     },
     {
       label: '환수 순손실',
-      value: formatMetricCurrency(summary.value.netRecoveryLossAmount),
+      value: formatNullableCurrencyAmount(summary.value.netRecoveryLossAmount),
+      unit: getCurrencyUnit(summary.value.netRecoveryLossAmount),
       caption: recoveryLossCaption,
       accent: '#8b5cf6',
       tone: '#f5f3ff',
@@ -453,7 +459,8 @@ const summaryCards = computed(() => {
     },
     {
       label: '신계약 수수료',
-      value: formatCurrency(summary.value.initialCommissionAmount),
+      value: formatCurrencyAmount(summary.value.initialCommissionAmount),
+      unit: '원',
       caption: '당월 신규 체결된 계약으로 발생한 회사 수입 수수료',
       accent: '#7c3aed',
       tone: '#f5f3ff',
@@ -461,7 +468,8 @@ const summaryCards = computed(() => {
     },
     {
       label: '유지 수수료',
-      value: formatCurrency(summary.value.renewalCommissionAmount),
+      value: formatCurrencyAmount(summary.value.renewalCommissionAmount),
+      unit: '원',
       caption: '유지 중인 계약에서 발생한 회사 수입 수수료',
       accent: '#0ea5a4',
       tone: '#ecfeff',
@@ -469,7 +477,8 @@ const summaryCards = computed(() => {
     },
     {
       label: '원수사 환수금',
-      value: formatMetricCurrency(summary.value.insuranceClawbackAmount),
+      value: formatNullableCurrencyAmount(summary.value.insuranceClawbackAmount),
+      unit: getCurrencyUnit(summary.value.insuranceClawbackAmount),
       caption:
         summary.value.insuranceClawbackAmount === null
           ? '분리 환수 데이터 없음'
@@ -481,7 +490,8 @@ const summaryCards = computed(() => {
     },
     {
       label: '설계사 환수금',
-      value: formatMetricCurrency(summary.value.fpClawbackAmount),
+      value: formatNullableCurrencyAmount(summary.value.fpClawbackAmount),
+      unit: getCurrencyUnit(summary.value.fpClawbackAmount),
       caption:
         summary.value.fpClawbackAmount === null
           ? '분리 환수 데이터 없음'
@@ -1296,6 +1306,18 @@ function formatCount(value) {
   return Number(value ?? 0).toLocaleString('ko-KR')
 }
 
+function formatCurrencyAmount(value) {
+  return Number(value ?? 0).toLocaleString('ko-KR')
+}
+
+function formatNullableCurrencyAmount(value) {
+  return value === null || value === undefined ? '-' : formatCurrencyAmount(value)
+}
+
+function getCurrencyUnit(value) {
+  return value === null || value === undefined ? '' : '원'
+}
+
 function formatMonthLabel(value) {
   if (!value) {
     return '-'
@@ -1404,7 +1426,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .commission-page__reset-button {
-  width: 55px;
+  width: 120px;
   min-width: 55px;
   height: 34px;
   padding: 0 18px;
@@ -1443,7 +1465,7 @@ function getLatestAvailableClosingMonth() {
 
 .commission-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1471,29 +1493,47 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card__label {
+  margin: 8px 0 0;
+  color: #475569;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
+}
+
+.summary-card__metric {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 0;
 }
 
 .summary-card__value {
-  display: block;
-  margin-top: 10px;
-  font-size: 30px;
-  line-height: 1.08;
   color: #111827;
+  font-size: 28px;
+  line-height: 1.08;
 }
 
-.summary-card__value--success {
+.summary-card__unit {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.summary-card__value--success .summary-card__value {
   color: #65a30d;
 }
 
-.summary-card__value--danger {
+.summary-card__value--danger .summary-card__value {
   color: #ef4444;
 }
 
 .summary-card__caption {
-  margin-top: 8px;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .commission-layout {

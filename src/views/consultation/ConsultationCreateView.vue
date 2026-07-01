@@ -2724,10 +2724,11 @@ function toApiDateTime(value) {
 
 .search-control {
   display: flex;
-  width: 100px;
+  width: 100%;
   max-width: 100%;
-  min-height: 34px;
-  height: 34px;
+  min-height: 40px;
+  height: 40px;
+  overflow: hidden;
   border: 1px solid #d9e0ea;
   border-radius: 10px;
   background: #ffffff;
@@ -2737,12 +2738,16 @@ function toApiDateTime(value) {
 .search-control input {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   border: 0;
+  background: transparent;
 }
 
 .search-control button {
   width: 55px;
   min-width: 55px;
+  height: 100%;
 }
 
 .address-box__button,
@@ -3471,21 +3476,34 @@ function toApiDateTime(value) {
 
 .address-box__search {
   display: grid;
-  grid-template-columns: 160px 55px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.address-box .control {
+  text-align: center;
+}
+
+.address-box .control::placeholder {
+  text-align: center;
 }
 
 .address-box__button {
-  height: 34px;
-  width: 55px;
-  min-width: 55px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-height: 40px;
+  width: 78px;
+  min-width: 78px;
   padding: 0 12px;
   border: 1px solid rgba(249, 115, 22, 0.28);
   border-radius: 6px;
   background: #fff7ed;
   color: #f97316;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   transition:
     transform 0.18s ease,

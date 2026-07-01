@@ -151,6 +151,17 @@
 
       <div class="handover-table">
         <table>
+          <colgroup>
+            <col class="handover-col--customer" />
+            <col class="handover-col--grade" />
+            <col v-if="showBranchColumn" class="handover-col--branch" />
+            <col class="handover-col--current" />
+            <col class="handover-col--recommended" />
+            <col class="handover-col--type" />
+            <col class="handover-col--status" />
+            <col class="handover-col--requested" />
+            <col class="handover-col--approved" />
+          </colgroup>
           <thead>
             <tr>
               <th>고객명</th>
@@ -162,7 +173,6 @@
               <th>진행 상태</th>
               <th>요청일</th>
               <th>결재 완료일</th>
-              <th><span class="sr-only">처리</span></th>
             </tr>
           </thead>
           <tbody>
@@ -177,11 +187,15 @@
                 조건에 맞는 인수인계 요청이 없습니다.
               </td>
             </tr>
-            <tr v-for="handover in filteredRows" v-else :key="handover.handoverId">
+            <tr
+              v-for="handover in filteredRows"
+              v-else
+              :key="handover.handoverId"
+              class="is-clickable"
+              @click="goToHandoverDetail(handover)"
+            >
               <td>
-                <button class="handover-table__customer" type="button" @click="goToHandoverDetail(handover)">
-                  {{ handover.customerName }}
-                </button>
+                <span class="handover-table__customer">{{ handover.customerName }}</span>
               </td>
               <td>{{ getCustomerGradeLabel(handover.customerGrade) }}</td>
               <td v-if="showBranchColumn">{{ handover.organizationName }}</td>
@@ -208,24 +222,6 @@
               </td>
               <td>{{ handover.requestedAt }}</td>
               <td>{{ handover.approvedAt }}</td>
-              <td>
-                <button
-                  v-if="handover.status === 'MANAGER_PENDING'"
-                  class="handover-action handover-action--primary"
-                  type="button"
-                  @click="goToHandoverDetail(handover)"
-                >
-                  {{ primaryActionLabel }}
-                </button>
-                <button
-                  v-else
-                  class="handover-action"
-                  type="button"
-                  @click="goToHandoverDetail(handover)"
-                >
-                  상세 보기
-                </button>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -302,7 +298,7 @@ const showTrendAnalytics = computed(() => canViewOrganizationWideHandovers.value
 const showBranchAnalytics = computed(() => isHqManager.value)
 const showBranchColumn = computed(() => canViewOrganizationWideHandovers.value)
 const showScopeLine = computed(() => showBranchFilter.value)
-const tableColumnCount = computed(() => (showBranchColumn.value ? 10 : 9))
+const tableColumnCount = computed(() => (showBranchColumn.value ? 9 : 8))
 const filteredRows = computed(() => handoverRows.value)
 const selectedBranchOption = computed(() =>
   branches.value.find((branch) => branch.value === filters.organizationCode) ?? null,
@@ -316,7 +312,6 @@ const handoverScopeName = computed(() => {
 
   return authStore.user?.organizationName ?? '소속 지점'
 })
-const primaryActionLabel = computed(() => (canViewOrganizationWideHandovers.value ? '상세 보기' : '결재 처리'))
 const monthlyTrendRows = computed(() => normalizeMonthlyTrend(trendRows.value))
 const branchSummaryRows = computed(() => normalizeBranchSummaries(branchSummaries.value))
 const trendMaxValue = computed(() => {
@@ -1219,8 +1214,36 @@ function getTrendY(value) {
 
 .handover-table table {
   width: 100%;
-  min-width: 930px;
+  min-width: 900px;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.handover-col--customer {
+  width: 15%;
+}
+
+.handover-col--grade {
+  width: 8%;
+}
+
+.handover-col--branch {
+  width: 13%;
+}
+
+.handover-col--current,
+.handover-col--recommended {
+  width: 12%;
+}
+
+.handover-col--type,
+.handover-col--status {
+  width: 11%;
+}
+
+.handover-col--requested,
+.handover-col--approved {
+  width: 9%;
 }
 
 .handover-table th,
@@ -1231,6 +1254,8 @@ function getTrendY(value) {
   font-size: 13px;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .handover-table tr:last-child td {
@@ -1244,19 +1269,18 @@ function getTrendY(value) {
   font-weight: 700;
 }
 
-.handover-table th:last-child,
-.handover-table td:last-child {
-  text-align: center;
+.handover-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.handover-table tr.is-clickable:hover {
+  background: #fff7ed;
 }
 
 .handover-table__customer {
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: #f97316;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
 }
 
 .handover-table__muted {
@@ -1331,24 +1355,6 @@ function getTrendY(value) {
 
 .handover-status--completed {
   color: #16a34a;
-}
-
-.handover-action {
-  min-width: 0;
-  min-height: 28px;
-  padding: 5px 10px;
-  border: 1px solid #d8dce3;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #6f7680;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.handover-action--primary {
-  border-color: #ffb17d;
-  color: #f97316;
 }
 
 .sr-only {

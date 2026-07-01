@@ -118,11 +118,16 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="customer in customers" :key="customer.customerId">
+              <tr
+                v-for="customer in customers"
+                :key="customer.customerId"
+                class="is-clickable"
+                @click="goToCustomerDetail(customer.customerId)"
+              >
                 <td>
-                  <button class="customer-table__link" type="button" @click="goToCustomerDetail(customer.customerId)">
+                  <span class="customer-table__link">
                     {{ customer.customerName }}
-                  </button>
+                  </span>
                 </td>
                 <td>{{ customer.organizationName || '-' }}</td>
                 <td>{{ formatDate(customer.customerBirthDate) }}</td>
@@ -496,13 +501,17 @@ function goToCustomerDetail(customerId) {
   border-bottom: 0;
 }
 
+.customer-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.customer-table tr.is-clickable:hover {
+  background: #fff7ed;
+}
+
 .customer-table__link {
-  border: 0;
-  padding: 0;
-  background: transparent;
   color: #f97316;
   font-weight: 700;
-  cursor: pointer;
   text-align: center;
 }
 

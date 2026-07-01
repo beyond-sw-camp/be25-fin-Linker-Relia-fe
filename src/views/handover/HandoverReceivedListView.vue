@@ -5,10 +5,13 @@
         v-for="card in summaryCards"
         :key="card.label"
         class="received-summary-card"
-        :style="{ '--dot': card.color }"
       >
-        <span class="received-summary-card__dot" aria-hidden="true">
-          <v-icon :icon="card.icon" size="22" />
+        <span
+          class="received-summary-card__icon"
+          :style="{ backgroundColor: card.tone, color: card.accent }"
+          aria-hidden="true"
+        >
+          <v-icon :icon="card.icon" size="18" />
         </span>
         <div class="received-summary-card__value">
           <strong>{{ card.value }}</strong>
@@ -36,6 +39,13 @@
 
       <div class="received-table">
         <table>
+          <colgroup>
+            <col class="received-col--customer" />
+            <col class="received-col--grade" />
+            <col class="received-col--before-fp" />
+            <col class="received-col--reason" />
+            <col class="received-col--date" />
+          </colgroup>
           <thead>
             <tr>
               <th>고객명</th>
@@ -43,26 +53,29 @@
               <th>이전 담당 설계사</th>
               <th>변경 사유</th>
               <th>인수일</th>
-              <th><span class="sr-only">상세 보기</span></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="6" class="received-table__state">
+              <td colspan="5" class="received-table__state">
                 <v-progress-circular indeterminate color="#f97316" size="28" />
                 <span>인수받은 고객 목록을 불러오는 중입니다.</span>
               </td>
             </tr>
             <tr v-else-if="filteredRows.length === 0">
-              <td colspan="6" class="received-table__state">
+              <td colspan="5" class="received-table__state">
                 조건에 맞는 인수 고객이 없습니다.
               </td>
             </tr>
-            <tr v-for="row in filteredRows" v-else :key="row.handoverRequestId || row.customerId">
+            <tr
+              v-for="row in filteredRows"
+              v-else
+              :key="row.handoverRequestId || row.customerId"
+              class="is-clickable"
+              @click="goToHandoverDetail(row)"
+            >
               <td>
-                <button class="received-table__customer" type="button" @click="goToHandoverDetail(row)">
-                  {{ row.customerName }}
-                </button>
+                <span class="received-table__customer">{{ row.customerName }}</span>
               </td>
               <td>
                 <span class="received-grade" :class="getGradeClass(row.customerGrade)">
@@ -76,11 +89,6 @@
               </td>
               <td>{{ row.changedReason || '-' }}</td>
               <td>{{ row.changedAt }}</td>
-              <td>
-                <button class="received-table__action" type="button" @click="goToHandoverDetail(row)">
-                  상세 보기
-                </button>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -129,21 +137,24 @@ const summaryCards = computed(() => [
     label: '이번 달 인수',
     value: formatCount(summary.value.thisMonthReceivedCount),
     unit: '명',
-    color: '#c9f2e7',
+    accent: '#14b8a6',
+    tone: '#dff7f2',
     icon: 'mdi-account-arrow-right-outline',
   },
   {
     label: '누적 인수 건수',
     value: formatCount(summary.value.totalReceivedCount),
     unit: '명',
-    color: '#ffeadf',
+    accent: '#f97316',
+    tone: '#fff1e8',
     icon: 'mdi-account-multiple-check-outline',
   },
   {
     label: '인수 계약 유지율',
     value: formatPercentValue(summary.value.successRate),
     unit: '%',
-    color: '#eeebff',
+    accent: '#8b5cf6',
+    tone: '#f0edff',
     icon: 'mdi-chart-line',
   },
 ])
@@ -343,15 +354,17 @@ function formatDate(value) {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
-.received-summary-card__dot {
-  display: flex;
-  width: 40px;
-  height: 40px;
+.received-summary-card__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
   margin-bottom: 12px;
   border-radius: 10px;
-  background: var(--dot);
-  align-items: center;
-  justify-content: center;
+}
+
+.received-summary-card__icon :deep(.v-icon) {
+  color: currentColor;
 }
 
 .received-summary-card__value {
@@ -362,14 +375,14 @@ function formatDate(value) {
 }
 
 .received-summary-card__value strong {
-  color: #1f2937;
-  font-size: 34px;
-  line-height: 1;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1.08;
 }
 
 .received-summary-card__value span,
 .received-summary-card p {
-  color: #8b8f98;
+  color: #475569;
 }
 
 .received-summary-card__value span {
@@ -479,8 +492,29 @@ function formatDate(value) {
 
 .received-table table {
   width: 100%;
-  min-width: 820px;
+  min-width: 760px;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.received-col--customer {
+  width: 22%;
+}
+
+.received-col--grade {
+  width: 12%;
+}
+
+.received-col--before-fp {
+  width: 22%;
+}
+
+.received-col--reason {
+  width: 28%;
+}
+
+.received-col--date {
+  width: 16%;
 }
 
 .received-table th,
@@ -491,6 +525,8 @@ function formatDate(value) {
   font-size: 13px;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .received-table tr:last-child td {
@@ -504,31 +540,17 @@ function formatDate(value) {
   font-weight: 700;
 }
 
-.received-table th:last-child,
-.received-table td:last-child {
-  text-align: center;
+.received-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.received-table tr.is-clickable:hover {
+  background: #fff7ed;
 }
 
 .received-table__customer {
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: #f97316;
   font-weight: 700;
-  cursor: pointer;
-}
-
-.received-table__action {
-  min-width: 0;
-  min-height: 28px;
-  padding: 5px 10px;
-  border: 1px solid #ffb17d;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #f97316;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
 }
 
 .received-table__muted {

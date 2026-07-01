@@ -85,23 +85,23 @@
           >
             <v-text-field
               v-model.trim="organizationMemberFilters.keyword"
-              label="이름"
-              placeholder="이름 검색"
+              placeholder="고객명"
               variant="outlined"
               density="comfortable"
               hide-details
               class="organization-member-search-field"
+              aria-label="고객명"
               @keyup.enter="searchOrganizationMembers"
             />
             <v-text-field
               v-if="canAccessAllOrganizations"
               v-model.trim="organizationMemberFilters.branchKeyword"
-              label="지점명"
-              placeholder="지점명 검색"
+              placeholder="지점명"
               variant="outlined"
               density="comfortable"
               hide-details
               class="organization-member-search-field"
+              aria-label="지점명"
               @keyup.enter="searchOrganizationMembers"
             />
             <v-select
@@ -183,7 +183,7 @@
                     :class="{ 'clickable-row': isClickableFpMember(member) }"
                     @click="goToOrganizationMemberDetail(member)"
                   >
-                    <td><strong>{{ member.userName }}</strong></td>
+                    <td>{{ member.userName }}</td>
                     <td>{{ member.organizationName }}</td>
                     <td>{{ getRoleLabel(member.userRole) }}</td>
                     <td>{{ member.empCode || '-' }}</td>
@@ -260,12 +260,12 @@
         >
           <v-text-field
             v-model.trim="fpFilters.keyword"
-            label="이름"
-            placeholder="이름 검색"
+            placeholder="고객명"
             variant="outlined"
             density="comfortable"
             hide-details
             class="organization-search-field"
+            aria-label="고객명"
             @keyup.enter="searchFps"
           />
           <v-select
@@ -326,7 +326,7 @@
                   v-for="fp in fpPage.content"
                   :key="fp.id"
                 >
-                  <td><strong>{{ fp.userName }}</strong></td>
+                  <td>{{ fp.userName }}</td>
                   <td>{{ fp.empCode || '-' }}</td>
                   <td>{{ fp.organizationName }}</td>
                   <td>{{ fp.phone || '-' }}</td>
@@ -464,6 +464,39 @@
             <p>{{ isFpMyPage ? '내가 담당하는 계약 목록입니다.' : '해당 FP가 담당하는 계약 목록입니다.' }}</p>
           </div>
         </div>
+
+        <form class="fp-contract-filters" @submit.prevent="searchContracts">
+          <v-select
+            v-model="contractFilters.sort"
+            :items="contractSortOptions"
+            item-title="label"
+            item-value="value"
+            label="정렬"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="organization-search-field"
+            @update:model-value="searchContracts"
+          />
+          <v-text-field
+            v-model.trim="contractFilters.keyword"
+            placeholder="고객명"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="organization-search-field"
+            aria-label="고객명"
+            @keyup.enter="searchContracts"
+          />
+          <div class="organization-filter-actions">
+            <button class="button button--primary" type="submit">
+              검색
+            </button>
+            <button class="button button--secondary" type="button" @click="resetContractFilters">
+              초기화
+            </button>
+          </div>
+        </form>
 
         <LoadingState v-if="isContractsLoading" message="계약 목록을 불러오고 있습니다." />
         <ErrorState v-else-if="contractsError" :message="contractsError" />
@@ -708,6 +741,8 @@ const fpFilters = reactive({
 const contractFilters = reactive({
   page: 1,
   size: 10,
+  keyword: '',
+  sort: 'LATEST_CONTRACT',
 })
 
 const organizationStatusOptions = [
@@ -729,6 +764,12 @@ const fpSortOptions = [
   { label: '이름 내림차순', value: 'NAME_DESC' },
   { label: '지점명순', value: 'BRANCH_ASC' },
   { label: '사번순', value: 'EMP_CODE_ASC' },
+]
+
+const contractSortOptions = [
+  { label: '최신 계약순', value: 'LATEST_CONTRACT' },
+  { label: '오래된 계약순', value: 'OLDEST_CONTRACT' },
+  { label: '계약 만기임박순', value: 'EXPIRY_SOON' },
 ]
 
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
@@ -1290,6 +1331,30 @@ function resetFpFilters() {
 function changeFpPage(page) {
   fpFilters.page = page
   loadFps()
+}
+
+function searchContracts() {
+  contractFilters.page = 1
+
+  if (isFpMyPage.value) {
+    loadMyFpContracts()
+    return
+  }
+
+  loadFpContracts(String(route.params.fpId))
+}
+
+function resetContractFilters() {
+  contractFilters.page = 1
+  contractFilters.keyword = ''
+  contractFilters.sort = 'LATEST_CONTRACT'
+
+  if (isFpMyPage.value) {
+    loadMyFpContracts()
+    return
+  }
+
+  loadFpContracts(String(route.params.fpId))
 }
 
 function changeContractPage(page) {
@@ -2113,13 +2178,20 @@ const EmptyState = defineComponent({
 
 .organization-member-filter-actions .button--primary,
 .organization-filter-actions .button--primary {
-  width: 55px;
+  width: auto;
   min-width: 55px;
   height: 34px;
   min-height: 34px;
+  justify-content: center;
+  box-sizing: border-box;
   border-color: rgba(249, 115, 22, 0.28);
   background: #fff7ed;
   color: #f97316;
+  padding: 0 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -2145,6 +2217,26 @@ const EmptyState = defineComponent({
   border-color: #d1d5db;
   background: #ffffff;
   color: #475569;
+}
+
+.organization-member-filter-actions .button--secondary,
+.organization-filter-actions .button--secondary {
+  width: auto;
+  min-width: 55px;
+  height: 34px;
+  min-height: 34px;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border-color: #d1d5db;
+  color: #475569;
+  padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: none;
+  white-space: nowrap;
 }
 
 .button--danger {
@@ -2358,6 +2450,13 @@ const EmptyState = defineComponent({
   padding-top: 0;
   padding-bottom: 0;
   font-size: 14px;
+}
+
+.organization-member-search-field :deep(input::placeholder),
+.organization-search-field :deep(input::placeholder) {
+  color: #64748b;
+  font-size: 14px;
+  opacity: 1;
 }
 
 .branch-summary-strip {
@@ -2723,12 +2822,24 @@ const EmptyState = defineComponent({
   grid-template-columns: repeat(2, 160px) auto;
 }
 
+.fp-contract-filters {
+  display: grid;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: repeat(2, 160px) auto;
+  align-items: end;
+  gap: 12px;
+  justify-content: end;
+  margin: 0 0 14px auto;
+}
+
 .organization-member-filter-actions .button,
 .organization-filter-actions .button {
-  width: 55px;
+  width: auto;
   min-width: 55px;
   height: 34px;
   min-height: 34px;
+  white-space: nowrap;
 }
 
 .organization-filter-actions {
@@ -3232,6 +3343,12 @@ tbody tr:last-child td {
 
   .organization-filter-panel .filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .fp-contract-filters {
+    width: 100%;
+    grid-template-columns: 1fr;
+    margin-left: 0;
   }
 
   .organization-member-filters,
