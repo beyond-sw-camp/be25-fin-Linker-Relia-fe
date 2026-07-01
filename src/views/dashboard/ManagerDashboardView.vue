@@ -91,7 +91,10 @@
     <div class="top-performer-grid">
       <article v-for="performer in topPerformers" :key="performer.eyebrow" class="top-performer-card">
         <span>{{ performer.eyebrow }}</span>
-        <p><strong>{{ performer.name }}</strong> {{ performer.meta }}</p>
+        <p>
+          <strong>{{ performer.name }}</strong>
+          <span v-if="performer.meta" class="top-performer-card__meta">{{ performer.meta }}</span>
+        </p>
       </article>
     </div>
 
@@ -265,7 +268,7 @@ import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 
-const ALL_BRANCH_LABEL = '전사(전체 지점)'
+const ALL_BRANCH_LABEL = '전체 지점'
 const ALL_BRANCH_VALUE = ''
 
 const selectedBranch = ref(ALL_BRANCH_VALUE)
@@ -528,9 +531,7 @@ async function loadBranchOptions() {
     branchOptions.value = [
       { label: ALL_BRANCH_LABEL, value: ALL_BRANCH_VALUE },
       ...organizations.map((branch) => ({
-        label: branch.organizationCode && branch.organizationName
-          ? `${branch.organizationCode} · ${branch.organizationName}`
-          : branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
         value: branch.organizationCode ?? branch.organizationName ?? 'unknown',
       })),
     ]
@@ -1353,10 +1354,10 @@ const topPerformers = computed(() => {
     {
       eyebrow: '전체 지점 1위 설계사',
       name: topAdvisorCardItem.value?.name ?? '-',
-      meta: '',
+      meta: topAdvisorCardItem.value?.branchName ?? '',
     },
     {
-      eyebrow: '전체 지점 1위 소속 지점',
+      eyebrow: '최고실적 지점',
       name: topAdvisorCardItem.value?.branchName ?? '-',
       meta: '',
     },
@@ -1577,6 +1578,15 @@ function getAdvisorCellValue(advisor, key) {
   color: #f97316;
   font-size: 24px;
   font-weight: 700;
+}
+
+.top-performer-card__meta {
+  display: inline-block;
+  margin-left: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: baseline;
 }
 
 .chart-grid {
