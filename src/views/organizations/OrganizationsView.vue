@@ -361,11 +361,25 @@
     </template>
 
     <template v-else>
-      <section class="panel organization-detail-panel">
+      <PageBackLink v-if="!isFpMyPage" label="조직도" @click="goToOrganizationChart" />
+
+      <section
+        class="panel organization-detail-panel"
+        :class="{
+          'organization-detail-panel--my-page': isFpMyPage,
+          'organization-detail-panel--fp-detail': !isFpMyPage,
+        }"
+      >
+        <div v-if="isFpMyPage" class="my-page-heading">
+          <h3>{{ pageTitle }}</h3>
+          <p>{{ pageDescription }}</p>
+        </div>
+        <div v-else class="fp-detail-heading">
+          <h3>{{ pageTitle }}</h3>
+          <p>{{ pageDescription }}</p>
+        </div>
+
         <div class="detail-toolbar">
-          <button v-if="!isFpMyPage" class="button button--secondary" type="button" @click="goToFpList">
-            목록으로
-          </button>
           <v-text-field
             v-model="detailClosingMonth"
             type="month"
@@ -633,6 +647,7 @@ import {
   getOrganizationsBranches,
   resignOrganizationFp,
 } from '../../api/organizations'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
 
@@ -761,7 +776,7 @@ const pageTitle = computed(() => {
   if (props.mode === 'fps' && selectedFpBranchName.value) return `${selectedFpBranchName.value} 설계사 목록`
   if (props.mode === 'fps') return 'FP 목록'
   if (props.mode === 'fp-my-page') return '마이 페이지'
-  return 'FP 상세'
+  return '설계사 상세 정보'
 })
 
 const pageDescription = computed(() => {
@@ -1642,26 +1657,14 @@ function goToBranchAdvisors(organization) {
   })
 }
 
-function goToFpList() {
-  const fromRouteName = normalizeQueryValue(route.query.from)
-
-  if (fromRouteName === 'organization-chart' || fromRouteName === 'admin-organizations') {
-    router.push({
-      name: fromRouteName,
-      query: {
-        ...(route.query.organizationId ? { organizationId: route.query.organizationId } : {}),
-        ...(route.query.organizationType ? { organizationType: route.query.organizationType } : {}),
-      },
-    })
-    return
-  }
-
-  if (authStore.userRole === USER_ROLES.SYSTEM_ADMIN) {
-    router.push({ name: 'admin-organizations' })
-    return
-  }
-
-  router.push({ name: 'hq-advisors' })
+function goToOrganizationChart() {
+  router.push({
+    name: 'organization-chart',
+    query: {
+      ...(route.query.organizationId ? { organizationId: route.query.organizationId } : {}),
+      ...(route.query.organizationType ? { organizationType: route.query.organizationType } : {}),
+    },
+  })
 }
 
 function normalizeQueryValue(value) {
@@ -2040,12 +2043,64 @@ const EmptyState = defineComponent({
 
 .organization-detail-panel .detail-toolbar {
   margin-bottom: 14px;
+  justify-content: flex-end;
+}
+
+.organization-detail-panel--my-page .detail-toolbar {
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.my-page-heading {
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.my-page-heading h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.my-page-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.fp-detail-heading {
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.fp-detail-heading h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.fp-detail-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .organization-detail-panel .fp-profile {
   align-items: flex-start;
   padding-bottom: 16px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.organization-detail-panel--my-page .fp-profile,
+.organization-detail-panel--fp-detail .fp-profile {
+  padding: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 16px;
+  background: #f8fafc;
 }
 
 .organization-detail-panel .fp-profile__avatar {
@@ -2060,9 +2115,30 @@ const EmptyState = defineComponent({
   font-size: 18px;
 }
 
+.organization-detail-panel--my-page .fp-profile h3,
+.organization-detail-panel--fp-detail .fp-profile h3 {
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .organization-detail-panel .fp-profile p {
   margin: 4px 0 12px;
   font-size: 12px;
+}
+
+.organization-detail-panel--my-page .fp-profile dl,
+.organization-detail-panel--fp-detail .fp-profile dl {
+  gap: 16px;
+}
+
+.organization-detail-panel--my-page .fp-profile dt,
+.organization-detail-panel--fp-detail .fp-profile dt {
+  font-weight: 700;
+}
+
+.organization-detail-panel--my-page .fp-profile dd,
+.organization-detail-panel--fp-detail .fp-profile dd {
+  font-size: 13px;
 }
 
 .organization-detail-panel .summary-grid {
@@ -2073,11 +2149,27 @@ const EmptyState = defineComponent({
 .organization-detail-panel .summary-card {
   min-height: 104px;
   padding: 16px;
-  box-shadow: none;
+  border-color: #edf1f7;
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .organization-detail-panel .summary-card__value {
   font-size: 24px;
+  font-weight: 700;
+}
+
+.organization-detail-panel .summary-card__value small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.organization-detail-panel .summary-card__label {
+  font-weight: 700;
+}
+
+.organization-detail-panel--my-page .summary-card__trend {
+  font-weight: 700;
 }
 
 .panel__header {

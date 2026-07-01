@@ -14,21 +14,6 @@
     </div>
 
     <div class="customer-page__toolbar">
-      <div v-if="showBranchFilter" class="customer-page__filters">
-        <v-select
-          v-model="filters.organizationCode"
-          :items="branches"
-          item-title="title"
-          item-value="value"
-          label="지점 선택"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingBranches"
-          class="customer-page__organization-filter"
-        />
-      </div>
-
       <div class="customer-page__filter-row">
         <div class="status-tabs" role="tablist" aria-label="관심 고객 사유">
           <button
@@ -52,6 +37,20 @@
         </div>
 
         <div class="customer-page__search-group">
+          <v-select
+            v-if="showBranchFilter"
+            v-model="filters.organizationCode"
+            :items="branches"
+            item-title="title"
+            item-value="value"
+            label="지점 선택"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :loading="isLoadingBranches"
+            class="customer-page__organization-filter"
+          />
+
           <v-select
             v-model="filters.sortOrder"
             :items="sortOptions"
@@ -281,13 +280,6 @@ function formatDDay(value) {
   min-width: 0;
 }
 
-.customer-page__filters {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .customer-page__filter-row {
   display: flex;
   align-items: flex-end;
@@ -297,7 +289,12 @@ function formatDDay(value) {
   flex-wrap: wrap;
 }
 
-.customer-page__organization-filter,
+.customer-page__organization-filter {
+  min-width: 0;
+  width: 180px;
+  flex: 0 0 auto;
+}
+
 .customer-page__reason-filter {
   min-width: 0;
   width: 160px;

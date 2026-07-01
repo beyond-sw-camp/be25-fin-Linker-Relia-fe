@@ -17,21 +17,6 @@
     </div>
 
     <div class="customer-page__toolbar">
-      <div v-if="showBranchFilter" class="customer-page__filters">
-        <v-select
-          v-model="filters.organizationCode"
-          :items="branches"
-          item-title="title"
-          item-value="value"
-          label="지점 선택"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          :loading="isLoadingBranches"
-          class="customer-page__organization-filter"
-        />
-      </div>
-
       <div class="customer-page__filter-row">
         <div class="status-tabs" role="tablist" aria-label="고객 상태">
           <button
@@ -55,6 +40,20 @@
         </div>
 
         <div class="customer-page__search-group">
+          <v-select
+            v-if="showBranchFilter"
+            v-model="filters.organizationCode"
+            :items="branches"
+            item-title="title"
+            item-value="value"
+            label="지점 선택"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            :loading="isLoadingBranches"
+            class="customer-page__organization-filter"
+          />
+
           <v-select
             v-model="filters.sortOrder"
             :items="sortOptions"
@@ -256,11 +255,6 @@ function goToCustomerDetail(customerId) {
   display: grid;
   gap: 16px;
   min-width: 0;
-}
-
-.customer-page__filters {
-  display: flex;
-  align-items: flex-start;
 }
 
 .customer-page__filter-row {
