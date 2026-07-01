@@ -1,23 +1,16 @@
 <template>
   <section class="contract-create-page">
-    <nav class="contract-create-page__breadcrumb" aria-label="breadcrumb">
-      <span>계약 관리</span>
-      <v-icon icon="mdi-chevron-right" size="16" />
-      <strong>계약 등록</strong>
-    </nav>
+    <PageBackLink label="계약 목록" @click="goToContractList" />
 
     <div class="contract-create-page__header">
       <div>
         <h2>계약 관리 - 계약 등록</h2>
         <p>등록된 고객 정보를 불러와 보험 계약 정보를 등록할 수 있습니다.</p>
       </div>
-      <v-btn variant="outlined" class="contract-create-page__back-button" @click="goToContractList">
-        목록
-      </v-btn>
     </div>
 
     <form class="contract-create-page__form" @submit.prevent="submitContract">
-      <section ref="selectedCustomerInfoSection" class="contract-create-card">
+      <section class="contract-create-card">
         <header class="contract-create-card__header">
           <h3>1. 고객 정보 불러오기</h3>
         </header>
@@ -119,7 +112,7 @@
         </div>
       </section>
 
-      <section class="contract-create-card">
+      <section ref="selectedCustomerInfoSection" class="contract-create-card">
         <header class="contract-create-card__header">
           <h3>2. 불러온 고객 기본 정보</h3>
         </header>
@@ -301,6 +294,7 @@ import { useRouter } from 'vue-router'
 
 import { createContract } from '../../api/contracts'
 import { getCustomerDetail, getCustomers } from '../../api/customers'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import {
   getInsuranceCategories,
   getInsuranceCompanies,
@@ -698,19 +692,7 @@ function goToContractList() {
 <style scoped>
 .contract-create-page {
   display: grid;
-  gap: 18px;
-  color: #111827;
-}
-
-.contract-create-page__breadcrumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.contract-create-page__breadcrumb strong {
+  gap: 16px;
   color: #111827;
 }
 
@@ -726,6 +708,7 @@ function goToContractList() {
   margin: 0;
   font-size: 18px;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 .contract-create-page__header p,
@@ -735,31 +718,23 @@ function goToContractList() {
   font-size: 13px;
 }
 
-.contract-create-page__back-button {
-  min-width: 72px;
-  color: #334155;
-  border-color: #d1d5db;
-  font-weight: 700;
-  box-shadow: none;
-}
-
 .contract-create-page__form {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .contract-create-card {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .contract-create-card__header {
-  padding: 18px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  padding: 16px 18px;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
 }
 
 .contract-create-card__header h3 {
@@ -770,8 +745,8 @@ function goToContractList() {
 
 .contract-create-card__body {
   display: grid;
-  gap: 18px;
-  padding: 22px 24px;
+  gap: 16px;
+  padding: 18px;
 }
 
 .customer-search {
@@ -785,7 +760,7 @@ function goToContractList() {
 .contract-create-field {
   display: grid;
   gap: 8px;
-  color: #334155;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
@@ -794,11 +769,12 @@ function goToContractList() {
 .contract-create-field input,
 .contract-create-field textarea {
   width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border: 1px solid #d8dce3;
+  border-radius: 10px;
   background: #ffffff;
   color: #111827;
-  font-size: 14px;
+  font-family: inherit;
+  font-size: 13px;
   outline: none;
 }
 
@@ -829,9 +805,10 @@ function goToContractList() {
   height: 40px;
   padding: 0 18px;
   border: 0;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 800;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
 }
 
@@ -843,9 +820,9 @@ function goToContractList() {
 }
 
 .contract-create-button--outline {
-  border: 1px solid #d1d5db;
+  border: 1px solid #d8dce3;
   background: #ffffff;
-  color: #334155;
+  color: #64748b;
 }
 
 .contract-create-button:disabled {
@@ -855,8 +832,8 @@ function goToContractList() {
 
 .customer-search-table {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
 }
 
 .customer-search-table table {
@@ -868,7 +845,7 @@ function goToContractList() {
 .customer-search-table th,
 .customer-search-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #eef2f7;
   color: #475569;
   font-size: 13px;
   text-align: left;
@@ -879,7 +856,7 @@ function goToContractList() {
   background: #f8fafc;
   color: #64748b;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .customer-search-table tr:last-child td {
@@ -892,18 +869,18 @@ function goToContractList() {
 
 .customer-search-table__strong {
   color: #111827;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .customer-search-table__select {
   min-width: 58px;
   height: 28px;
   border: 1px solid #f97316;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #ffffff;
   color: #f97316;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -930,10 +907,10 @@ function goToContractList() {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
-  padding: 3px 8px;
-  border-radius: 5px;
+  padding: 0 9px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .contract-create-badge--prospect {
@@ -964,24 +941,27 @@ function goToContractList() {
 .customer-profile {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px 56px;
+  gap: 12px;
 }
 
 .customer-profile div {
   display: grid;
   gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .customer-profile span {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
 
 .customer-profile strong {
   color: #111827;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .customer-profile__wide {
@@ -1043,7 +1023,7 @@ function goToContractList() {
 .contract-create-message {
   margin: 0;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
 }
@@ -1067,13 +1047,28 @@ function goToContractList() {
 
 .contract-create-actions__cancel {
   min-width: 78px;
-  color: #334155;
-  border-color: #d1d5db;
+  min-height: 40px;
+  border-color: #d8dce3;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
 }
 
 .contract-create-actions__submit {
   min-width: 106px;
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.contract-create-field :deep(.v-field) {
+  border-radius: 10px;
+  font-size: 13px;
 }
 
 @media (max-width: 960px) {
@@ -1083,7 +1078,6 @@ function goToContractList() {
     grid-template-columns: 1fr;
   }
 
-  .contract-create-page__back-button,
   .customer-search input {
     width: 100%;
   }

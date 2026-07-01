@@ -1,13 +1,10 @@
 <template>
   <section class="journal-page" :class="{ 'journal-page--with-stt': isSttPreviewOpen }">
-    <nav class="journal-breadcrumb" aria-label="breadcrumb">
-      <button type="button" @click="goBack">
-        <v-icon icon="mdi-arrow-left" size="14" />
-        상담 관리로 돌아가기
-      </button>
-      <span>/</span>
-      <strong>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</strong>
-    </nav>
+    <PageBackLink label="상담 목록" @click="goBack" />
+
+    <div class="journal-heading">
+      <h2>{{ isEditMode ? '임시저장 상담일지 수정' : '상담일지 작성' }}</h2>
+    </div>
 
     <form
       class="journal-workspace"
@@ -993,6 +990,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import ConsultationSttPreviewModal from '../../components/consultation/ConsultationSttPreviewModal.vue'
 import { createConsultation } from '../../api/consultations'
 import { getCustomerContracts } from '../../api/contracts'
@@ -2010,6 +2008,13 @@ async function submitConsultation() {
     esgImpactStore.recordActivity(
       'CONSULTATION',
       response?.result?.createdAt ?? response?.result?.consultedAt ?? payload.consultedAt,
+      {
+        sourceId:
+          response?.result?.consultationId ??
+          response?.result?.id ??
+          payload.customerId ??
+          payload.consultedAt,
+      },
     )
     messageType.value = 'success'
     message.value = '상담일지를 저장했습니다.'
@@ -2641,6 +2646,124 @@ function toApiDateTime(value) {
 </script>
 
 <style scoped>
+.journal-page {
+  color: #111827;
+}
+
+.journal-heading {
+  margin-bottom: 16px;
+}
+
+.journal-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.journal-workspace {
+  gap: 16px;
+}
+
+.side-card,
+.form-card,
+.stt-card,
+.selected-customer-panel,
+.draft-banner {
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+}
+
+.side-card,
+.form-card,
+.stt-card {
+  padding: 16px;
+}
+
+.side-card h3,
+.form-card h3 {
+  margin: 0 0 14px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.field > span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.control,
+.textarea,
+.journal-workspace input,
+.journal-workspace select,
+.journal-workspace textarea {
+  min-height: 40px;
+  border: 1px solid #d9e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.journal-workspace textarea,
+.textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+.search-control {
+  min-height: 40px;
+  border: 1px solid #d9e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.search-control .control,
+.search-control input {
+  border: 0;
+}
+
+.search-control button,
+.address-box__button,
+.add-button,
+.stt-actions button {
+  height: 40px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.pill,
+.segmented button,
+.choice-button,
+.option-chip,
+.claim-type-button,
+.checkbox-chip,
+.claim-result-button {
+  min-height: 34px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
 .stt-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3293,6 +3416,43 @@ function toApiDateTime(value) {
 
 .journal-workspace--focus-main .journal-side--hidden {
   display: none;
+}
+
+.journal-page .side-card,
+.journal-page .form-card,
+.journal-page .stt-card,
+.journal-page .selected-customer-panel,
+.journal-page .draft-banner {
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+}
+
+.journal-page .control,
+.journal-page .textarea,
+.journal-page input,
+.journal-page select,
+.journal-page textarea {
+  min-height: 40px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.journal-page .choice-button,
+.journal-page .option-chip,
+.journal-page .claim-type-button,
+.journal-page .checkbox-chip,
+.journal-page .claim-result-button,
+.journal-page .pill,
+.journal-page .segmented button {
+  border-radius: 8px;
+  font-family: inherit;
+  letter-spacing: 0;
 }
 
 @media (max-width: 900px) {

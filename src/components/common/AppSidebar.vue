@@ -23,9 +23,10 @@
           class="app-sidebar__section-button"
           :class="{
             'is-open': isSectionOpen(section.title),
-            'is-active-parent': hasActiveChild(section),
+            'is-active-parent': !focusedSectionTitle && hasActiveChild(section),
+            'is-focused': focusedSectionTitle === section.title,
           }"
-          @click="toggleSection(section.title)"
+          @click="handleSectionClick(section.title)"
         >
           <span class="app-sidebar__section-left">
             <v-icon :icon="section.icon" size="18" />
@@ -37,7 +38,9 @@
         <RouterLink
           v-else
           class="app-sidebar__section-button app-sidebar__section-link"
+          :class="{ 'is-route-muted': Boolean(focusedSectionTitle) }"
           :to="section.to"
+          @click="handleSectionLinkClick"
         >
           <span class="app-sidebar__section-left">
             <v-icon :icon="section.icon" size="18" />
@@ -74,11 +77,11 @@
     <EsgImpactDrawer
       v-model="isEsgDrawerOpen"
       :impact="esgImpact"
+      @change-month="esgImpactStore.fetchMyImpact"
     />
 
     <button class="app-sidebar__toggle" type="button" @click="isCollapsed = !isCollapsed">
       <v-icon icon="mdi-chevron-double-left" size="20" :class="{ rotated: isCollapsed }" />
-      <span v-if="!isCollapsed">메뉴 닫기</span>
     </button>
   </aside>
 </template>
@@ -105,6 +108,7 @@ const isCollapsed = ref(false)
 const isEsgDrawerOpen = ref(false)
 const isEsgRecovering = ref(false)
 const openSections = ref([])
+const focusedSectionTitle = ref('')
 let esgRecoveringTimer = null
 
 const menuSections = computed(() => MENU_BY_ROLE[authStore.userRole] ?? [])
@@ -191,13 +195,31 @@ function getFallbackActiveRouteName() {
   return ''
 }
 
-function toggleSection(title) {
-  if (isSectionOpen(title)) {
-    openSections.value = []
+function handleSectionClick(title) {
+  if (isCollapsed.value) {
+    isCollapsed.value = false
+    focusedSectionTitle.value = title
+    openSections.value = [title]
     return
   }
 
+  toggleSection(title)
+}
+
+function toggleSection(title) {
+  if (isSectionOpen(title)) {
+    openSections.value = []
+    focusedSectionTitle.value = ''
+    return
+  }
+
+  focusedSectionTitle.value = title
   openSections.value = [title]
+}
+
+function handleSectionLinkClick() {
+  isCollapsed.value = false
+  focusedSectionTitle.value = ''
 }
 
 function goToHome() {
@@ -234,10 +256,11 @@ function getCurrentMonth() {
 }
 
 .app-sidebar__brand {
-  height: 111px;
+  height: 78px;
   display: flex;
-  align-items: center;
-  padding: 0 26px;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 20px;
   border: 0;
   border-bottom: 1px solid rgba(17, 24, 39, 0.9);
   background: transparent;
@@ -253,19 +276,38 @@ function getCurrentMonth() {
 }
 
 .app-sidebar__brand-image--expanded {
-  width: 160px;
+  width: 180px;
 }
 
 .app-sidebar__brand-image--collapsed {
-  width: 36px;
+  width: 30px;
 }
 
 .app-sidebar__nav {
+  position: relative;
   flex: 1;
   min-height: 0;
-  padding: 22px 12px;
+  padding: 22px 12px 28px;
   min-height: 0;
   overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.35) 18px,
+    #000 42px,
+    #000 calc(100% - 62px),
+    rgba(0, 0, 0, 0.35) calc(100% - 26px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.35) 18px,
+    #000 42px,
+    #000 calc(100% - 62px),
+    rgba(0, 0, 0, 0.35) calc(100% - 26px),
+    transparent 100%
+  );
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -279,6 +321,16 @@ function getCurrentMonth() {
   margin-top: auto;
   padding: 0 12px 10px;
   overflow: hidden;
+}
+
+.app-sidebar__esg :deep(.esg-card) {
+  min-height: 176px;
+}
+
+.app-sidebar__esg :deep(.esg-card__scene) {
+  height: 136px;
+  margin-bottom: 0;
+  transform: translateY(12px);
 }
 
 .app-sidebar__section + .app-sidebar__section {
@@ -301,13 +353,22 @@ function getCurrentMonth() {
 }
 
 .app-sidebar__section-button:hover,
-.app-sidebar__section-button.is-open,
-.app-sidebar__section-link.router-link-active {
+.app-sidebar__section-button.is-focused,
+.app-sidebar__section-link.router-link-active:not(.is-route-muted) {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.app-sidebar__section-button :deep(.mdi-chevron-down) {
+  transition: transform 0.18s ease;
+}
+
+.app-sidebar__section-button.is-open :deep(.mdi-chevron-down) {
+  transform: rotate(180deg);
+}
+
+.app-sidebar__section-button.is-focused,
 .app-sidebar__section-button.is-active-parent,
-.app-sidebar__section-link.router-link-active {
+.app-sidebar__section-link.router-link-active:not(.is-route-muted) {
   color: #f97316;
 }
 
@@ -349,7 +410,7 @@ function getCurrentMonth() {
 .app-sidebar__toggle {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
   padding: 16px 24px 22px;
   border: 0;
   background: transparent;

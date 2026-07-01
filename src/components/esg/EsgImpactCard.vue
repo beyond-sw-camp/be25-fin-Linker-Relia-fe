@@ -6,7 +6,7 @@
     @click="$emit('click')"
   >
     <template v-if="collapsed">
-      <v-icon icon="mdi-sprout" size="22" />
+      <v-icon icon="mdi-waves" size="22" />
     </template>
 
     <template v-else>

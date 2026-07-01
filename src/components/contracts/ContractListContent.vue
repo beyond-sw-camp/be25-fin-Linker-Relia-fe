@@ -56,8 +56,6 @@
     </div>
 
     <section class="contract-panel">
-      <h2>보유 계약 목록</h2>
-
       <div class="contract-list-controls">
         <div class="contract-tabs" role="tablist" aria-label="계약 상태">
           <button
@@ -547,6 +545,7 @@ function isNearMaturityContract(status) {
 .contract-page {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .contract-page__toolbar {
@@ -559,13 +558,23 @@ function isNearMaturityContract(status) {
 .contract-page__filters {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   min-width: 0;
 }
 
 .contract-page__filter {
-  width: 160px;
+  width: 180px;
   flex: 0 0 auto;
+}
+
+.contract-page__toolbar :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.contract-page__toolbar :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .contract-page__create-button {
@@ -573,15 +582,17 @@ function isNearMaturityContract(status) {
   height: 40px;
   background: #f97316;
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+  border-radius: 10px;
 }
 
 .contract-page__summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
 }
 
 .contract-page__summary-state {
@@ -589,10 +600,11 @@ function isNearMaturityContract(status) {
   display: grid;
   place-items: center;
   gap: 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
   color: #64748b;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .contract-page__summary-state--error {
@@ -600,16 +612,17 @@ function isNearMaturityContract(status) {
 }
 
 .contract-summary-card {
-  min-height: 150px;
-  padding: 18px 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  min-height: 0;
+  padding: 16px 18px;
+  border: 1px solid #e9edf5;
+  border-radius: 16px;
   background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .contract-summary-card__icon {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -620,12 +633,13 @@ function isNearMaturityContract(status) {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  margin-bottom: 6px;
 }
 
 .contract-summary-card__value strong {
-  font-size: 28px;
-  line-height: 1.1;
-  color: #111827;
+  font-size: 34px;
+  line-height: 1;
+  color: #1f2937;
 }
 
 .contract-summary-card__value span,
@@ -637,25 +651,19 @@ function isNearMaturityContract(status) {
 .contract-summary-card p,
 .contract-summary-card small {
   display: block;
-  margin: 6px 0 0;
-  font-size: 12px;
-}
-
-.contract-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.contract-panel {
-  padding: 18px 20px 20px;
-}
-
-.contract-panel h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 13px;
+}
+
+.contract-panel {
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+}
+
+.contract-panel {
+  padding: 12px;
 }
 
 .contract-list-controls {
@@ -663,7 +671,6 @@ function isNearMaturityContract(status) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 12px;
   flex-wrap: wrap;
 }
 
@@ -672,18 +679,16 @@ function isNearMaturityContract(status) {
   align-items: center;
   gap: 2px;
   width: fit-content;
-  border-bottom: 1px solid #e5e7eb;
   overflow-x: auto;
 }
 
 .contract-tabs__button {
-  min-width: 86px;
-  padding: 12px 14px;
+  padding: 12px 18px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -713,19 +718,19 @@ function isNearMaturityContract(status) {
   display: inline-flex;
   overflow: hidden;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
 }
 
 .contract-sort__button {
-  min-height: 38px;
+  min-height: 40px;
   padding: 0 16px;
   border: 0;
   border-right: 1px solid #e5e7eb;
   background: #ffffff;
   color: #64748b;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -746,10 +751,9 @@ function isNearMaturityContract(status) {
 
 .contract-table {
   overflow-x: auto;
-}
-
-.contract-table {
-  margin-top: 28px;
+  margin-top: 16px;
+  border: 1px solid #f0f3f8;
+  border-radius: 16px;
 }
 
 .contract-table table {
@@ -763,10 +767,10 @@ function isNearMaturityContract(status) {
 
 .contract-table th,
 .contract-table td {
-  padding: 13px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
-  text-align: left;
+  text-align: center;
   color: #475569;
   white-space: nowrap;
 }
@@ -790,7 +794,11 @@ function isNearMaturityContract(status) {
 
 .contract-table__strong {
   font-weight: 700;
-  color: #111827;
+  color: #475569;
+}
+
+.contract-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .contract-table__empty {
@@ -859,6 +867,7 @@ td span + .contract-badge {
   gap: 16px;
   margin-top: 16px;
   color: #64748b;
+  font-size: 12px;
 }
 
 .contract-panel__pagination-actions {
@@ -867,12 +876,17 @@ td span + .contract-badge {
   gap: 16px;
 }
 
+.contract-panel__pagination :deep(.v-pagination__item--is-active .v-btn) {
+  background: #f97316;
+  color: #ffffff;
+}
 
-@media (max-width: 1180px) {
-  .contract-page__summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (max-width: 1280px) {
+  .contract-table th,
+  .contract-table td {
+    padding: 12px 10px;
+    font-size: 12px;
   }
-
 }
 
 @media (max-width: 768px) {

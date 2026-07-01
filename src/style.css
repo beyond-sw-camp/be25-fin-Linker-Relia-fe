@@ -85,6 +85,17 @@ button {
   color: #f97316;
 }
 
+.journal-heading {
+  margin: 14px 0 16px;
+}
+
+.journal-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 800;
+}
+
 .journal-workspace {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

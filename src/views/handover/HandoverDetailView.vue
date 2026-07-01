@@ -1,9 +1,8 @@
 ﻿<template>
   <section class="handover-detail" aria-label="인수인계 요청 상세">
     <header class="handover-detail__header">
-      <div class="handover-detail__breadcrumb">
-        <button class="handover-detail__back" type="button" @click="goBack">인수인계 요청 목록</button>
-        <span class="handover-detail__chevron"></span>
+      <PageBackLink label="인수인계 요청 목록" @click="goBack" />
+      <div class="handover-detail__title-row">
         <h1>요청 상세</h1>
         <span class="handover-detail-status" :class="getStatusClass(detail.requestStatus)">
           {{ getStatusLabel(detail.requestStatus) }}
@@ -354,12 +353,15 @@ import {
   getHandoverDetail,
   processHandoverApproval,
 } from '../../api/handovers'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { useAuthStore } from '../../stores/auth'
+import { useEsgImpactStore } from '../../stores/esgImpactStore'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const esgImpactStore = useEsgImpactStore()
 
 const detail = reactive(createEmptyDetail())
 const isLoading = ref(false)
@@ -503,6 +505,11 @@ async function submitApproval(approvalStatus) {
       approvalStatus,
       rejectionReason: approvalStatus === 'REJECTED' ? rejectionReason.value.trim() : null,
     })
+    if (approvalStatus === 'APPROVED') {
+      esgImpactStore.recordActivity('HANDOVER', new Date(), {
+        sourceId: detail.handoverRequestId,
+      })
+    }
     await loadDetail()
     resetRejectModal()
   } catch (error) {
@@ -614,6 +621,9 @@ async function submitAssign() {
   try {
     await assignHandoverFp(detail.handoverRequestId, {
       assignedFpId: selectedFpId.value,
+    })
+    esgImpactStore.recordActivity('HANDOVER', new Date(), {
+      sourceId: detail.handoverRequestId,
     })
     resetAssignModal()
     await loadDetail()
@@ -966,71 +976,52 @@ function formatAgeBand(value) {
 <style scoped>
 .handover-detail {
   display: grid;
-  gap: 18px;
-  color: #202124;
+  gap: 16px;
+  color: #111827;
 }
 
 .handover-detail__header {
-  display: flex;
-  align-items: center;
-  min-height: 38px;
+  display: grid;
+  gap: 14px;
 }
 
-.handover-detail__breadcrumb {
+.handover-detail__title-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #6b7280;
-}
-
-.handover-detail__chevron {
-  width: 11px;
-  height: 11px;
-  border-top: 1px solid #d6deea;
-  border-right: 1px solid #d6deea;
-  transform: rotate(45deg);
-}
-
-.handover-detail__back {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #6f7680;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .handover-detail h1 {
   margin: 0;
-  color: #202124;
-  font-size: 16px;
+  color: #111827;
+  font-size: 18px;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 .handover-detail-status {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 5px 11px;
+  min-height: 24px;
+  padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .handover-detail-status--pending {
-  background: #ffe9dc;
-  color: #f05a0c;
+  background: #fff7ed;
+  color: #f97316;
 }
 
 .handover-detail-status--completed {
-  background: #e8f7ef;
-  color: #04783f;
+  background: #dcfce7;
+  color: #16a34a;
 }
 
 .handover-detail-status--rejected {
   background: #fff0f0;
-  color: #ef1111;
+  color: #dc2626;
 }
 
 .handover-detail__body {
@@ -1048,14 +1039,14 @@ function formatAgeBand(value) {
 
 .handover-card,
 .action-card {
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .handover-card {
-  padding: 18px;
+  padding: 16px 18px;
 }
 
 .handover-card h2 {
@@ -1063,7 +1054,7 @@ function formatAgeBand(value) {
   align-items: center;
   gap: 8px;
   margin: 0 0 16px;
-  color: #202124;
+  color: #111827;
   font-size: 16px;
   font-weight: 800;
 }
@@ -1074,14 +1065,14 @@ function formatAgeBand(value) {
 
 .customer-summary {
   display: grid;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .summary-row {
   display: grid;
-  border-bottom: 1px solid #f1f3f6;
+  border-bottom: 1px solid #eef2f7;
 }
 
 .summary-row:last-child {
@@ -1103,7 +1094,8 @@ function formatAgeBand(value) {
   align-items: center;
   gap: 10px;
   padding: 14px 18px;
-  border-right: 1px solid #f1f3f6;
+  border-right: 1px solid #eef2f7;
+  background: #ffffff;
 }
 
 .summary-field:last-child {
@@ -1117,15 +1109,15 @@ function formatAgeBand(value) {
 .summary-field span {
   display: block;
   margin-bottom: 5px;
-  color: #777d86;
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
 
 .summary-field strong {
-  color: #202124;
+  color: #111827;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .text-muted {
@@ -1136,11 +1128,13 @@ function formatAgeBand(value) {
 .channel-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 23px;
-  padding: 4px 10px;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .grade-badge {
@@ -1177,8 +1171,8 @@ function formatAgeBand(value) {
 }
 
 .history-row strong {
-  color: #202124;
-  font-weight: 800;
+  color: #111827;
+  font-weight: 700;
 }
 
 .empty-history {
@@ -1189,7 +1183,6 @@ function formatAgeBand(value) {
   gap: 16px;
   color: #686f7a;
   font-size: 13px;
-  font-weight: 700;
 }
 
 .empty-history .v-icon {
@@ -1199,10 +1192,12 @@ function formatAgeBand(value) {
 }
 
 .reject-banner {
+  width: fit-content;
+  max-width: 100%;
   margin-bottom: 16px;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid #ffc6c6;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #fff0f0;
   color: #dc2626;
   font-size: 12px;
@@ -1211,8 +1206,9 @@ function formatAgeBand(value) {
 
 .recommended-panel {
   padding: 18px;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+  background: #ffffff;
 }
 
 .recommended-fp {
@@ -1240,7 +1236,7 @@ function formatAgeBand(value) {
 }
 
 .recommended-fp strong {
-  color: #202124;
+  color: #111827;
   font-size: 20px;
   font-weight: 800;
   line-height: 1.2;
@@ -1248,9 +1244,8 @@ function formatAgeBand(value) {
 
 .recommended-fp span {
   margin-top: 6px;
-  color: #686f7a;
+  color: #64748b;
   font-size: 13px;
-  font-weight: 700;
 }
 
 .recommended-fp span b::before {
@@ -1278,8 +1273,9 @@ function formatAgeBand(value) {
   column-gap: 18px;
   row-gap: 3px;
   padding: 12px;
-  border: 1px solid #eef0f4;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .match-card .v-icon {
@@ -1292,15 +1288,15 @@ function formatAgeBand(value) {
 }
 
 .match-card span {
-  color: #777d86;
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
 
 .match-card strong {
-  color: #202124;
+  color: #111827;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .match-card--blue .v-icon {
@@ -1330,9 +1326,9 @@ function formatAgeBand(value) {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #202124;
+  color: #111827;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .recommendation-points strong .v-icon {
@@ -1347,7 +1343,6 @@ function formatAgeBand(value) {
   padding-left: 0;
   color: #686f7a;
   font-size: 13px;
-  font-weight: 700;
   list-style-position: inside;
 }
 
@@ -1355,7 +1350,7 @@ function formatAgeBand(value) {
   margin-top: 14px;
   padding: 16px;
   border: 1px solid #ddd6fe;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #f5f3ff;
 }
 
@@ -1379,7 +1374,7 @@ function formatAgeBand(value) {
 }
 
 .ai-briefing__header strong {
-  color: #202124;
+  color: #111827;
   font-size: 16px;
   font-weight: 800;
 }
@@ -1397,7 +1392,6 @@ function formatAgeBand(value) {
   margin: 0;
   color: #8b5cf6;
   font-size: 12px;
-  font-weight: 700;
 }
 
 .ai-briefing__body {
@@ -1408,7 +1402,6 @@ function formatAgeBand(value) {
   margin: 0;
   color: #312e81;
   font-size: 13px;
-  font-weight: 700;
   line-height: 1.75;
 }
 
@@ -1427,7 +1420,7 @@ function formatAgeBand(value) {
   min-height: 58px;
   padding: 10px;
   border: 1px solid #e9d5ff;
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.92);
 }
 
@@ -1441,16 +1434,15 @@ function formatAgeBand(value) {
 }
 
 .evidence-card strong {
-  color: #202124;
+  color: #111827;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .evidence-card span {
   margin-top: 4px;
-  color: #777d86;
+  color: #64748b;
   font-size: 12px;
-  font-weight: 700;
 }
 
 .action-card {
@@ -1461,15 +1453,16 @@ function formatAgeBand(value) {
 }
 
 .action-card button {
-  min-height: 36px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
 }
 
@@ -1523,8 +1516,8 @@ function formatAgeBand(value) {
   display: grid;
   gap: 14px;
   padding: 20px;
-  border: 1px solid #dbe1f0;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
 }
@@ -1547,7 +1540,7 @@ function formatAgeBand(value) {
 
 .modal__header h2 {
   margin: 0;
-  color: #202124;
+  color: #111827;
   font-size: 16px;
   font-weight: 800;
 }
@@ -1566,17 +1559,17 @@ function formatAgeBand(value) {
   width: 100%;
   resize: vertical;
   padding: 12px;
-  border: 1px solid #d8e0ec;
-  border-radius: 8px;
-  color: #202124;
-  font: inherit;
-  font-size: 14px;
+  border: 1px solid #d8dce3;
+  border-radius: 10px;
+  color: #111827;
+  font-family: inherit;
+  font-size: 13px;
   outline: none;
 }
 
 .modal textarea:focus {
-  border-color: #ff8a8a;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
 }
 
 .modal__error {
@@ -1592,10 +1585,11 @@ function formatAgeBand(value) {
 
 .modal__actions button {
   min-width: 78px;
-  min-height: 34px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 700;
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
 }
 
@@ -1652,8 +1646,8 @@ function formatAgeBand(value) {
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
-  border: 1px solid #e7e9ee;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 10px;
   background: #ffffff;
   text-align: left;
   cursor: pointer;
@@ -1671,9 +1665,9 @@ function formatAgeBand(value) {
 }
 
 .assign-fp-row__main strong {
-  color: #202124;
+  color: #111827;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .assign-fp-row__main small {

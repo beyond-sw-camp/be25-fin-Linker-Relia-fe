@@ -1,10 +1,5 @@
 <template>
   <section class="customer-detail">
-    <button class="customer-detail__back" type="button" @click="goBack">
-      <v-icon icon="mdi-arrow-left" size="16" />
-      {{ backButtonLabel }}
-    </button>
-
     <div v-if="customerErrorMessage" class="detail-state">
       <v-alert type="error" variant="tonal">{{ customerErrorMessage }}</v-alert>
     </div>
@@ -15,6 +10,8 @@
     </div>
 
     <template v-else-if="customer">
+      <PageBackLink :label="backLinkLabel" @click="goBack" />
+
       <div class="customer-detail__heading">
         <h2>고객 상세</h2>
       </div>
@@ -376,19 +373,20 @@ import {
   formatNullableText,
   formatPhone,
 } from '../../utils/formatters'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 
 const route = useRoute()
 const router = useRouter()
 const customerId = computed(() => route.params.customerId)
 const activeTab = ref('contracts')
-const backButtonLabel = computed(() => {
+const backLinkLabel = computed(() => {
   const from = typeof route.query.from === 'string' ? route.query.from : ''
 
   if (['fp-contracts', 'branch-contracts', 'hq-contracts'].includes(from)) {
-    return '계약 목록으로 돌아가기'
+    return '계약 목록'
   }
 
-  return '고객 목록으로 돌아가기'
+  return '고객 목록'
 })
 
 const {
@@ -710,24 +708,14 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 <style scoped>
 .customer-detail {
   display: grid;
-  gap: 18px;
-}
-
-.customer-detail__back {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
+  gap: 16px;
 }
 
 .customer-detail__heading h2 {
   margin: 0 0 6px;
-  font-size: 28px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
   color: #111827;
 }
 
@@ -740,10 +728,11 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   gap: 18px;
-  padding: 22px;
-  border: 1px solid #e8edf5;
+  padding: 18px;
+  border: 1px solid #edf1f7;
   border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .customer-profile__identity {
@@ -894,9 +883,10 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 
 .detail-card {
   padding: 16px 18px;
-  border: 1px solid #e9edf5;
-  border-radius: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .detail-card__icon {
@@ -930,9 +920,10 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 
 .customer-detail__panel {
   padding: 12px;
-  border: 1px solid #e9edf5;
+  border: 1px solid #edf1f7;
   border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .detail-tabs {
@@ -1023,7 +1014,7 @@ function getCustomerStatusBadgeClass(interestYn, customerStatus) {
 .detail-table {
   overflow-x: auto;
   border: 1px solid #eff3f8;
-  border-radius: 16px;
+  border-radius: 18px;
 }
 
 .detail-table table {

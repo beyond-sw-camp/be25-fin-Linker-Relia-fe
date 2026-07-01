@@ -1,14 +1,6 @@
 <template>
   <section class="commission-page">
     <div class="commission-page__hero">
-      <div>
-        <p class="commission-page__eyebrow">Commission Overview</p>
-        <h2>수수료 관리</h2>
-        <p class="commission-page__description">
-          로그인한 설계사의 월별 수수료 흐름과 보험사별 기여도를 동일한 패턴으로 조회할 수 있습니다.
-        </p>
-      </div>
-
       <div class="commission-page__toolbar">
         <v-text-field
           v-model="filters.closingMonth"
@@ -21,7 +13,7 @@
           class="commission-page__month-field"
         />
         <v-btn variant="outlined" class="commission-page__reset-button" @click="resetFilters">
-          초기화
+          최근 정산월
         </v-btn>
         <v-btn
           color="#f97316"
@@ -77,9 +69,6 @@
             <div class="company-panel__chart">
               <Bar :data="companyChartData" :options="companyChartOptions" />
             </div>
-            <div class="insurance-overview__chart-caption">
-              <strong>보험사별 총 수수료 기여도를 상위 5개 기준으로 비교합니다.</strong>
-            </div>
           </div>
 
           <div class="insurance-overview__list">
@@ -91,7 +80,7 @@
               <div class="insurance-company-row__main">
                 <div class="insurance-company-row__title">
                   <span class="insurance-company-row__dot" :style="{ backgroundColor: item.color }" />
-                  <strong>{{ item.name }}</strong>
+                  <strong :title="item.name">{{ formatCompanyDisplayName(item.name) }}</strong>
                 </div>
                 <div class="insurance-company-row__details">
                   <span>계약 건수 {{ formatCount(item.contractCount) }}건</span>
@@ -109,46 +98,43 @@
       <section class="panel">
         <div class="panel__header">
           <div>
-            <h3>지급 구분 요약</h3>
-            <p>초회 수수료, 유지 수수료, 환수 금액의 구성 비율을 확인합니다.</p>
+            <h3>보험 상품 판매 순위 {{ productRankingTitleSuffix }}</h3>
+            <p>마감월 기준 판매 건수를 기준으로 상품별 순위를 나타냅니다.</p>
           </div>
         </div>
 
-        <div v-if="isPaymentTypeLoading" class="panel__state">
+        <div v-if="isProductRankingLoading" class="panel__state">
           <v-progress-circular indeterminate color="#f97316" />
-          <p>지급 구분 데이터를 불러오는 중입니다.</p>
+          <p>보험 상품 판매 순위를 불러오는 중입니다.</p>
         </div>
-        <div v-else-if="paymentTypeErrorMessage" class="panel__state panel__state--error">
-          <p>{{ paymentTypeErrorMessage }}</p>
+        <div v-else-if="productRankingErrorMessage" class="panel__state panel__state--error">
+          <p>{{ productRankingErrorMessage }}</p>
         </div>
-        <div v-else-if="paymentTypeItems.length === 0" class="panel__state">
-          <p>지급 구분 요약 데이터가 없습니다.</p>
+        <div v-else-if="productRankingItems.length === 0" class="panel__state">
+          <p>보험 상품 판매 순위 데이터가 없습니다.</p>
         </div>
-        <div v-else class="payment-type-panel">
-          <div class="payment-type-panel__visual">
-            <div class="payment-type-panel__chart">
-              <Doughnut :data="paymentTypeChartData" :options="doughnutChartOptions" />
-            </div>
-            <div class="payment-type-panel__summary">
-              <strong>{{ formatCurrency(summary.totalPaymentCommissionAmount) }}</strong>
-              <span>당월 지급 수수료 구성 비율</span>
-            </div>
-          </div>
-          <div class="payment-type-panel__legend">
-            <article
-              v-for="item in paymentTypeItems"
-              :key="item.label"
-              class="legend-row"
-            >
-              <div class="legend-row__label">
-                <span class="legend-row__dot" :style="{ backgroundColor: item.color }" />
-                <strong>{{ item.label }}</strong>
-              </div>
-              <div class="legend-row__metrics">
-                <span>{{ formatCurrency(item.amount) }}</span>
-                <strong>{{ formatPercent(item.ratio) }}</strong>
-              </div>
-            </article>
+        <div v-else class="product-ranking-panel">
+          <div class="table-panel table-panel--product-ranking">
+            <table>
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>상품명</th>
+                  <th>보험사</th>
+                  <th>계약 수</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in productRankingItems" :key="item.insuranceProductId || item.rank">
+                  <td>{{ item.rank }}</td>
+                  <td>
+                    <strong>{{ item.insuranceProductName }}</strong>
+                  </td>
+                  <td>{{ item.insuranceCompanyName }}</td>
+                  <td>{{ formatCount(item.contractCount) }}건</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -168,6 +154,7 @@ import {
   getFpCommissionSummary,
   getMyCommissionStatementPdf,
 } from '../../api/commissions'
+import { getDashboardInsuranceProductRankings } from '../../api/dashboard'
 import { formatCurrency } from '../../utils/formatters'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
@@ -188,18 +175,22 @@ const validationMessage = ref('')
 const summary = ref(createEmptyFpSummary())
 const paymentTypeItems = ref([])
 const insuranceCompanyItems = ref([])
+const productRankingItems = ref([])
 
 const isSummaryLoading = ref(false)
 const isPaymentTypeLoading = ref(false)
 const isInsuranceCompanyLoading = ref(false)
+const isProductRankingLoading = ref(false)
 const isPdfLoading = ref(false)
 
 const summaryErrorMessage = ref('')
 const paymentTypeErrorMessage = ref('')
 const insuranceCompanyErrorMessage = ref('')
+const productRankingErrorMessage = ref('')
 
 const latestAvailableClosingMonth = computed(() => getLatestAvailableClosingMonth())
 const closingMonthLabel = computed(() => formatMonthLabel(filters.closingMonth))
+const productRankingTitleSuffix = computed(() => `Top${Math.min(productRankingItems.value.length || 10, 10)}`)
 
 const summaryCards = computed(() => [
   {
@@ -260,7 +251,7 @@ const summaryCards = computed(() => [
 const topInsuranceCompanyItems = computed(() => insuranceCompanyItems.value.slice(0, 5))
 
 const companyChartData = computed(() => ({
-  labels: topInsuranceCompanyItems.value.map((item) => item.name),
+  labels: topInsuranceCompanyItems.value.map((item) => formatCompanyChartLabel(item.name)),
   datasets: [
     {
       data: topInsuranceCompanyItems.value.map((item) => item.totalCommissionAmount),
@@ -302,8 +293,8 @@ const companyChartOptions = computed(() => ({
   maintainAspectRatio: false,
   layout: {
     padding: {
-      left: 8,
-      right: 8,
+      left: 0,
+      right: 18,
       top: 8,
       bottom: 0,
     },
@@ -399,7 +390,7 @@ async function loadDashboard() {
     return
   }
 
-  await Promise.all([loadSummary(), loadPaymentTypes(), loadInsuranceCompanies()])
+  await Promise.all([loadSummary(), loadProductRankings(), loadInsuranceCompanies()])
 }
 
 function resetFilters() {
@@ -477,6 +468,28 @@ async function loadPaymentTypes() {
       '지급 구분 요약을 불러오지 못했습니다.'
   } finally {
     isPaymentTypeLoading.value = false
+  }
+}
+
+async function loadProductRankings() {
+  productRankingErrorMessage.value = ''
+  isProductRankingLoading.value = true
+
+  try {
+    const response = await getDashboardInsuranceProductRankings({
+      closingMonth: filters.closingMonth,
+      limit: 10,
+    })
+
+    productRankingItems.value = normalizeProductRankingItems(response?.result)
+  } catch (error) {
+    productRankingItems.value = []
+    productRankingErrorMessage.value =
+      error.response?.data?.message ||
+      error.message ||
+      '보험 상품 판매 순위를 불러오지 못했습니다.'
+  } finally {
+    isProductRankingLoading.value = false
   }
 }
 
@@ -617,6 +630,47 @@ function normalizeInsuranceCompanyItems(result) {
     .sort((left, right) => right.totalCommissionAmount - left.totalCommissionAmount)
 }
 
+function formatCompanyDisplayName(value) {
+  const companyName = String(value || '-')
+  return companyName.length >= 7 ? companyName.slice(0, 6) : companyName
+}
+
+function formatCompanyChartLabel(value) {
+  return String(value || '-').slice(0, 2)
+}
+
+function normalizeProductRankingItems(result) {
+  const items = Array.isArray(result?.rankings)
+    ? result.rankings
+    : Array.isArray(result?.items)
+      ? result.items
+      : Array.isArray(result)
+        ? result
+        : []
+
+  return items.map((item, index) => ({
+    rank: toNumber(getValue(item, ['rank', 'ranking'])) || index + 1,
+    insuranceProductId: getValue(item, ['insuranceProductId', 'productId']) ?? '',
+    insuranceProductCode: getValue(item, ['insuranceProductCode', 'productCode']) || '-',
+    insuranceProductName: getValue(item, ['insuranceProductName', 'productName']) || '-',
+    insuranceCompanyName: getValue(item, ['insuranceCompanyName', 'companyName']) || '-',
+    insuranceCategoryName: getValue(item, ['insuranceCategoryName', 'categoryName']) || '-',
+    commissionAmount: toNumber(
+      getValue(item, [
+        'commissionAmount',
+        'totalCommissionAmount',
+        'totalPaymentCommissionAmount',
+        'netCommissionAmount',
+        'totalMonthlyPremiumAmount',
+      ]),
+    ),
+    contractCount: toNumber(getValue(item, ['contractCount', 'totalContractCount', 'contractCnt'])),
+    totalMonthlyPremiumAmount: toNumber(
+      getValue(item, ['totalMonthlyPremiumAmount', 'monthlyPremiumAmount', 'totalPremiumAmount']),
+    ),
+  }))
+}
+
 function collapsePaymentTypeArray(items) {
   return items.reduce((accumulator, item) => {
     const type = String(getValue(item, ['paymentType', 'type', 'category']) || '').toUpperCase()
@@ -750,13 +804,13 @@ function getLatestAvailableClosingMonth() {
 <style scoped>
 .commission-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .commission-page__hero {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
 }
 
@@ -794,17 +848,34 @@ function getLatestAvailableClosingMonth() {
 
 .commission-page__reset-button {
   height: 40px;
-  padding: 0 16px;
-  border-radius: 12px;
+  padding: 0 18px;
+  border-radius: 10px;
   border-color: #d1d5db;
   color: #475569;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
 }
 
 .commission-page__pdf-button {
   height: 40px;
-  padding: 0 16px;
-  border-radius: 12px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   box-shadow: none;
+}
+
+.commission-page__toolbar :deep(.v-field) {
+  min-height: 40px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.commission-page__toolbar :deep(.v-field__input) {
+  font-size: 13px;
 }
 
 .commission-summary {
@@ -814,26 +885,26 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card {
-  padding: 20px;
-  border: 1px solid #ebeef4;
+  padding: 16px 18px;
+  border: 1px solid #edf1f7;
   border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .summary-card__icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  margin-bottom: 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
 }
 
 .summary-card__label,
 .summary-card__caption {
   margin: 0;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .summary-card__label {
@@ -859,12 +930,12 @@ function getLatestAvailableClosingMonth() {
 
 .summary-card__caption {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .commission-layout {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .commission-layout--top {
@@ -872,11 +943,11 @@ function getLatestAvailableClosingMonth() {
 }
 
 .panel {
-  padding: 22px 24px;
+  padding: 12px;
   border: 1px solid #edf1f7;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .panel__header {
@@ -889,14 +960,14 @@ function getLatestAvailableClosingMonth() {
 
 .panel__header h3 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   color: #111827;
 }
 
 .panel__header p {
   margin: 6px 0 0;
-  color: #94a3b8;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .panel__chip {
@@ -930,16 +1001,18 @@ function getLatestAvailableClosingMonth() {
 
 .insurance-overview {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(220px, 260px) minmax(240px, 1fr);
+  gap: 14px;
   align-items: center;
 }
 
 .insurance-overview__chart-card {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   align-self: center;
-  padding: 18px;
+  justify-items: start;
+  overflow: hidden;
+  padding: 16px;
   border: 1px solid #edf2f7;
   border-radius: 18px;
   background:
@@ -947,22 +1020,9 @@ function getLatestAvailableClosingMonth() {
     linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
-.insurance-overview__chart-caption {
-  padding-top: 4px;
-  border-top: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-.insurance-overview__chart-caption strong {
-  display: block;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #64748b;
-  text-align: center;
-}
-
 .insurance-overview__list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -993,7 +1053,11 @@ function getLatestAvailableClosingMonth() {
 }
 
 .insurance-overview .company-panel__chart {
-  height: 248px;
+  width: 220px;
+  max-width: 100%;
+  height: 260px;
+  justify-self: start;
+  margin-left: -6px;
 }
 
 .payment-type-panel__summary {
@@ -1010,7 +1074,7 @@ function getLatestAvailableClosingMonth() {
 }
 
 .payment-type-panel__summary span {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -1020,19 +1084,108 @@ function getLatestAvailableClosingMonth() {
   width: 100%;
 }
 
+.product-ranking-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.table-panel {
+  overflow-x: auto;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+}
+
+.table-panel table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.table-panel th,
+.table-panel td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.table-panel th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.table-panel td strong,
+.table-panel td span {
+  display: block;
+}
+
+.table-panel td strong {
+  color: #111827;
+  font-weight: 700;
+}
+
+.table-panel td span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.table-panel tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-panel--product-ranking {
+  overflow-x: visible;
+}
+
+.table-panel--product-ranking table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.table-panel--product-ranking th:first-child,
+.table-panel--product-ranking td:first-child {
+  width: 64px;
+  white-space: nowrap;
+}
+
+.table-panel--product-ranking th:last-child,
+.table-panel--product-ranking td:last-child {
+  width: 92px;
+  white-space: nowrap;
+}
+
+.table-panel--product-ranking th,
+.table-panel--product-ranking td {
+  white-space: normal;
+}
+
+.table-panel--product-ranking td {
+  word-break: keep-all;
+}
+
+.table-panel--product-ranking td strong {
+  overflow-wrap: anywhere;
+}
+
 .insurance-company-row,
 .legend-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 14px 16px;
-  border: 1px solid #edf2f7;
-  border-radius: 16px;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
   background: #ffffff;
 }
 
 .insurance-company-row__main {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1040,7 +1193,14 @@ function getLatestAvailableClosingMonth() {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   color: #1e293b;
+}
+
+.insurance-company-row__title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insurance-company-row__dot,
@@ -1055,7 +1215,7 @@ function getLatestAvailableClosingMonth() {
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
   line-height: 1.5;
 }

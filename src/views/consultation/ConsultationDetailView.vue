@@ -1,10 +1,6 @@
 <template>
   <section class="detail-page">
-    <nav class="detail-breadcrumb">
-      <span>상담 관리</span>
-      <v-icon icon="mdi-chevron-right" size="15" />
-      <strong>{{ isDraft ? '임시저장 상담일지 상세' : '상담일지 상세' }}</strong>
-    </nav>
+    <PageBackLink label="상담 목록" @click="goList" />
 
     <div class="detail-heading">
       <div>
@@ -12,7 +8,6 @@
         <p>선택한 상담일지의 주요 정보와 유형별 상세 내용을 확인합니다.</p>
       </div>
       <div class="detail-actions">
-        <v-btn variant="outlined" @click="goList">목록</v-btn>
         <v-btn v-if="isDraft" class="primary-button" @click="goEdit">수정</v-btn>
       </div>
     </div>
@@ -68,6 +63,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getConsultation, getConsultationDraftFromApi } from '../../api/consultations'
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import { USER_ROLES } from '../../constants/auth'
 import { getConsultationChannelLabel, getConsultationTypeLabel } from '../../constants/customer'
 import { useAuthStore } from '../../stores/auth'
@@ -517,27 +513,17 @@ function retentionLabel(value) {
 <style scoped>
 .detail-page {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   max-width: none;
   margin: 0;
   color: #111827;
 }
 
-.detail-breadcrumb,
 .detail-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.detail-breadcrumb {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.detail-breadcrumb strong {
-  color: #111827;
 }
 
 .detail-heading {
@@ -550,6 +536,8 @@ function retentionLabel(value) {
 .detail-heading h2 {
   margin: 0;
   font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .detail-heading p {
@@ -562,15 +550,20 @@ function retentionLabel(value) {
   background: #f97316;
   color: #ffffff;
   box-shadow: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .detail-card {
   display: grid;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .detail-card header {
@@ -594,12 +587,12 @@ function retentionLabel(value) {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  padding: 3px 9px;
-  border-radius: 5px;
+  padding: 0 10px;
+  border-radius: 999px;
   background: #fff7ed;
   color: #f97316;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .detail-summary,
@@ -618,7 +611,7 @@ function retentionLabel(value) {
   display: grid;
   gap: 5px;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #f8fafc;
 }
 
@@ -640,13 +633,13 @@ function retentionLabel(value) {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #edf1f7;
+  border-radius: 10px;
 }
 
 .detail-section--blue {
-  border-color: #bfdbfe;
-  background: #eff6ff;
+  border-color: #edf1f7;
+  background: #f8fafc;
 }
 
 .detail-section h3,

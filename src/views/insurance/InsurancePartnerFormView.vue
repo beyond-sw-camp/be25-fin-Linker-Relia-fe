@@ -1,27 +1,12 @@
 <template>
   <section class="insurance-form-page">
-    <div class="insurance-form-page__breadcrumb">
-      <span>보험 상품 관리</span>
-      <span class="insurance-form-page__breadcrumb-separator">/</span>
-      <button type="button" @click="goToList">제휴 보험사 목록</button>
-      <span class="insurance-form-page__breadcrumb-separator">/</span>
-      <strong>{{ pageTitle }}</strong>
-    </div>
+    <PageBackLink label="제휴 보험사 목록" @click="goToList" />
 
     <header class="insurance-form-page__header">
       <div>
         <h2>{{ pageTitle }}</h2>
         <p>{{ pageDescription }}</p>
       </div>
-
-      <v-btn
-        variant="outlined"
-        class="insurance-form-page__back-button"
-        @click="goToList"
-      >
-        <v-icon icon="mdi-arrow-left" size="16" start />
-        목록으로 돌아가기
-      </v-btn>
     </header>
 
     <section class="insurance-form-panel">
@@ -132,6 +117,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import PageBackLink from '../../components/common/PageBackLink.vue'
 import {
   createInsuranceManagementCompany,
   getInsuranceManagementCompanyDetail,
@@ -308,33 +294,9 @@ function goToList() {
 <style scoped>
 .insurance-form-page {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
-}
-
-.insurance-form-page__breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.insurance-form-page__breadcrumb button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #4b5563;
-  cursor: pointer;
-  font: inherit;
-}
-
-.insurance-form-page__breadcrumb strong {
   color: #111827;
-}
-
-.insurance-form-page__breadcrumb-separator {
-  color: #d1d5db;
 }
 
 .insurance-form-page__header {
@@ -347,39 +309,30 @@ function goToList() {
 .insurance-form-page__header h2 {
   margin: 0;
   font-size: 18px;
-  line-height: 1.25;
+  line-height: 1.35;
   color: #111827;
   font-weight: 800;
 }
 
 .insurance-form-page__header p {
-  margin: 8px 0 0;
-  color: #6b7280;
+  margin: 6px 0 0;
+  color: #64748b;
   font-size: 13px;
-}
-
-.insurance-form-page__back-button {
-  height: 36px;
-  border-radius: 10px;
-  border-color: #d1d5db;
-  color: #475569;
-  padding: 0 16px;
-  box-shadow: none;
 }
 
 .insurance-form-panel {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
 .insurance-form-panel__title {
-  padding: 16px 24px;
+  padding: 16px 18px;
   border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
-  color: #1f2937;
+  background: #ffffff;
+  color: #111827;
   font-size: 15px;
   font-weight: 800;
 }
@@ -394,7 +347,7 @@ function goToList() {
 }
 
 .insurance-form-panel__alert {
-  margin: 24px;
+  margin: 18px;
 }
 
 .insurance-form-panel__alert--inline {
@@ -404,8 +357,8 @@ function goToList() {
 .insurance-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
-  padding: 24px;
+  gap: 16px;
+  padding: 18px;
 }
 
 .insurance-form-field {
@@ -414,7 +367,7 @@ function goToList() {
 }
 
 .insurance-form-field span {
-  color: #374151;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
@@ -427,32 +380,39 @@ function goToList() {
 .insurance-form-field input {
   width: 100%;
   height: 40px;
-  padding: 0 12px;
-  border: 1px solid #dbe2ea;
+  padding: 0 14px;
+  border: 1px solid #d8dce3;
   border-radius: 10px;
   background: #ffffff;
   color: #111827;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.insurance-form-field input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
 }
 
 .insurance-form-field input[readonly] {
   background: #f8fafc;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .insurance-form-field small {
-  color: #9ca3af;
+  color: #64748b;
   font-size: 12px;
 }
 
 .insurance-form-status {
   display: grid;
   gap: 12px;
-  padding: 0 24px 24px;
+  padding: 0 18px 18px;
 }
 
 .insurance-form-status > span {
-  color: #374151;
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
@@ -471,12 +431,14 @@ function goToList() {
   justify-content: center;
   gap: 8px;
   padding: 0 18px;
-  border: 1px solid #dbe2ea;
-  border-radius: 12px;
+  border: 1px solid #d8dce3;
+  border-radius: 10px;
   background: #ffffff;
-  color: #6b7280;
-  font: inherit;
-  font-weight: 700;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
   cursor: pointer;
 }
 
@@ -506,6 +468,7 @@ function goToList() {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  padding-bottom: 12px;
 }
 
 .insurance-form-page__cancel-button,
@@ -514,17 +477,19 @@ function goToList() {
   border-radius: 10px;
   padding: 0 20px;
   box-shadow: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .insurance-form-page__cancel-button {
-  border-color: #d1d5db;
-  color: #475569;
+  border-color: #d8dce3;
+  color: #64748b;
 }
 
 .insurance-form-page__submit-button {
   background: #f97316;
   color: #ffffff;
-  font-weight: 700;
 }
 
 @media (max-width: 1024px) {
