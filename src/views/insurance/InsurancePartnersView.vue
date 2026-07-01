@@ -20,14 +20,11 @@
         <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
           <v-icon :icon="card.icon" size="18" />
         </div>
-        <div class="summary-card__content">
-          <span class="summary-card__label">{{ card.label }}</span>
-          <div class="summary-card__value">
-            <strong>{{ card.value }}</strong>
-            <span>개</span>
-          </div>
-          <p>{{ card.caption }}</p>
+        <div class="summary-card__value">
+          <strong>{{ card.value }}</strong>
+          <span>개</span>
         </div>
+        <p>{{ card.label }}</p>
       </article>
     </div>
 
@@ -194,23 +191,20 @@ const summaryCards = computed(() => [
   {
     label: '전체 제휴 보험사',
     value: formatCount(companyPage.value.totalElements),
-    caption: '등록된 전체 제휴 보험사 수',
-    accent: '#ea580c',
-    tone: '#fff7ed',
+    accent: '#f97316',
+    tone: '#fff1e8',
     icon: 'mdi-office-building-outline',
   },
   {
     label: '활성 보험사',
     value: formatCount(activeCompanyCount.value),
-    caption: '현재 활성 상태 보험사 수',
     accent: '#16a34a',
-    tone: '#ecfdf3',
+    tone: '#dcfce7',
     icon: 'mdi-check-decagram-outline',
   },
   {
     label: '비활성 보험사',
     value: formatCount(inactiveCompanyCount.value),
-    caption: '현재 비활성 상태 보험사 수',
     accent: '#64748b',
     tone: '#f1f5f9',
     icon: 'mdi-minus-circle-outline',
@@ -374,10 +368,6 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .summary-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 96px;
   padding: 16px 18px;
   border: 1px solid #e9edf5;
   border-radius: 16px;
@@ -391,40 +381,35 @@ function getApiErrorMessage(error, fallbackMessage) {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  flex: 0 0 auto;
+  margin-bottom: 12px;
 }
 
-.summary-card__content {
-  display: grid;
-  gap: 2px;
-}
-
-.summary-card__label {
-  color: #64748b;
-  font-size: 13px;
+.summary-card__icon :deep(.v-icon) {
+  color: currentColor;
 }
 
 .summary-card__value {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .summary-card__value strong {
-  font-size: 28px;
-  line-height: 1.08;
+  font-size: 34px;
+  line-height: 1;
   color: #111827;
 }
 
-.summary-card__value span {
-  color: #475569;
-  font-size: 13px;
+.summary-card__value span,
+.summary-card p {
+  margin: 0;
+  color: #6b7280;
 }
 
-.summary-card__content p {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
+.summary-card__value span,
+.summary-card p {
+  font-size: 13px;
 }
 
 .insurance-panel {
@@ -562,12 +547,12 @@ function getApiErrorMessage(error, fallbackMessage) {
 
 .insurance-table__name {
   color: #f97316;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .insurance-table__text {
-  color: #111827;
-  font-weight: 700;
+  color: #f97316;
+  font-weight: 400;
 }
 
 .insurance-table__name-button {
@@ -577,7 +562,7 @@ function getApiErrorMessage(error, fallbackMessage) {
   cursor: pointer;
   color: #f97316;
   font: inherit;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
 }
 

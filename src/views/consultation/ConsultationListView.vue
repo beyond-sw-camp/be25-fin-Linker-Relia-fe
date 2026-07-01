@@ -279,14 +279,14 @@ const metrics = computed(() => [
     value: totalElements.value.toLocaleString('ko-KR'),
     label: '전체 상담일지',
     accent: '#f97316',
-    tone: '#fff7ed',
+    tone: '#fff1e8',
   },
   {
     icon: 'mdi-swap-horizontal-bold',
     value: contractCount.value.toLocaleString('ko-KR'),
     label: '계약 전환 건수',
-    accent: '#f97316',
-    tone: '#fff7ed',
+    accent: '#14b8a6',
+    tone: '#dff7f2',
   },
 ])
 const rangeLabel = computed(() => {
@@ -675,11 +675,15 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .summary-card__icon {
   display: grid;
+  place-items: center;
   width: 34px;
   height: 34px;
-  place-items: center;
   margin-bottom: 12px;
   border-radius: 10px;
+}
+
+.summary-card__icon :deep(.v-icon) {
+  color: currentColor;
 }
 
 .summary-card__value {
@@ -691,14 +695,14 @@ function mergeConsultationRows(serverRows, localRows) {
 
 .summary-card__value strong {
   font-size: 28px;
-  line-height: 1;
+  line-height: 1.08;
   color: #111827;
 }
 
 .summary-card__value span,
 .summary-card p {
   margin: 0;
-  color: #64748b;
+  color: #475569;
 }
 
 .summary-card__value span {
@@ -901,8 +905,9 @@ function mergeConsultationRows(serverRows, localRows) {
   background: #fff7ed;
 }
 
-.consultation-table__strong {
+.consultation-table td.consultation-table__strong {
   color: #f97316;
+  font-size: 13px;
   font-weight: 700;
 }
 

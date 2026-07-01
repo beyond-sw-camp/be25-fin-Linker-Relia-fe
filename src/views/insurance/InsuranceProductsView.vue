@@ -14,14 +14,11 @@
         <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
           <v-icon :icon="card.icon" size="18" />
         </div>
-        <div class="summary-card__content">
-          <span class="summary-card__label">{{ card.label }}</span>
-          <div class="summary-card__value">
-            <strong>{{ card.value }}</strong>
-            <span>개</span>
-          </div>
-          <p>{{ card.caption }}</p>
+        <div class="summary-card__value">
+          <strong>{{ card.value }}</strong>
+          <span>개</span>
         </div>
+        <p>{{ card.label }}</p>
       </article>
     </div>
 
@@ -116,12 +113,17 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="product in displayedProducts" :key="product.productId">
+              <tr
+                v-for="product in displayedProducts"
+                :key="product.productId"
+                class="is-clickable"
+                @click="goToProductDetail(product)"
+              >
                 <td>
                   <button
                     type="button"
                     class="insurance-products-table__name-button"
-                    @click="goToProductDetail(product)"
+                    @click.stop="goToProductDetail(product)"
                   >
                     {{ product.productName }}
                   </button>
@@ -228,23 +230,20 @@ const summaryCards = computed(() => [
   {
     label: '전체 보험 상품',
     value: formatCount(summaryCounts.value.total),
-    caption: '등록된 전체 상품 수',
-    accent: '#ea580c',
-    tone: '#fff7ed',
+    accent: '#f97316',
+    tone: '#fff1e8',
     icon: 'mdi-cube-outline',
   },
   {
     label: '판매 중 상품',
     value: formatCount(summaryCounts.value.onSale),
-    caption: '현재 판매 중인 상품',
     accent: '#2563eb',
-    tone: '#eff6ff',
+    tone: '#dbeafe',
     icon: 'mdi-tag-outline',
   },
   {
     label: '판매 종료 상품',
     value: formatCount(summaryCounts.value.saleEnded),
-    caption: '판매가 종료된 상품',
     accent: '#64748b',
     tone: '#f1f5f9',
     icon: 'mdi-calendar-remove-outline',
@@ -523,10 +522,6 @@ function getApiErrorMessage(error, fallbackMessage) {
 }
 
 .summary-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 96px;
   padding: 16px 18px;
   border: 1px solid #e9edf5;
   border-radius: 16px;
@@ -540,39 +535,34 @@ function getApiErrorMessage(error, fallbackMessage) {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  flex: 0 0 auto;
+  margin-bottom: 12px;
 }
 
-.summary-card__content {
-  display: grid;
-  gap: 2px;
-}
-
-.summary-card__label {
-  color: #64748b;
-  font-size: 13px;
+.summary-card__icon :deep(.v-icon) {
+  color: currentColor;
 }
 
 .summary-card__value {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .summary-card__value strong {
-  font-size: 28px;
-  line-height: 1.08;
+  font-size: 34px;
+  line-height: 1;
   color: #111827;
 }
 
-.summary-card__value span {
-  color: #475569;
-  font-size: 13px;
+.summary-card__value span,
+.summary-card p {
+  margin: 0;
+  color: #6b7280;
 }
 
-.summary-card__content p {
-  margin: 0;
-  color: #64748b;
+.summary-card__value span,
+.summary-card p {
   font-size: 13px;
 }
 
@@ -713,6 +703,14 @@ function getApiErrorMessage(error, fallbackMessage) {
   font-size: 12px;
   font-weight: 700;
   color: #64748b;
+}
+
+.insurance-products-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.insurance-products-table tr.is-clickable:hover {
+  background: #fff7ed;
 }
 
 .insurance-products-table__name-button {

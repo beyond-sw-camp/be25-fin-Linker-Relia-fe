@@ -38,8 +38,11 @@
         <div class="summary-card__icon" :style="{ backgroundColor: card.tone, color: card.accent }">
           <v-icon :icon="card.icon" size="18" />
         </div>
+        <div class="summary-card__metric" :class="card.valueClass">
+          <strong class="summary-card__value">{{ card.value }}</strong>
+          <span v-if="card.unit" class="summary-card__unit">{{ card.unit }}</span>
+        </div>
         <p class="summary-card__label">{{ card.label }}</p>
-        <strong class="summary-card__value" :class="card.valueClass">{{ card.value }}</strong>
         <p class="summary-card__caption">{{ card.caption }}</p>
       </article>
     </div>
@@ -195,7 +198,8 @@ const productRankingTitleSuffix = computed(() => `Top${Math.min(productRankingIt
 const summaryCards = computed(() => [
   {
     label: '총 지급 수수료',
-    value: formatCurrency(summary.value.totalPaymentCommissionAmount),
+    value: formatCurrencyAmount(summary.value.totalPaymentCommissionAmount),
+    unit: '원',
     caption: summaryErrorMessage.value || '당월 설계사 지급 총액',
     accent: '#f97316',
     tone: '#fff3e8',
@@ -203,7 +207,8 @@ const summaryCards = computed(() => [
   },
   {
     label: '실수령 수수료',
-    value: formatCurrency(summary.value.netCommissionAmount),
+    value: formatCurrencyAmount(summary.value.netCommissionAmount),
+    unit: '원',
     caption: '환수 반영 후 당월 실제 수령 수수료',
     accent: '#2563eb',
     tone: '#eff6ff',
@@ -223,7 +228,8 @@ const summaryCards = computed(() => [
   },
   {
     label: '환수 예정 수수료',
-    value: formatCurrency(summary.value.clawbackAmount),
+    value: formatCurrencyAmount(summary.value.clawbackAmount),
+    unit: '원',
     caption: `환수 계약 ${formatCount(summary.value.clawbackContractCount)}건`,
     accent: '#ef4444',
     tone: '#fff1f2',
@@ -232,7 +238,8 @@ const summaryCards = computed(() => [
   },
   {
     label: '초회 지급 수수료',
-    value: formatCurrency(summary.value.initialPaymentAmount),
+    value: formatCurrencyAmount(summary.value.initialPaymentAmount),
+    unit: '원',
     caption: '당월 초회 지급 기준 수수료',
     accent: '#7c3aed',
     tone: '#f5f3ff',
@@ -240,7 +247,8 @@ const summaryCards = computed(() => [
   },
   {
     label: '유지 지급 수수료',
-    value: formatCurrency(summary.value.maintenancePaymentAmount),
+    value: formatCurrencyAmount(summary.value.maintenancePaymentAmount),
+    unit: '원',
     caption: '당월 유지 지급 기준 수수료',
     accent: '#0ea5a4',
     tone: '#ecfeff',
@@ -756,6 +764,10 @@ function formatCount(value) {
   return Number(value ?? 0).toLocaleString('ko-KR')
 }
 
+function formatCurrencyAmount(value) {
+  return Number(value ?? 0).toLocaleString('ko-KR')
+}
+
 function formatMonthLabel(value) {
   if (!value) {
     return '-'
@@ -914,23 +926,36 @@ function getLatestAvailableClosingMonth() {
 }
 
 .summary-card__label {
+  margin: 8px 0 0;
+  color: #475569;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
+}
+
+.summary-card__metric {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 0;
 }
 
 .summary-card__value {
-  display: block;
-  margin-top: 10px;
+  color: #111827;
   font-size: 28px;
   line-height: 1.08;
-  color: #111827;
 }
 
-.summary-card__value--success {
+.summary-card__unit {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.summary-card__value--success .summary-card__value {
   color: #65a30d;
 }
 
-.summary-card__value--danger {
+.summary-card__value--danger .summary-card__value {
   color: #ef4444;
 }
 

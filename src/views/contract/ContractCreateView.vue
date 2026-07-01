@@ -785,15 +785,18 @@ function goToContractList() {
 }
 
 .contract-create-button {
-  width: 55px;
+  width: auto;
   min-width: 55px;
   height: 34px;
+  box-sizing: border-box;
   padding: 0 18px;
   border: 0;
   border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 500;
+  line-height: 1;
   letter-spacing: 0;
+  white-space: nowrap;
   cursor: pointer;
 }
 

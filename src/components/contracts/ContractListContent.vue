@@ -23,6 +23,10 @@
           hide-details
           class="contract-page__filter"
         />
+        <v-btn class="contract-page__search-button" @click="searchContracts">검색</v-btn>
+        <v-btn variant="outlined" class="contract-page__reset-button" @click="resetContractFilters">
+          초기화
+        </v-btn>
       </div>
 
       <v-btn
@@ -70,12 +74,12 @@
         </div>
 
         <div class="contract-sort" aria-label="계약 목록 정렬 기준">
-          <span class="contract-sort__label">정렬 기준</span>
           <v-select
             v-model="contractSort"
             :items="sortOptions"
             item-title="label"
             item-value="value"
+            label="정렬"
             variant="outlined"
             density="comfortable"
             hide-details
@@ -107,16 +111,17 @@
               </td>
             </tr>
             <template v-else>
-              <tr v-for="contract in contractRows" :key="contract.contractCode">
+              <tr
+                v-for="contract in contractRows"
+                :key="contract.contractCode"
+                class="is-clickable"
+                @click="goToContractDetail(contract)"
+              >
                 <td v-if="hasContractTableColumn('contractCode')">
-                  <button type="button" class="contract-table__link" @click="goToContractDetail(contract)">
-                    {{ contract.contractCode }}
-                  </button>
+                  <span>{{ contract.contractCode }}</span>
                 </td>
                 <td v-if="hasContractTableColumn('customerName')">
-                  <button type="button" class="contract-table__link" @click="goToCustomerDetail(contract)">
-                    {{ contract.customerName }}
-                  </button>
+                  <span class="contract-table__customer">{{ contract.customerName }}</span>
                 </td>
                 <td v-if="hasContractTableColumn('insuranceCompanyName')">{{ contract.insuranceCompanyName }}</td>
                 <td v-if="hasContractTableColumn('insuranceProductName')" class="contract-table__strong">{{ contract.insuranceProductName }}</td>
@@ -334,6 +339,26 @@ function changeStatus(status) {
   filters.status = status
 }
 
+async function searchContracts() {
+  currentPage.value = 1
+  await Promise.all([
+    loadContractList(),
+    loadContractSummary(),
+  ])
+}
+
+async function resetContractFilters() {
+  currentPage.value = 1
+  filters.branch = 'ALL'
+  filters.insurer = 'ALL'
+  filters.status = 'ALL'
+  contractSort.value = 'LATEST_CONTRACT'
+  await Promise.all([
+    loadContractList(),
+    loadContractSummary(),
+  ])
+}
+
 function hasContractTableColumn(key) {
   return contractTableColumns.value.some((column) => column.key === key)
 }
@@ -365,26 +390,6 @@ function goToContractDetail(contract) {
     },
     query: {
       from: route.name,
-    },
-  })
-}
-
-function goToCustomerDetail(contract) {
-  const customerId = contract?.customerId
-
-  if (!customerId) {
-    contractListError.value = '고객 상세 조회에 필요한 고객 ID가 없습니다.'
-    return
-  }
-
-  router.push({
-    name: 'customer-detail',
-    params: {
-      customerId,
-    },
-    query: {
-      from: route.name,
-      returnTo: route.fullPath,
     },
   })
 }
@@ -588,6 +593,52 @@ function isNearMaturityContract(status) {
   border-radius: 10px;
 }
 
+.contract-page__search-button {
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #f97316;
+  padding: 0 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.contract-page__search-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.55);
+  background: #ffedd5;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.1);
+}
+
+.contract-page__search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
+}
+
+.contract-page__reset-button {
+  width: 55px;
+  min-width: 55px;
+  height: 34px;
+  border-radius: 10px;
+  border-color: #d1d5db;
+  color: #475569;
+  padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
 .contract-page__summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -761,18 +812,23 @@ function isNearMaturityContract(status) {
   color: #64748b;
 }
 
-.contract-table__link {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #f97316;
-  font-weight: 700;
-  text-decoration: none;
+.contract-table tr.is-clickable {
   cursor: pointer;
 }
 
-.contract-table__strong {
+.contract-table tr.is-clickable:hover {
+  background: #fff7ed;
+}
+
+.contract-table__customer {
+  color: #f97316;
+  font-size: 13px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.contract-table__strong {
+  font-weight: 400;
   color: #475569;
 }
 
@@ -883,6 +939,11 @@ td span + .contract-badge {
   }
 
   .contract-page__create-button {
+    width: 100%;
+  }
+
+  .contract-page__search-button,
+  .contract-page__reset-button {
     width: 100%;
   }
 
