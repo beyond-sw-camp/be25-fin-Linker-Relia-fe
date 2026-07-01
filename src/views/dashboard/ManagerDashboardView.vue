@@ -265,7 +265,10 @@ import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 
-const selectedBranch = ref('전체 지점')
+const ALL_BRANCH_LABEL = '전사(전체 지점)'
+const ALL_BRANCH_VALUE = ''
+
+const selectedBranch = ref(ALL_BRANCH_VALUE)
 const selectedMonth = ref('')
 const rankingTab = ref('advisor')
 const selectedAdvisorSortKey = ref('TOP')
@@ -307,7 +310,7 @@ const fallbackBranchOptions = [
 ]
 
 const branchOptions = ref([
-  { label: '전체 지점', value: '전체 지점' },
+  { label: ALL_BRANCH_LABEL, value: ALL_BRANCH_VALUE },
   ...fallbackBranchOptions,
 ])
 
@@ -321,14 +324,14 @@ const monthOptions = ref(fallbackMonthOptions)
 const latestAvailableClosingMonth = computed(() => monthOptions.value[0]?.value ?? '')
 
 const isHqManager = computed(() => authStore.userRole === USER_ROLES.HQ_MANAGER)
-const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === '전체 지점')
+const isAllBranchSelected = computed(() => isHqManager.value && selectedBranch.value === ALL_BRANCH_VALUE)
 const latestAvailableMonth = computed(() => monthOptions.value[0]?.value ?? fallbackMonthOptions[0]?.value ?? '')
 const selectedBranchOption = computed(() =>
   branchOptions.value.find((branch) => branch.value === selectedBranch.value) ?? null,
 )
 const currentBranchName = computed(() => {
   if (isHqManager.value) {
-    return selectedBranchOption.value?.label ?? '전체 지점'
+    return selectedBranchOption.value?.label ?? ALL_BRANCH_LABEL
   }
 
   return authStore.user.organizationName || '강남본부 강남지점'
@@ -516,23 +519,25 @@ async function loadBranchOptions() {
 
     if (organizations.length === 0) {
       branchOptions.value = [
-        { label: '전체 지점', value: '전체 지점' },
+        { label: ALL_BRANCH_LABEL, value: ALL_BRANCH_VALUE },
         ...fallbackBranchOptions,
       ]
       return
     }
 
     branchOptions.value = [
-      { label: '전체 지점', value: '전체 지점' },
+      { label: ALL_BRANCH_LABEL, value: ALL_BRANCH_VALUE },
       ...organizations.map((branch) => ({
-        label: branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
+        label: branch.organizationCode && branch.organizationName
+          ? `${branch.organizationCode} · ${branch.organizationName}`
+          : branch.organizationName ?? branch.organizationCode ?? '이름 없는 지점',
         value: branch.organizationCode ?? branch.organizationName ?? 'unknown',
       })),
     ]
 
     const hasSelectedBranch = branchOptions.value.some((branch) => branch.value === selectedBranch.value)
     if (!hasSelectedBranch) {
-      selectedBranch.value = '전체 지점'
+      selectedBranch.value = ALL_BRANCH_VALUE
     }
   } catch (error) {
     branchErrorMessage.value =
