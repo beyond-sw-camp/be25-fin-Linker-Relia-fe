@@ -1829,7 +1829,7 @@ function getAdvisorCellValue(advisor, key) {
   background: #ffffff;
   color: #374151;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .branch-change--up {
@@ -1938,13 +1938,19 @@ function getAdvisorCellValue(advisor, key) {
   text-align: center;
 }
 
+.ranking-table--branch td.branch-ranking-col--rank {
+  font-weight: 700;
+}
+
 .ranking-table--branch th.branch-ranking-col--name,
 .ranking-table--branch td.branch-ranking-col--name {
+  padding-left: 100px;
   text-align: left;
 }
 
 .ranking-table--branch th.branch-ranking-col--amount,
 .ranking-table--branch td.branch-ranking-col--amount {
+  padding-right: 80px;
   text-align: right;
 }
 
