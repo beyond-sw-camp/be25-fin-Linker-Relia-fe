@@ -19,6 +19,51 @@ export const DEFAULT_ROUTE_BY_ROLE = Object.freeze({
   [USER_ROLES.SYSTEM_ADMIN]: '/admin/users',
 })
 
+export const TEST_LOGIN_USERS = Object.freeze([
+  {
+    role: USER_ROLES.FP,
+    groupLabel: '설계사',
+    label: '1',
+    loginId: 'fp1',
+    password: 'relia1234',
+  },
+  {
+    role: USER_ROLES.FP,
+    groupLabel: '설계사',
+    label: '2',
+    loginId: 'fp2',
+    password: 'relia1234',
+  },
+  {
+    role: USER_ROLES.BRANCH_MANAGER,
+    groupLabel: '지점장',
+    label: '1',
+    loginId: 'br1',
+    password: 'relia1234',
+  },
+  {
+    role: USER_ROLES.BRANCH_MANAGER,
+    groupLabel: '지점장',
+    label: '2',
+    loginId: 'br2',
+    password: 'relia1234',
+  },
+  {
+    role: USER_ROLES.HQ_MANAGER,
+    groupLabel: '본사',
+    label: '1',
+    loginId: 'hq1',
+    password: 'relia1234',
+  },
+  {
+    role: USER_ROLES.HQ_MANAGER,
+    groupLabel: '본사',
+    label: '2',
+    loginId: 'hq2',
+    password: 'relia1234',
+  },
+])
+
 export function getDefaultRouteByRole(role) {
   return DEFAULT_ROUTE_BY_ROLE[role] ?? '/login'
 }
