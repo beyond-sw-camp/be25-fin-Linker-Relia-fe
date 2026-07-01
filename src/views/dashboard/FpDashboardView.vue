@@ -1,41 +1,43 @@
 <template>
   <section class="fp-dashboard" aria-label="설계사 대시보드">
     <div class="fp-dashboard__main">
-      <div class="fp-dashboard__heading">
-        <div>
-          <h2>설계사 대시보드</h2>
-          <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
+      <section class="fp-report-panel">
+        <div class="fp-dashboard__heading">
+          <div>
+            <h2>설계사 대시보드</h2>
+            <p>본인의 계약, 상담, 고객, 일정 현황을 한눈에 확인할 수 있습니다.</p>
+          </div>
         </div>
-      </div>
 
-      <div class="fp-dashboard__notice">
-        <span>
-          <v-icon icon="mdi-information-outline" size="16" />
-          {{ comparisonLabel }} 마감 기준으로 집계된 데이터입니다.
-        </span>
-      </div>
+        <div class="fp-dashboard__notice">
+          <span>
+            <v-icon icon="mdi-information-outline" size="16" />
+            {{ comparisonLabel }} 마감 기준으로 집계된 데이터입니다.
+          </span>
+        </div>
 
-      <div v-if="summaryError" class="fp-dashboard__error">
-        {{ summaryError }}
-      </div>
+        <div v-if="summaryError" class="fp-dashboard__error">
+          {{ summaryError }}
+        </div>
 
-      <div class="metric-grid" aria-label="주요 지표">
-        <article v-for="metric in metrics" :key="metric.label" class="metric-card">
-          <div class="metric-card__icon" :style="{ color: metric.color, backgroundColor: metric.tone }">
-            <v-icon :icon="metric.icon" size="19" />
-          </div>
-          <div class="metric-card__value">
-            <strong>{{ metric.value }}</strong>
-            <span>{{ metric.unit }}</span>
-          </div>
-          <p>{{ metric.label }}</p>
-          <small>
-            <v-progress-circular v-if="isSummaryLoading" indeterminate color="#16a34a" size="12" width="2" />
-            <v-icon v-else :icon="metric.isDown ? 'mdi-triangle-small-down' : 'mdi-triangle-small-up'" size="16" />
-            {{ metric.change }}
-          </small>
-        </article>
-      </div>
+        <div class="metric-grid" aria-label="주요 지표">
+          <article v-for="metric in metrics" :key="metric.label" class="metric-card">
+            <div class="metric-card__icon" :style="{ color: metric.color, backgroundColor: metric.tone }">
+              <v-icon :icon="metric.icon" size="19" />
+            </div>
+            <div class="metric-card__value">
+              <strong>{{ metric.value }}</strong>
+              <span>{{ metric.unit }}</span>
+            </div>
+            <p>{{ metric.label }}</p>
+            <small :class="metric.isDown ? 'is-down' : 'is-up'">
+              <v-progress-circular v-if="isSummaryLoading" indeterminate color="#16a34a" size="12" width="2" />
+              <v-icon v-else :icon="metric.isDown ? 'mdi-triangle-small-down' : 'mdi-triangle-small-up'" size="16" />
+              {{ metric.change }}
+            </small>
+          </article>
+        </div>
+      </section>
 
       <section class="contract-overview panel">
         <div class="panel__title-row">
@@ -1608,6 +1610,8 @@ function toDateInputValue(date) {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  margin: 0 0 12px;
+  padding: 0 4px;
 }
 
 .fp-dashboard__heading-meta {
@@ -1620,7 +1624,7 @@ function toDateInputValue(date) {
 
 .fp-dashboard__heading h2 {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.35;
 }
@@ -1649,7 +1653,7 @@ function toDateInputValue(date) {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .fp-dashboard__notice strong {
@@ -1669,9 +1673,10 @@ function toDateInputValue(date) {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
+.fp-report-panel,
 .metric-card,
 .panel,
 .side-panel {
@@ -1681,9 +1686,15 @@ function toDateInputValue(date) {
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
 }
 
+.fp-report-panel {
+  padding: 12px;
+}
+
 .metric-card {
   min-height: 124px;
-  padding: 16px 18px;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .metric-card__icon {
@@ -1703,6 +1714,7 @@ function toDateInputValue(date) {
 
 .metric-card__value strong {
   font-size: 30px;
+  font-weight: 700;
   line-height: 1.08;
 }
 
@@ -1714,6 +1726,7 @@ function toDateInputValue(date) {
 .metric-card p {
   margin: 8px 0 0;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .metric-card small {
@@ -1721,9 +1734,16 @@ function toDateInputValue(date) {
   align-items: center;
   gap: 2px;
   margin-top: 2px;
-  color: #16a34a;
   font-size: 11px;
   font-weight: 700;
+}
+
+.is-up {
+  color: #16a34a;
+}
+
+.is-down {
+  color: #dc2626;
 }
 
 .panel {

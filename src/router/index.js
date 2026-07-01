@@ -159,7 +159,7 @@ const protectedChildren = APP_PAGE_SPECS.map((page) => ({
         USER_ROLES.HQ_MANAGER,
         USER_ROLES.SYSTEM_ADMIN,
       ],
-      title: '설계사 상세 정보 조회',
+      title: '설계사 상세 정보',
     },
   },
   {
