@@ -7,7 +7,9 @@
         class="received-summary-card"
         :style="{ '--dot': card.color }"
       >
-        <span class="received-summary-card__dot" aria-hidden="true"></span>
+        <span class="received-summary-card__dot" aria-hidden="true">
+          <v-icon :icon="card.icon" size="22" />
+        </span>
         <div class="received-summary-card__value">
           <strong>{{ card.value }}</strong>
           <span>{{ card.unit }}</span>
@@ -128,18 +130,21 @@ const summaryCards = computed(() => [
     value: formatCount(summary.value.thisMonthReceivedCount),
     unit: '명',
     color: '#c9f2e7',
+    icon: 'mdi-account-arrow-right-outline',
   },
   {
     label: '누적 인수 건수',
     value: formatCount(summary.value.totalReceivedCount),
     unit: '명',
     color: '#ffeadf',
+    icon: 'mdi-account-multiple-check-outline',
   },
   {
     label: '인수 계약 유지율',
     value: formatPercentValue(summary.value.successRate),
     unit: '%',
     color: '#eeebff',
+    icon: 'mdi-chart-line',
   },
 ])
 
@@ -339,12 +344,14 @@ function formatDate(value) {
 }
 
 .received-summary-card__dot {
-  display: grid;
-  width: 34px;
-  height: 34px;
+  display: flex;
+  width: 40px;
+  height: 40px;
   margin-bottom: 12px;
   border-radius: 10px;
   background: var(--dot);
+  align-items: center;
+  justify-content: center;
 }
 
 .received-summary-card__value {
